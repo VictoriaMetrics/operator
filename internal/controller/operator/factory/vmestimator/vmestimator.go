@@ -37,9 +37,6 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VMEstim
 		prevCR.Spec = *cr.Status.LastAppliedSpec
 	}
 	if !config.MustGetBaseConfig().VPAAPIEnabled {
-		if cr.Spec.Single != nil && cr.Spec.Single.VPA != nil {
-			return fmt.Errorf("spec.single.vpa is set but VM_VPA_API_ENABLED=true env var was not provided")
-		}
 		if cr.Spec.Storage != nil && cr.Spec.Storage.VPA != nil {
 			return fmt.Errorf("spec.storage.vpa is set but VM_VPA_API_ENABLED=true env var was not provided")
 		}
@@ -61,16 +58,9 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VMEstim
 		}
 	}
 
-	var configHash string
-	if cr.Spec.Single != nil || cr.Spec.Storage != nil {
-		var err error
-		configHash, err = createOrUpdateConfig(ctx, rclient, cr, prevCR)
-		if err != nil {
-			return fmt.Errorf("cannot reconcile config: %w", err)
-		}
-	}
-	if err := createOrUpdateSingle(ctx, rclient, cr, prevCR, configHash); err != nil {
-		return fmt.Errorf("cannot reconcile single: %w", err)
+	configHash, err := createOrUpdateConfig(ctx, rclient, cr, prevCR)
+	if err != nil {
+		return fmt.Errorf("cannot reconcile config: %w", err)
 	}
 	if err := createOrUpdateStorage(ctx, rclient, cr, prevCR, configHash); err != nil {
 		return fmt.Errorf("cannot reconcile storage: %w", err)
@@ -138,30 +128,6 @@ func createOrUpdateComponentObjects(ctx context.Context, rclient client.Client, 
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMEstimator) error {
 	cc := finalize.NewChildCleaner()
-	if single := cr.Spec.Single; single == nil {
-		if err := finalize.OnVMEstimatorSingleDelete(ctx, rclient, cr, true); err != nil {
-			return fmt.Errorf("cannot remove orphaned single resources: %w", err)
-		}
-	} else {
-		commonName := cr.PrefixedName(singleKind)
-		if single.PodDisruptionBudget != nil {
-			cc.KeepPDB(commonName)
-		}
-		if single.NetworkPolicy != nil {
-			cc.KeepNetworkPolicy(commonName)
-		}
-		if single.VPA != nil {
-			cc.KeepVPA(commonName)
-		}
-		if !ptr.Deref(single.DisableSelfServiceScrape, false) {
-			cc.KeepScrape(commonName)
-		}
-		cc.KeepService(commonName)
-		if single.ServiceSpec != nil && !single.ServiceSpec.UseAsDefault {
-			cc.KeepService(single.ServiceSpec.NameOrDefault(commonName))
-		}
-	}
-
 	if storage := cr.Spec.Storage; storage == nil {
 		if err := finalize.OnStorageDelete(ctx, rclient, cr, true); err != nil {
 			return fmt.Errorf("cannot remove orphaned storage resources: %w", err)
@@ -187,7 +153,8 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMEstim
 		}
 	}
 
-	if sel := cr.Spec.Select; sel == nil {
+	// select is deployed only in cluster mode
+	if sel := cr.Spec.Select; sel == nil || !cr.IsClusterMode() {
 		if err := finalize.OnSelectDelete(ctx, rclient, cr, true); err != nil {
 			return fmt.Errorf("cannot remove orphaned select resources: %w", err)
 		}

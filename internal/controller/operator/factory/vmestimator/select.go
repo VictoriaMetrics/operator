@@ -21,11 +21,12 @@ import (
 const selectKind = vmv1beta1.ClusterComponentSelect
 
 func createOrUpdateSelect(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator) error {
-	if cr.Spec.Select == nil {
+	// select nodes are deployed only in cluster mode
+	if !cr.IsClusterMode() || cr.Spec.Select == nil {
 		return nil
 	}
 	var prev componentObjects
-	if prevCR != nil && prevCR.Spec.Select == nil {
+	if prevCR != nil && (!prevCR.IsClusterMode() || prevCR.Spec.Select == nil) {
 		prevCR = nil
 	}
 	if prevCR != nil {

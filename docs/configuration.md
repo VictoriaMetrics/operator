@@ -575,7 +575,7 @@ VPA configuration is available for:
 - `VMCluster` components through `spec.vmselect.vpa`, `spec.vminsert.vpa` and `spec.vmstorage.vpa`.
 - `VLCluster` components through `spec.vlselect.vpa`, `spec.vlinsert.vpa` and `spec.vlstorage.vpa`.
 - `VTCluster` components through `spec.select.vpa`, `spec.insert.vpa` and `spec.storage.vpa`.
-- `VMEstimator` components through `spec.single.vpa`, `spec.storage.vpa` and `spec.select.vpa`.
+- `VMEstimator` components through `spec.storage.vpa` and `spec.select.vpa`.
 - `VMDistributed` components that expose `vpa` in their component spec.
 
 ### Configuration

@@ -34,10 +34,19 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-const (
-	// VMEstimatorComponentSingle defines the single-node vmestimator component kind
-	VMEstimatorComponentSingle vmv1beta1.ClusterComponent = "single"
+// VMEstimatorMode defines vmestimator deployment mode
+// +kubebuilder:validation:Enum=single;cluster
+type VMEstimatorMode string
 
+const (
+	// VMEstimatorModeSingle runs a single storage node, which accepts remote write requests and exposes cardinality estimations
+	VMEstimatorModeSingle VMEstimatorMode = "single"
+	// VMEstimatorModeCluster runs storage nodes, which accept remote write requests,
+	// and select nodes, which merge estimations of all storage nodes
+	VMEstimatorModeCluster VMEstimatorMode = "cluster"
+)
+
+const (
 	vmEstimatorName              = "vmestimator"
 	vmEstimatorDefaultPort       = "8490"
 	vmEstimatorRemoteWritePath   = "/cardinality/api/v1/write"
@@ -100,23 +109,23 @@ type VMEstimatorSpec struct {
 	// +optional
 	StreamsConfigMap *corev1.ConfigMapKeySelector `json:"streamsConfigMap,omitempty"`
 
-	// Single defines single-node vmestimator, which accepts remote write requests
-	// and exposes cardinality estimations.
-	// It's mutually exclusive with storage and select.
-	// Operator deploys single-node vmestimator if none of single, storage and select is set.
-	// It's expected to run with a single replica: the Service spreads remote write requests
-	// among replicas, so each replica estimates only its share of the data. Use cluster mode to scale.
-	// +optional
-	Single *VMEstimatorSingle `json:"single,omitempty"`
-	// Storage defines vmestimator storage nodes for the cluster mode.
-	// Storage nodes accept remote write requests and maintain local cardinality estimations.
+	// Mode defines vmestimator deployment mode.
+	// In single mode the operator runs a single storage node, which accepts remote write requests
+	// and exposes cardinality estimations, spec.select is ignored.
+	// In cluster mode the operator runs spec.storage.replicaCount storage nodes, which accept remote write requests,
+	// and select nodes, which query all storage nodes, merge their estimations and expose them as metrics.
+	// Remote write URL is the same in both modes.
 	// See https://docs.victoriametrics.com/victoriametrics/vmestimator/#cluster
+	// +kubebuilder:default=single
+	// +optional
+	Mode VMEstimatorMode `json:"mode,omitempty"`
+	// Storage defines vmestimator storage nodes, which accept remote write requests and maintain cardinality estimations.
+	// In single mode only one storage node is deployed and spec.storage.replicaCount is ignored.
 	// +optional
 	Storage *VMEstimatorStorage `json:"storage,omitempty"`
-	// Select defines vmestimator select nodes for the cluster mode.
-	// Select nodes query all storage nodes, merge their estimations and expose them as metrics.
-	// It requires storage to be set.
-	// See https://docs.victoriametrics.com/victoriametrics/vmestimator/#cluster
+	// Select defines vmestimator select nodes, which query all storage nodes,
+	// merge their estimations and expose them as metrics.
+	// It's used only in cluster mode.
 	// +optional
 	Select *VMEstimatorSelect `json:"select,omitempty"`
 }
@@ -238,96 +247,6 @@ func (s *VMEstimatorStream) Validate() error {
 		}
 	}
 	return nil
-}
-
-// VMEstimatorSingle defines single-node vmestimator configuration
-type VMEstimatorSingle struct {
-	// PodMetadata configures Labels and Annotations which are propagated to the single-node vmestimator pods.
-	// +optional
-	PodMetadata *vmv1beta1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
-	// LogFormat for vmestimator to be configured with.
-	// default or json
-	// +optional
-	// +kubebuilder:validation:Enum=default;json
-	LogFormat string `json:"logFormat,omitempty"`
-	// LogLevel for vmestimator to be configured with.
-	// +optional
-	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
-	LogLevel string `json:"logLevel,omitempty"`
-
-	// ServiceSpec that will be added to single-node vmestimator service spec
-	// +optional
-	ServiceSpec *vmv1beta1.AdditionalServiceSpec `json:"serviceSpec,omitempty"`
-	// ServiceScrapeSpec that will be added to single-node vmestimator VMServiceScrape spec
-	// +optional
-	// +kubebuilder:validation:Type=object
-	// +kubebuilder:validation:Schemaless
-	// +kubebuilder:pruning:PreserveUnknownFields
-	ServiceScrapeSpec *vmv1beta1.VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
-	// PodDisruptionBudget created by operator
-	// +optional
-	PodDisruptionBudget *vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	// Configures vertical pod autoscaling.
-	// +optional
-	VPA *vmv1beta1.EmbeddedVPA `json:"vpa,omitempty"`
-	// NetworkPolicy defines network access rules for pods created by this CR.
-	// +optional
-	NetworkPolicy *vmv1beta1.EmbeddedNetworkPolicy `json:"networkPolicy,omitempty"`
-
-	// UpdateStrategy - overrides default update strategy.
-	// +kubebuilder:validation:Enum=Recreate;RollingUpdate
-	// +optional
-	UpdateStrategy *appsv1.DeploymentStrategyType `json:"updateStrategy,omitempty"`
-	// RollingUpdate - overrides deployment update params.
-	// +optional
-	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
-
-	vmv1beta1.CommonAppsParams `json:",inline"`
-}
-
-// UseProxyProtocol implements build.probeCRD interface
-func (cr *VMEstimatorSingle) UseProxyProtocol() bool {
-	return vmv1beta1.UseProxyProtocol(cr.ExtraArgs)
-}
-
-// ProbePath implements build.probeCRD interface
-func (cr *VMEstimatorSingle) ProbePath() string {
-	return vmv1beta1.BuildPathWithPrefixFlag(cr.ExtraArgs, healthPath)
-}
-
-// ProbeScheme implements build.probeCRD interface
-func (cr *VMEstimatorSingle) ProbeScheme() string {
-	return strings.ToUpper(vmv1beta1.HTTPProtoFromFlags(cr.ExtraArgs))
-}
-
-// ProbePort implements build.probeCRD interface
-func (cr *VMEstimatorSingle) ProbePort() string {
-	return cr.Port
-}
-
-// ProbeNeedLiveness implements build.probeCRD interface
-func (*VMEstimatorSingle) ProbeNeedLiveness() bool {
-	return true
-}
-
-// GetMetricsPath returns prefixed path for metric requests
-func (cr *VMEstimatorSingle) GetMetricsPath() string {
-	return vmv1beta1.BuildPathWithPrefixFlag(cr.ExtraArgs, metricsPath)
-}
-
-// GetExtraArgs returns additionally configured command-line arguments
-func (cr *VMEstimatorSingle) GetExtraArgs() map[string]string {
-	return cr.ExtraArgs
-}
-
-// UseTLS returns true if TLS is enabled
-func (cr *VMEstimatorSingle) UseTLS() bool {
-	return vmv1beta1.UseTLS(cr.ExtraArgs)
-}
-
-// GetServiceScrape returns overrides for serviceScrape builder
-func (cr *VMEstimatorSingle) GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec {
-	return cr.ServiceScrapeSpec
 }
 
 // VMEstimatorStorage defines vmestimator storage nodes configuration
@@ -544,7 +463,7 @@ func (cr *VMEstimator) GetStatusMetadata() *vmv1beta1.StatusMetadata {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmestimators,scope=Namespaced
-// +kubebuilder:printcolumn:name="Single Count",type="string",JSONPath=".spec.single.replicaCount",description="replicas of single-node vmestimator"
+// +kubebuilder:printcolumn:name="Mode",type="string",JSONPath=".spec.mode",description="deployment mode"
 // +kubebuilder:printcolumn:name="Storage Count",type="string",JSONPath=".spec.storage.replicaCount",description="replicas of vmestimator storage"
 // +kubebuilder:printcolumn:name="Select Count",type="string",JSONPath=".spec.select.replicaCount",description="replicas of vmestimator select"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus",description="Current status of update rollout"
@@ -646,11 +565,6 @@ func (cr *VMEstimator) FinalLabels(kind vmv1beta1.ClusterComponent) map[string]s
 // PodMetadata returns pod metadata for the given component kind
 func (cr *VMEstimator) PodMetadata(kind vmv1beta1.ClusterComponent) *vmv1beta1.EmbeddedObjectMetadata {
 	switch kind {
-	case VMEstimatorComponentSingle:
-		if cr.Spec.Single == nil {
-			return nil
-		}
-		return cr.Spec.Single.PodMetadata
 	case vmv1beta1.ClusterComponentStorage:
 		if cr.Spec.Storage == nil {
 			return nil
@@ -688,11 +602,6 @@ func (cr *VMEstimator) PodAnnotations(kind vmv1beta1.ClusterComponent) map[strin
 // GetAdditionalService returns AdditionalServiceSpec settings for the given component kind
 func (cr *VMEstimator) GetAdditionalService(kind vmv1beta1.ClusterComponent) *vmv1beta1.AdditionalServiceSpec {
 	switch kind {
-	case VMEstimatorComponentSingle:
-		if cr.Spec.Single == nil {
-			return nil
-		}
-		return cr.Spec.Single.ServiceSpec
 	case vmv1beta1.ClusterComponentStorage:
 		if cr.Spec.Storage == nil {
 			return nil
@@ -751,11 +660,6 @@ func (cr *VMEstimator) AsURL(kind vmv1beta1.ClusterComponent) string {
 	var svcSpec *vmv1beta1.AdditionalServiceSpec
 	var extraArgs map[string]string
 	switch kind {
-	case VMEstimatorComponentSingle:
-		if cr.Spec.Single == nil {
-			return ""
-		}
-		port, svcSpec, extraArgs = cr.Spec.Single.Port, cr.Spec.Single.ServiceSpec, cr.Spec.Single.ExtraArgs
 	case vmv1beta1.ClusterComponentStorage:
 		if cr.Spec.Storage == nil {
 			return ""
@@ -777,24 +681,25 @@ func (cr *VMEstimator) AsURL(kind vmv1beta1.ClusterComponent) string {
 }
 
 // RemoteWriteURL returns url of Prometheus remote write API, which accepts data for cardinality estimation.
-// In cluster mode it points to the service, which load-balances requests among storage nodes.
-// Returns empty string if neither single nor storage component is defined.
+// It points to the service, which load-balances requests among storage nodes, so it's the same in both modes.
 func (cr *VMEstimator) RemoteWriteURL() string {
-	switch {
-	case cr.Spec.Single != nil:
-		return cr.AsURL(VMEstimatorComponentSingle) + vmv1beta1.BuildPathWithPrefixFlag(cr.Spec.Single.ExtraArgs, vmEstimatorRemoteWritePath)
-	case cr.Spec.Storage != nil:
-		port := cr.Spec.Storage.Port
-		if port == "" {
-			port = vmEstimatorDefaultPort
-		}
-		// insert service inherits ports of the default storage service, which could be changed with serviceSpec.useAsDefault
-		_, port = vmv1beta1.ResolveServiceURL(cr.PrefixedName(vmv1beta1.ClusterComponentStorage), port, "http", cr.Spec.Storage.ServiceSpec, false)
-		extraArgs := cr.Spec.Storage.ExtraArgs
-		return fmt.Sprintf("%s://%s.%s.svc:%s%s", vmv1beta1.HTTPProtoFromFlags(extraArgs), cr.PrefixedInsertName(), cr.Namespace, port, vmv1beta1.BuildPathWithPrefixFlag(extraArgs, vmEstimatorRemoteWritePath))
-	default:
-		return ""
+	var port string
+	var svcSpec *vmv1beta1.AdditionalServiceSpec
+	var extraArgs map[string]string
+	if s := cr.Spec.Storage; s != nil {
+		port, svcSpec, extraArgs = s.Port, s.ServiceSpec, s.ExtraArgs
 	}
+	if port == "" {
+		port = vmEstimatorDefaultPort
+	}
+	// insert service inherits ports of the default storage service, which could be changed with serviceSpec.useAsDefault
+	_, port = vmv1beta1.ResolveServiceURL(cr.PrefixedName(vmv1beta1.ClusterComponentStorage), port, "http", svcSpec, false)
+	return fmt.Sprintf("%s://%s.%s.svc:%s%s", vmv1beta1.HTTPProtoFromFlags(extraArgs), cr.PrefixedInsertName(), cr.Namespace, port, vmv1beta1.BuildPathWithPrefixFlag(extraArgs, vmEstimatorRemoteWritePath))
+}
+
+// IsClusterMode returns true if vmestimator is deployed in cluster mode
+func (cr *VMEstimator) IsClusterMode() bool {
+	return cr.Spec.Mode == VMEstimatorModeCluster
 }
 
 // Validate performs semantic validation of VMEstimator
@@ -802,11 +707,10 @@ func (cr *VMEstimator) Validate() error {
 	if vmv1beta1.MustSkipCRValidation(cr) {
 		return nil
 	}
-	if cr.Spec.Single != nil && (cr.Spec.Storage != nil || cr.Spec.Select != nil) {
-		return fmt.Errorf("spec.single cannot be used together with spec.storage or spec.select")
-	}
-	if cr.Spec.Select != nil && cr.Spec.Storage == nil {
-		return fmt.Errorf("spec.select requires spec.storage to be defined")
+	switch cr.Spec.Mode {
+	case "", VMEstimatorModeSingle, VMEstimatorModeCluster:
+	default:
+		return fmt.Errorf("unsupported spec.mode=%q, supported values: %q, %q", cr.Spec.Mode, VMEstimatorModeSingle, VMEstimatorModeCluster)
 	}
 	if len(cr.Spec.Streams) == 0 && cr.Spec.StreamsConfigMap == nil {
 		return fmt.Errorf("either spec.streams or spec.streamsConfigMap must be set")
@@ -822,20 +726,6 @@ func (cr *VMEstimator) Validate() error {
 	if err := cr.validateNames(); err != nil {
 		return err
 	}
-	if c := cr.Spec.Single; c != nil {
-		name := cr.PrefixedName(VMEstimatorComponentSingle)
-		if c.ServiceSpec != nil && c.ServiceSpec.Name == name {
-			return fmt.Errorf("spec.single.serviceSpec.name cannot be equal to prefixed name=%q", name)
-		}
-		if c.VPA != nil {
-			if err := c.VPA.Validate(); err != nil {
-				return fmt.Errorf("spec.single.vpa: %w", err)
-			}
-		}
-		if err := c.Validate(); err != nil {
-			return fmt.Errorf("spec.single: %w", err)
-		}
-	}
 	if c := cr.Spec.Storage; c != nil {
 		name := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
 		if c.ServiceSpec != nil && (c.ServiceSpec.Name == name || c.ServiceSpec.Name == cr.PrefixedInsertName()) {
@@ -845,8 +735,8 @@ func (cr *VMEstimator) Validate() error {
 		if err := c.ServiceSpec.ValidateHeadlessDefaultService(); err != nil {
 			return fmt.Errorf("spec.storage: %w", err)
 		}
-		if c.ReplicaCount != nil && *c.ReplicaCount == 0 && cr.Spec.Select != nil && cr.Spec.Select.ExtraArgs["storageNode"] == "" {
-			return fmt.Errorf("spec.storage.replicaCount must be positive, since spec.select requires at least one storage node")
+		if cr.IsClusterMode() && c.ReplicaCount != nil && *c.ReplicaCount == 0 && (cr.Spec.Select == nil || cr.Spec.Select.ExtraArgs["storageNode"] == "") {
+			return fmt.Errorf("spec.storage.replicaCount must be positive in cluster mode, since select nodes require at least one storage node")
 		}
 		if c.VPA != nil {
 			if err := c.VPA.Validate(); err != nil {
@@ -881,19 +771,12 @@ func (cr *VMEstimator) Validate() error {
 
 // validateNames checks that names of objects, which are derived from VMEstimator name, are accepted by Kubernetes
 func (cr *VMEstimator) validateNames() error {
-	var services []string
-	// single-node is deployed by default
-	if cr.Spec.Single != nil || (cr.Spec.Storage == nil && cr.Spec.Select == nil) {
-		services = append(services, cr.PrefixedName(VMEstimatorComponentSingle))
+	sts := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
+	if len(sts) > vmEstimatorMaxStatefulSetNameLen {
+		return fmt.Errorf("name=%q is too long: storage StatefulSet name %q must not exceed %d chars, otherwise its pods cannot be created", cr.Name, sts, vmEstimatorMaxStatefulSetNameLen)
 	}
-	if cr.Spec.Storage != nil {
-		sts := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
-		if len(sts) > vmEstimatorMaxStatefulSetNameLen {
-			return fmt.Errorf("name=%q is too long for storage: StatefulSet name %q must not exceed %d chars, otherwise its pods cannot be created", cr.Name, sts, vmEstimatorMaxStatefulSetNameLen)
-		}
-		services = append(services, sts, cr.PrefixedInsertName())
-	}
-	if cr.Spec.Select != nil {
+	services := []string{sts, cr.PrefixedInsertName()}
+	if cr.IsClusterMode() {
 		services = append(services, cr.PrefixedName(vmv1beta1.ClusterComponentSelect))
 	}
 	for _, svc := range services {

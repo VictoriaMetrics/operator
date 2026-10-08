@@ -812,18 +812,18 @@ func addVMEstimatorDefaults(objI any) {
 	if cr.Spec.ClusterDomainName == "" {
 		cr.Spec.ClusterDomainName = c.ClusterDomainName
 	}
-	// deploy single-node vmestimator if no component is defined
-	if cr.Spec.Single == nil && cr.Spec.Storage == nil && cr.Spec.Select == nil {
-		cr.Spec.Single = &vmv1.VMEstimatorSingle{}
+	if cr.Spec.Mode == "" {
+		cr.Spec.Mode = vmv1.VMEstimatorModeSingle
 	}
-	if cr.Spec.Single != nil {
-		cv := config.ApplicationDefaults(c.VMEstimator.Single)
-		addDefaultsToCommonParams(&cr.Spec.Single.CommonAppsParams, &cp, &cv)
+	// storage nodes are deployed in both modes, while select nodes are deployed only in cluster mode
+	if cr.Spec.Storage == nil {
+		cr.Spec.Storage = &vmv1.VMEstimatorStorage{}
 	}
-	if cr.Spec.Storage != nil {
-		cv := config.ApplicationDefaults(c.VMEstimator.Storage)
-		addDefaultsToCommonParams(&cr.Spec.Storage.CommonAppsParams, &cp, &cv)
+	if cr.IsClusterMode() && cr.Spec.Select == nil {
+		cr.Spec.Select = &vmv1.VMEstimatorSelect{}
 	}
+	storageDefaults := config.ApplicationDefaults(c.VMEstimator.Storage)
+	addDefaultsToCommonParams(&cr.Spec.Storage.CommonAppsParams, &cp, &storageDefaults)
 	if cr.Spec.Select != nil {
 		cv := config.ApplicationDefaults(c.VMEstimator.Select)
 		addDefaultsToCommonParams(&cr.Spec.Select.CommonAppsParams, &cp, &cv)

@@ -105,11 +105,12 @@ func TestVMEstimator_Validate(t *testing.T) {
 	// streams aren't set
 	f(VMEstimatorSpec{}, true)
 	f(VMEstimatorSpec{
+		Mode:    VMEstimatorModeCluster,
 		Storage: &VMEstimatorStorage{},
 		Select:  &VMEstimatorSelect{},
 	}, true)
 
-	// single-node mode is used by default
+	// single mode is used by default
 	f(VMEstimatorSpec{
 		Streams: streams,
 	}, false)
@@ -124,39 +125,30 @@ func TestVMEstimator_Validate(t *testing.T) {
 
 	// single mode
 	f(VMEstimatorSpec{
-		Single:  &VMEstimatorSingle{},
+		Mode:    VMEstimatorModeSingle,
 		Streams: []VMEstimatorStream{{Interval: "5m", GroupBy: []string{"job"}}},
+		Storage: &VMEstimatorStorage{},
 	}, false)
 
 	// cluster mode
 	f(VMEstimatorSpec{
+		Mode:    VMEstimatorModeCluster,
 		Streams: streams,
 		Storage: &VMEstimatorStorage{},
 		Select:  &VMEstimatorSelect{},
 	}, false)
 
-	// storage without select
+	// select is ignored in single mode
 	f(VMEstimatorSpec{
+		Mode:    VMEstimatorModeSingle,
 		Streams: streams,
-		Storage: &VMEstimatorStorage{},
+		Select:  &VMEstimatorSelect{},
 	}, false)
 
-	// single together with cluster components
+	// unsupported mode
 	f(VMEstimatorSpec{
+		Mode:    "replicated",
 		Streams: streams,
-		Single:  &VMEstimatorSingle{},
-		Storage: &VMEstimatorStorage{},
-	}, true)
-	f(VMEstimatorSpec{
-		Streams: streams,
-		Single:  &VMEstimatorSingle{},
-		Select:  &VMEstimatorSelect{},
-	}, true)
-
-	// select without storage
-	f(VMEstimatorSpec{
-		Streams: streams,
-		Select:  &VMEstimatorSelect{},
 	}, true)
 
 	// incorrect stream
@@ -171,17 +163,15 @@ func TestVMEstimator_Validate(t *testing.T) {
 		},
 	}, true)
 
-	// service name collides with the default one
+	// storage service name collides with the default or insert service
 	f(VMEstimatorSpec{
 		Streams: streams,
-		Single: &VMEstimatorSingle{
+		Storage: &VMEstimatorStorage{
 			ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
-				EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "vmestimator-single-test"},
+				EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "vmestimator-storage-test"},
 			},
 		},
 	}, true)
-
-	// storage service name collides with the insert service
 	f(VMEstimatorSpec{
 		Streams: streams,
 		Storage: &VMEstimatorStorage{
@@ -193,6 +183,7 @@ func TestVMEstimator_Validate(t *testing.T) {
 
 	// storage service must stay headless for select nodes
 	f(VMEstimatorSpec{
+		Mode:    VMEstimatorModeCluster,
 		Streams: streams,
 		Storage: &VMEstimatorStorage{
 			ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
@@ -200,9 +191,9 @@ func TestVMEstimator_Validate(t *testing.T) {
 				Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort},
 			},
 		},
-		Select: &VMEstimatorSelect{},
 	}, true)
 	f(VMEstimatorSpec{
+		Mode:    VMEstimatorModeCluster,
 		Streams: streams,
 		Storage: &VMEstimatorStorage{
 			ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
@@ -212,22 +203,24 @@ func TestVMEstimator_Validate(t *testing.T) {
 				},
 			},
 		},
-		Select: &VMEstimatorSelect{},
 	}, false)
 
-	// select requires storage nodes
+	// select requires storage nodes in cluster mode
 	f(VMEstimatorSpec{
+		Mode:    VMEstimatorModeCluster,
 		Streams: streams,
 		Storage: &VMEstimatorStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](0)}},
-		Select:  &VMEstimatorSelect{},
 	}, true)
 	f(VMEstimatorSpec{
+		Mode:    VMEstimatorModeCluster,
 		Streams: streams,
 		Storage: &VMEstimatorStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](0)}},
 		Select: &VMEstimatorSelect{CommonAppsParams: vmv1beta1.CommonAppsParams{
 			ExtraArgs: map[string]string{"storageNode": "http://external-storage:8490"},
 		}},
 	}, false)
+
+	// storage replicaCount is ignored in single mode
 	f(VMEstimatorSpec{
 		Streams: streams,
 		Storage: &VMEstimatorStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](0)}},
@@ -235,8 +228,8 @@ func TestVMEstimator_Validate(t *testing.T) {
 
 	// incorrect select hpa
 	f(VMEstimatorSpec{
+		Mode:    VMEstimatorModeCluster,
 		Streams: streams,
-		Storage: &VMEstimatorStorage{},
 		Select: &VMEstimatorSelect{
 			HPA: &vmv1beta1.EmbeddedHPA{MinReplicas: ptr.To(int32(5)), MaxReplicas: 2},
 		},
@@ -254,7 +247,6 @@ func TestVMEstimator_Names(t *testing.T) {
 	}
 
 	assert.Equal(t, "vmestimator-test", cr.PrefixedName(vmv1beta1.ClusterComponentRoot))
-	assert.Equal(t, "vmestimator-single-test", cr.PrefixedName(VMEstimatorComponentSingle))
 	assert.Equal(t, "vmestimator-storage-test", cr.PrefixedName(vmv1beta1.ClusterComponentStorage))
 	assert.Equal(t, "vmestimator-select-test", cr.PrefixedName(vmv1beta1.ClusterComponentSelect))
 	assert.Equal(t, "vmestimator-storage-test-insert", cr.PrefixedInsertName())
@@ -274,13 +266,13 @@ func TestVMEstimator_Names(t *testing.T) {
 		"managed-by":                  "vm-operator",
 	}, cr.SelectorLabels(vmv1beta1.ClusterComponentCommon))
 	assert.Equal(t, map[string]string{
-		"app.kubernetes.io/name":      "vmestimator-single",
+		"app.kubernetes.io/name":      "vmestimator-select",
 		"app.kubernetes.io/part-of":   "vmestimator",
 		"app.kubernetes.io/instance":  "test",
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 		"team":                        "observability",
-	}, cr.FinalLabels(VMEstimatorComponentSingle))
+	}, cr.FinalLabels(vmv1beta1.ClusterComponentSelect))
 	assert.Equal(t, map[string]string{
 		"app.kubernetes.io/name":      "vmestimator",
 		"app.kubernetes.io/part-of":   "vmestimator",
@@ -304,23 +296,15 @@ func TestVMEstimator_URLs(t *testing.T) {
 		}
 	}
 
-	// no components
-	f(VMEstimatorSpec{}, "", map[vmv1beta1.ClusterComponent]string{
-		VMEstimatorComponentSingle:        "",
+	// remote write URL points to the storage insert service even if components aren't defaulted yet
+	f(VMEstimatorSpec{}, "http://vmestimator-storage-test-insert.monitoring.svc:8490/cardinality/api/v1/write", map[vmv1beta1.ClusterComponent]string{
 		vmv1beta1.ClusterComponentStorage: "",
 		vmv1beta1.ClusterComponentSelect:  "",
 	})
 
-	// single mode
-	f(VMEstimatorSpec{
-		Single: &VMEstimatorSingle{},
-	}, "http://vmestimator-single-test.monitoring.svc:8490/cardinality/api/v1/write", map[vmv1beta1.ClusterComponent]string{
-		VMEstimatorComponentSingle: "http://vmestimator-single-test.monitoring.svc:8490",
-	})
-
 	// single mode with custom port, path prefix and tls
 	f(VMEstimatorSpec{
-		Single: &VMEstimatorSingle{
+		Storage: &VMEstimatorStorage{
 			CommonAppsParams: vmv1beta1.CommonAppsParams{
 				Port: "9000",
 				ExtraArgs: map[string]string{
@@ -329,12 +313,13 @@ func TestVMEstimator_URLs(t *testing.T) {
 				},
 			},
 		},
-	}, "https://vmestimator-single-test.monitoring.svc:9000/estimator/cardinality/api/v1/write", map[vmv1beta1.ClusterComponent]string{
-		VMEstimatorComponentSingle: "https://vmestimator-single-test.monitoring.svc:9000",
+	}, "https://vmestimator-storage-test-insert.monitoring.svc:9000/estimator/cardinality/api/v1/write", map[vmv1beta1.ClusterComponent]string{
+		vmv1beta1.ClusterComponentStorage: "https://vmestimator-storage-test.monitoring.svc:9000",
 	})
 
-	// cluster mode writes to the storage insert service
+	// remote write URL is the same in cluster mode
 	f(VMEstimatorSpec{
+		Mode:    VMEstimatorModeCluster,
 		Storage: &VMEstimatorStorage{},
 		Select: &VMEstimatorSelect{
 			CommonAppsParams: vmv1beta1.CommonAppsParams{Port: "8491"},
@@ -358,20 +343,23 @@ func TestVMEstimator_UnmarshalJSON(t *testing.T) {
 	}
 
 	// correct spec
-	f(`{"metadata":{"name":"test"},"spec":{"streams":[{"interval":"5m","groupBy":["job"]}],"storage":{"replicaCount":2},"select":{}}}`, false)
+	f(`{"metadata":{"name":"test"},"spec":{"mode":"cluster","streams":[{"interval":"5m","groupBy":["job"]}],"storage":{"replicaCount":2},"select":{}}}`, false)
 
 	// vmestimator config format instead of CRD format
 	f(`{"metadata":{"name":"test"},"spec":{"streams":[{"interval":"5m","group_by":["job"]}]}}`, true)
 
 	// unknown component field
-	f(`{"metadata":{"name":"test"},"spec":{"single":{"unknownField":true}}}`, true)
+	f(`{"metadata":{"name":"test"},"spec":{"storage":{"unknownField":true}}}`, true)
+
+	// single component is replaced with mode
+	f(`{"metadata":{"name":"test"},"spec":{"single":{}}}`, true)
 }
 
 func TestVMEstimator_PodLabels(t *testing.T) {
 	cr := &VMEstimator{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
 		Spec: VMEstimatorSpec{
-			Single: &VMEstimatorSingle{
+			Storage: &VMEstimatorStorage{
 				PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
 					Labels: map[string]string{
 						"team":                   "observability",
@@ -384,16 +372,16 @@ func TestVMEstimator_PodLabels(t *testing.T) {
 	}
 	// selector labels cannot be overridden by pod metadata
 	assert.Equal(t, map[string]string{
-		"app.kubernetes.io/name":      "vmestimator-single",
+		"app.kubernetes.io/name":      "vmestimator-storage",
 		"app.kubernetes.io/instance":  "test",
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 		"team":                        "observability",
-	}, cr.PodLabels(VMEstimatorComponentSingle))
-	assert.Equal(t, map[string]string{"owner": "sre"}, cr.PodAnnotations(VMEstimatorComponentSingle))
+	}, cr.PodLabels(vmv1beta1.ClusterComponentStorage))
+	assert.Equal(t, map[string]string{"owner": "sre"}, cr.PodAnnotations(vmv1beta1.ClusterComponentStorage))
 
 	// components without pod metadata
-	assert.Equal(t, cr.SelectorLabels(vmv1beta1.ClusterComponentStorage), cr.PodLabels(vmv1beta1.ClusterComponentStorage))
+	assert.Equal(t, cr.SelectorLabels(vmv1beta1.ClusterComponentSelect), cr.PodLabels(vmv1beta1.ClusterComponentSelect))
 	assert.Nil(t, cr.PodAnnotations(vmv1beta1.ClusterComponentSelect))
 }
 
@@ -415,25 +403,17 @@ func TestVMEstimator_ValidateNames(t *testing.T) {
 		return strings.Repeat("a", n)
 	}
 	streams := []VMEstimatorStream{{Interval: "5m"}}
-	cluster := VMEstimatorSpec{
-		Streams: streams,
-		Storage: &VMEstimatorStorage{},
-		Select:  &VMEstimatorSelect{},
-	}
+	single := VMEstimatorSpec{Streams: streams}
+	cluster := VMEstimatorSpec{Mode: VMEstimatorModeCluster, Streams: streams}
 
-	// storage StatefulSet name vmestimator-storage-<name> must not exceed 52 chars
+	// storage StatefulSet name vmestimator-storage-<name> must not exceed 52 chars in both modes
+	f(nameOfLen(32), single, false)
+	f(nameOfLen(33), single, true)
 	f(nameOfLen(32), cluster, false)
 	f(nameOfLen(33), cluster, true)
 
-	// single-node Service name vmestimator-single-<name> must not exceed 63 chars
-	f(nameOfLen(44), VMEstimatorSpec{Single: &VMEstimatorSingle{}, Streams: streams}, false)
-	f(nameOfLen(45), VMEstimatorSpec{Single: &VMEstimatorSingle{}, Streams: streams}, true)
-
-	// single-node is deployed by default
-	f(nameOfLen(45), VMEstimatorSpec{Streams: streams}, true)
-
 	// dots are allowed at object names, but not at Service names
-	f("my.estimator", VMEstimatorSpec{Streams: streams}, true)
+	f("my.estimator", single, true)
 }
 
 func TestVMEstimator_RemoteWriteURLWithServiceOverride(t *testing.T) {

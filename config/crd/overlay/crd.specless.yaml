@@ -1423,9 +1423,9 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - description: replicas of single-node vmestimator
-      jsonPath: .spec.single.replicaCount
-      name: Single Count
+    - description: deployment mode
+      jsonPath: .spec.mode
+      name: Mode
       type: string
     - description: replicas of vmestimator storage
       jsonPath: .spec.storage.replicaCount

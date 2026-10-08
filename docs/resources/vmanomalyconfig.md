@@ -19,6 +19,19 @@ The `VMAnomalyConfig` CRD allows declaratively defining anomaly detection [model
 `VMAnomalyConfig` object updates `models`, `schedulers` and `reader.queries` sections of [VMAnomaly](https://docs.victoriametrics.com/anomaly-detection/)
 configuration by adding items with `{metadata.namespace}-{metadata.name}` key prefix. If at least one generated item collides with an existing key, only the colliding item is skipped, while other valid items from the same `VMAnomalyConfig` are still added to the resulting configuration. Check the `VMAnomalyConfig` status and related events to identify skipped items caused by collisions.
 
+Starting with vmanomaly v1.31.0, the experimental `peer_outlier` model compares members of each query's peer population. Use `groupby` to split a query into independent populations; retain entity labels such as `instance` in the query result, but do not include them in `groupby`. Both `peer_outlier` and `model.online.PeerOutlierModel` are accepted. For example, a model entry for a query named `cpu` is:
+
+```yaml
+models:
+  cpu_peers:
+    class: peer_outlier
+    queries: [cpu]
+    groupby: [service]
+    min_peer_count: 5
+    data_range: [0, 100]
+    clip_predictions: true
+```
+
 With given `VMAnomaly` CR:
 
 ```yaml

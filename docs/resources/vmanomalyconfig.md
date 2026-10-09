@@ -19,7 +19,7 @@ The `VMAnomalyConfig` CRD allows declaratively defining anomaly detection [model
 `VMAnomalyConfig` object updates `models`, `schedulers` and `reader.queries` sections of [VMAnomaly](https://docs.victoriametrics.com/anomaly-detection/)
 configuration by adding items with `{metadata.namespace}-{metadata.name}` key prefix. If at least one generated item collides with an existing key, only the colliding item is skipped, while other valid items from the same `VMAnomalyConfig` are still added to the resulting configuration. Check the `VMAnomalyConfig` status and related events to identify skipped items caused by collisions.
 
-Starting with vmanomaly v1.31.0, the experimental `peer_outlier` model compares members of each query's peer population. Use `groupby` to split a query into independent populations; retain entity labels such as `instance` in the query result, but do not include them in `groupby`. Both `peer_outlier` and `model.online.PeerOutlierModel` are accepted. For example, a model entry for a query named `cpu` is:
+Starting with vmanomaly v1.31.0, the experimental `peer_outlier` model compares members of each query's peer population. Use `groupby` to split a query into independent populations; retain entity labels such as `instance` in the query result, but do not include them in `groupby`. Both `peer_outlier` and `model.online.PeerOutlierModel` are accepted. The following model fragment requires a query named `cpu`, for example `100 * (1 - avg by (service, instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])))`, defined in the same `VMAnomalyConfig`. Each service needs at least five reporting instances with the default minimum peer count:
 
 ```yaml
 models:
@@ -31,6 +31,8 @@ models:
     data_range: [0, 100]
     clip_predictions: true
 ```
+
+To retune a peer model during fitting, use `class: auto`, `tuned_class_name: peer_outlier`, and put grouping labels in `optimization_params.frozen_params.groupby`. Set the required `optimization_params.anomaly_percentage` to your expected upper bound for anomalous observations, for example `0.02` for 2%; see [AutoTuned configuration](https://docs.victoriametrics.com/anomaly-detection/components/models/#autotuned). Each query remains an independent population. Shared server-side tuning can instead return a concrete model configuration to deploy without an `auto` wrapper; deployment-sizing estimates exclude optimization-search costs.
 
 With given `VMAnomaly` CR:
 

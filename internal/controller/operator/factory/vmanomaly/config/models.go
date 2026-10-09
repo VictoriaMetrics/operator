@@ -167,8 +167,8 @@ func (m *peerOutlierModel) validate() error {
 	if !(quantile > 0 && quantile < 1) {
 		return fmt.Errorf("epsilon_quantile must be in range (0, 1)")
 	}
-	if m.Tolerance != nil && !(*m.Tolerance > 0) {
-		return fmt.Errorf("tolerance must be greater than 0")
+	if m.Tolerance != nil && (!(*m.Tolerance > 0) || math.IsInf(*m.Tolerance, 0)) {
+		return fmt.Errorf("tolerance must be finite and greater than 0")
 	}
 	decay := 1.0
 	if m.Decay != nil {
@@ -186,7 +186,10 @@ func (m *peerOutlierModel) validate() error {
 		warmup = float64(*m.MinSamplesSeen)
 	}
 	if decay < 1 && warmup >= (1+decay)/(1-decay) {
-		return fmt.Errorf("min_n_samples_seen cannot be reached with the configured decay")
+		if m.MinSamplesSeen == nil {
+			return fmt.Errorf("warmup derived from epsilon_quantile (%g) cannot be reached with decay %g; increase decay or explicitly set a reachable min_n_samples_seen", warmup, decay)
+		}
+		return fmt.Errorf("min_n_samples_seen (%g) cannot be reached with decay %g; increase decay or lower min_n_samples_seen", warmup, decay)
 	}
 	return nil
 }

@@ -845,15 +845,17 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 }
 
 // buildVMAccessClaimYAML renders a VMAccessClaim into a yaml.MapSlice,
-// omitting zero-valued fields. An unset claim renders as an empty mapping,
+// omitting unset fields. An unset claim renders as an empty mapping,
 // which vmauth treats as an explicit opt-in with no overrides.
+// Account and project IDs are pointers, so an explicitly set zero is rendered
+// as well - zero is a valid tenant ID and must not be confused with an unset field.
 func buildVMAccessClaimYAML(c *vmv1beta1.VMAccessClaim) yaml.MapSlice {
 	var claim yaml.MapSlice
-	if c.MetricsAccountID != 0 {
-		claim = append(claim, yaml.MapItem{Key: "metrics_account_id", Value: c.MetricsAccountID})
+	if c.MetricsAccountID != nil {
+		claim = append(claim, yaml.MapItem{Key: "metrics_account_id", Value: *c.MetricsAccountID})
 	}
-	if c.MetricsProjectID != 0 {
-		claim = append(claim, yaml.MapItem{Key: "metrics_project_id", Value: c.MetricsProjectID})
+	if c.MetricsProjectID != nil {
+		claim = append(claim, yaml.MapItem{Key: "metrics_project_id", Value: *c.MetricsProjectID})
 	}
 	if len(c.MetricsExtraFilters) > 0 {
 		claim = append(claim, yaml.MapItem{Key: "metrics_extra_filters", Value: c.MetricsExtraFilters})
@@ -861,11 +863,11 @@ func buildVMAccessClaimYAML(c *vmv1beta1.VMAccessClaim) yaml.MapSlice {
 	if len(c.MetricsExtraLabels) > 0 {
 		claim = append(claim, yaml.MapItem{Key: "metrics_extra_labels", Value: c.MetricsExtraLabels})
 	}
-	if c.LogsAccountID != 0 {
-		claim = append(claim, yaml.MapItem{Key: "logs_account_id", Value: c.LogsAccountID})
+	if c.LogsAccountID != nil {
+		claim = append(claim, yaml.MapItem{Key: "logs_account_id", Value: *c.LogsAccountID})
 	}
-	if c.LogsProjectID != 0 {
-		claim = append(claim, yaml.MapItem{Key: "logs_project_id", Value: c.LogsProjectID})
+	if c.LogsProjectID != nil {
+		claim = append(claim, yaml.MapItem{Key: "logs_project_id", Value: *c.LogsProjectID})
 	}
 	if len(c.LogsExtraFilters) > 0 {
 		claim = append(claim, yaml.MapItem{Key: "logs_extra_filters", Value: c.LogsExtraFilters})

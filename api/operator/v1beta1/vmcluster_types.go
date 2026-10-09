@@ -938,6 +938,17 @@ func (cr *VMCluster) AvailableStorageNodeIDs(kind ClusterComponent) []int32 {
 	return result
 }
 
+// StorageNodeIDsUnderMaintenance returns the vmstorage pod ordinals excluded from both
+// insert and select routing via MaintenanceInsertNodeIDs and MaintenanceSelectNodeIDs.
+func (cr *VMCluster) StorageNodeIDsUnderMaintenance() sets.Set[int32] {
+	if cr.Spec.VMStorage == nil {
+		return nil
+	}
+	insertNodes := sets.New(cr.Spec.VMStorage.MaintenanceInsertNodeIDs...)
+	selectNodes := sets.New(cr.Spec.VMStorage.MaintenanceSelectNodeIDs...)
+	return insertNodes.Intersection(selectNodes)
+}
+
 // FinalLabels adds cluster labels to the base labels and filters by prefix if needed
 func (cr *VMCluster) FinalLabels(kind ClusterComponent) map[string]string {
 	v := AddClusterLabels(cr.SelectorLabels(kind), "vm")

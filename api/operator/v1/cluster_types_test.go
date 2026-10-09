@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -77,6 +78,42 @@ func TestVLCluster_AvailableStorageNodeIDs(t *testing.T) {
 			},
 		},
 	}, vmv1beta1.ClusterComponentSelect, []int32{0, 1, 2})
+}
+
+func TestVTCluster_StorageNodeIDsUnderMaintenance(t *testing.T) {
+	f := func(cr *VTCluster, want sets.Set[int32]) {
+		t.Helper()
+		assert.Equal(t, want, cr.StorageNodeIDsUnderMaintenance())
+	}
+
+	f(&VTCluster{
+		Spec: VTClusterSpec{
+			Storage: &VTStorage{
+				MaintenanceSelectNodeIDs: []int32{1, 3},
+				MaintenanceInsertNodeIDs: []int32{0, 3},
+			},
+		},
+	}, sets.New[int32](3))
+
+	f(&VTCluster{}, nil)
+}
+
+func TestVLCluster_StorageNodeIDsUnderMaintenance(t *testing.T) {
+	f := func(cr *VLCluster, want sets.Set[int32]) {
+		t.Helper()
+		assert.Equal(t, want, cr.StorageNodeIDsUnderMaintenance())
+	}
+
+	f(&VLCluster{
+		Spec: VLClusterSpec{
+			VLStorage: &VLStorage{
+				MaintenanceSelectNodeIDs: []int32{1, 3},
+				MaintenanceInsertNodeIDs: []int32{0, 3},
+			},
+		},
+	}, sets.New[int32](3))
+
+	f(&VLCluster{}, nil)
 }
 
 func TestVLSingle_PrefixedName(t *testing.T) {

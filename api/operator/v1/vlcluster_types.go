@@ -902,6 +902,17 @@ func (cr *VLCluster) AvailableStorageNodeIDs(kind vmv1beta1.ClusterComponent) []
 	return result
 }
 
+// StorageNodeIDsUnderMaintenance returns the vlstorage pod ordinals excluded from both
+// insert and select routing via MaintenanceInsertNodeIDs and MaintenanceSelectNodeIDs.
+func (cr *VLCluster) StorageNodeIDsUnderMaintenance() sets.Set[int32] {
+	if cr.Spec.VLStorage == nil {
+		return nil
+	}
+	insertNodes := sets.New(cr.Spec.VLStorage.MaintenanceInsertNodeIDs...)
+	selectNodes := sets.New(cr.Spec.VLStorage.MaintenanceSelectNodeIDs...)
+	return insertNodes.Intersection(selectNodes)
+}
+
 // LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated
 func (cr *VLCluster) LastSpecUpdated() bool {
 	updated := cr.Status.LastAppliedSpec == nil || !equality.Semantic.DeepEqual(&cr.Spec, cr.Status.LastAppliedSpec)

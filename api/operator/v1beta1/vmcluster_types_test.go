@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 )
 
@@ -122,6 +123,36 @@ func TestVMCluster_AvailableStorageNodeIDs(t *testing.T) {
 			},
 		},
 	}, ClusterComponentSelect, []int32{0, 1, 2})
+}
+
+func TestVMCluster_StorageNodeIDsUnderMaintenance(t *testing.T) {
+	f := func(cr *VMCluster, want sets.Set[int32]) {
+		t.Helper()
+		assert.Equal(t, want, cr.StorageNodeIDsUnderMaintenance())
+	}
+
+	// node 3 is excluded from both insert and select routing
+	f(&VMCluster{
+		Spec: VMClusterSpec{
+			VMStorage: &VMStorage{
+				MaintenanceSelectNodeIDs: []int32{1, 3},
+				MaintenanceInsertNodeIDs: []int32{0, 3},
+			},
+		},
+	}, sets.New[int32](3))
+
+	// no overlap between the two lists
+	f(&VMCluster{
+		Spec: VMClusterSpec{
+			VMStorage: &VMStorage{
+				MaintenanceSelectNodeIDs: []int32{1},
+				MaintenanceInsertNodeIDs: []int32{0},
+			},
+		},
+	}, sets.New[int32]())
+
+	// no VMStorage
+	f(&VMCluster{}, nil)
 }
 
 func TestVMCluster_Validate(t *testing.T) {

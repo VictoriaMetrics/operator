@@ -21,10 +21,14 @@ import (
 func DaemonSet(ctx context.Context, rclient client.Client, newObj, prevObj *appsv1.DaemonSet, owner *metav1.OwnerReference) error {
 	var prevMeta *metav1.ObjectMeta
 	var prevTemplateAnnotations map[string]string
+	var prevTemplateLabels map[string]string
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
 		prevTemplateAnnotations = prevObj.Spec.Template.Annotations
+		prevTemplateLabels = prevObj.Spec.Template.Labels
 	}
+	desiredTemplateAnnotations := newObj.Spec.Template.Annotations
+	desiredTemplateLabels := newObj.Spec.Template.Labels
 	rclient.Scheme().Default(newObj)
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	removeFinalizer := true
@@ -50,7 +54,8 @@ func DaemonSet(ctx context.Context, rclient client.Client, newObj, prevObj *apps
 		}
 
 		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
-		spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
+		spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, desiredTemplateAnnotations, prevTemplateAnnotations)
+		spec.Template.Labels = mergeMaps(existingObj.Spec.Template.Labels, desiredTemplateLabels, prevTemplateLabels)
 		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec, "spec")
 		needsUpdate := metaChanged || len(specDiff) > 0
 

@@ -3230,7 +3230,7 @@ spec:
                       type: object
                     type: array
                   futureRetention:
-                    pattern: ^[0-9]+(h|d|w|y)?$
+                    pattern: ^[0-9]+(h|d|w|y|M)?$
                     type: string
                   host_aliases:
                     items:
@@ -3955,7 +3955,7 @@ spec:
                   retentionMaxDiskSpaceUsageBytes:
                     type: string
                   retentionPeriod:
-                    pattern: ^[0-9]+(h|d|w|y)?$
+                    pattern: ^[0-9]+(h|d|w|y|M)?$
                     type: string
                   revisionHistoryLimitCount:
                     format: int32
@@ -8444,7 +8444,7 @@ spec:
                   type: object
                 type: array
               futureRetention:
-                pattern: ^[0-9]+(h|d|y)?$
+                pattern: ^[0-9]+(h|d|y|M)?$
                 type: string
               host_aliases:
                 items:
@@ -8821,7 +8821,7 @@ spec:
               retentionMaxDiskSpaceUsageBytes:
                 type: string
               retentionPeriod:
-                pattern: ^[0-9]+(h|d|w|y)?$
+                pattern: ^[0-9]+(h|d|w|y|M)?$
                 type: string
               revisionHistoryLimitCount:
                 format: int32
@@ -22720,7 +22720,7 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
               retentionPeriod:
-                pattern: ^[0-9]+(h|d|w|y)?$
+                pattern: ^[0-9]+(h|d|w|y|M)?$
                 type: string
               serviceAccountName:
                 type: string
@@ -41130,7 +41130,7 @@ spec:
                   type: object
                 type: array
               retentionPeriod:
-                pattern: ^[0-9]+(h|d|w|y)?$
+                pattern: ^[0-9]+(h|d|w|y|M)?$
                 type: string
               revisionHistoryLimitCount:
                 format: int32
@@ -47266,7 +47266,7 @@ spec:
                       type: object
                     type: array
                   futureRetention:
-                    pattern: ^[0-9]+(h|d|w|y)?$
+                    pattern: ^[0-9]+(h|d|w|y|M)?$
                     type: string
                   host_aliases:
                     items:
@@ -47991,7 +47991,7 @@ spec:
                   retentionMaxDiskSpaceUsageBytes:
                     type: string
                   retentionPeriod:
-                    pattern: ^[0-9]+(h|d|w|y)?$
+                    pattern: ^[0-9]+(h|d|w|y|M)?$
                     type: string
                   revisionHistoryLimitCount:
                     format: int32
@@ -48442,7 +48442,7 @@ spec:
                   type: object
                 type: array
               futureRetention:
-                pattern: ^[0-9]+(h|d|y)?$
+                pattern: ^[0-9]+(h|d|y|M)?$
                 type: string
               grpcSpec:
                 properties:
@@ -48849,7 +48849,7 @@ spec:
               retentionMaxDiskSpaceUsageBytes:
                 type: string
               retentionPeriod:
-                pattern: ^[0-9]+(h|d|w|y)?$
+                pattern: ^[0-9]+(h|d|w|y|M)?$
                 type: string
               revisionHistoryLimitCount:
                 format: int32

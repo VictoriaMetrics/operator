@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* BUGFIX: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/), [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/), [vlsingle](https://docs.victoriametrics.com/operator/resources/vlsingle/), [vlcluster](https://docs.victoriametrics.com/operator/resources/vlcluster/), [vtsingle](https://docs.victoriametrics.com/operator/resources/vtsingle/), [vtcluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): accept the months unit `M` in `retentionPeriod`. `futureRetention` also accepts `M`. That field exists only on `VLSingle`, `VLCluster`, `VTSingle`, and `VTCluster`. Values such as `3M` were rejected by the CRD even though the database accepts them. See [#2693](https://github.com/VictoriaMetrics/operator/issues/2693).
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.153.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.153.0).
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.12.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.12.0).
 

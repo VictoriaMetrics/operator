@@ -84371,8 +84371,10 @@ spec:
                       a token that only needs to pass matchClaims/oidc verification without vm_access.
                     properties:
                       logsAccountID:
-                        description: LogsAccountID defines accountID to use for logs
-                          requests templating
+                        description: |-
+                          LogsAccountID defines accountID to use for logs requests templating
+                          Pointer is used to distinguish an unset value from an explicit zero value,
+                          since zero is a valid accountID and selects the default tenant.
                         format: int32
                         type: integer
                       logsExtraFilters:
@@ -84388,13 +84390,17 @@ spec:
                           type: string
                         type: array
                       logsProjectID:
-                        description: LogsProjectID defines projectID to use for logs
-                          requests templating
+                        description: |-
+                          LogsProjectID defines projectID to use for logs requests templating
+                          Pointer is used to distinguish an unset value from an explicit zero value,
+                          since zero is a valid projectID and selects the default tenant.
                         format: int32
                         type: integer
                       metricsAccountID:
-                        description: MetricsAccountID defines accountID to use for
-                          metrics requests templating
+                        description: |-
+                          MetricsAccountID defines accountID to use for metrics requests templating
+                          Pointer is used to distinguish an unset value from an explicit zero value,
+                          since zero is a valid accountID and selects the default tenant.
                         format: int32
                         type: integer
                       metricsExtraFilters:
@@ -84410,8 +84416,10 @@ spec:
                           type: string
                         type: array
                       metricsProjectID:
-                        description: MetricsProjectID defines projectID to use for
-                          metrics requests templating
+                        description: |-
+                          MetricsProjectID defines projectID to use for metrics requests templating
+                          Pointer is used to distinguish an unset value from an explicit zero value,
+                          since zero is a valid projectID and selects the default tenant.
                         format: int32
                         type: integer
                     type: object

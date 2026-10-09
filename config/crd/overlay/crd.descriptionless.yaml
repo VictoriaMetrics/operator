@@ -8444,7 +8444,7 @@ spec:
                   type: object
                 type: array
               futureRetention:
-                pattern: ^[0-9]+(h|d|y)?$
+                pattern: ^[0-9]+(h|d|y|M)?$
                 type: string
               host_aliases:
                 items:
@@ -48442,7 +48442,7 @@ spec:
                   type: object
                 type: array
               futureRetention:
-                pattern: ^[0-9]+(h|d|y)?$
+                pattern: ^[0-9]+(h|d|y|M)?$
                 type: string
               grpcSpec:
                 properties:

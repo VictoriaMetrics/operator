@@ -17069,7 +17069,7 @@ spec:
                 description: |-
                   FutureRetention for the stored logs
                   Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#retention
-                pattern: ^[0-9]+(h|d|y)?$
+                pattern: ^[0-9]+(h|d|y|M)?$
                 type: string
               host_aliases:
                 description: |-
@@ -94572,7 +94572,7 @@ spec:
                   FutureRetention for the stored traces
                   Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion;
                   see https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
-                pattern: ^[0-9]+(h|d|y)?$
+                pattern: ^[0-9]+(h|d|y|M)?$
                 type: string
               grpcSpec:
                 description: GRPCSpec defines OTLP gRPC ingestion listener configuration

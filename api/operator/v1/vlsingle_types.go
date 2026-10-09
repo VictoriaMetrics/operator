@@ -84,7 +84,7 @@ type VLSingleSpec struct {
 	// FutureRetention for the stored logs
 	// Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#retention
 	// +optional
-	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|y)?$"
+	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|y|M)?$"
 	FutureRetention string `json:"futureRetention,omitempty"`
 	// License allows to configure license key to be used for enterprise features.
 	// See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/#victorialogs-enterprise-features)

@@ -85,7 +85,7 @@ type VTSingleSpec struct {
 	// Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion;
 	// see https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
 	// +optional
-	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|y)?$"
+	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|y|M)?$"
 	FutureRetention string `json:"futureRetention,omitempty"`
 	// LogNewStreams Whether to log creation of new streams; this can be useful for debugging of high cardinality issues with log streams;
 	// see https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces

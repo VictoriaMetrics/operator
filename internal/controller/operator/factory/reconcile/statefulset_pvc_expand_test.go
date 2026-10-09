@@ -159,12 +159,17 @@ func Test_updateSTSPVC(t *testing.T) {
 		expected        []corev1.PersistentVolumeClaim
 		actions         []k8stools.ClientAction
 		k8sMinorVersion uint64
+		liveReplicas    *int32
 	}
 	f := func(o opts) {
 		t.Helper()
 		minorVersion := o.k8sMinorVersion
 		if minorVersion == 0 {
 			minorVersion = 34
+		}
+		liveReplicas := int32(1)
+		if o.liveReplicas != nil {
+			liveReplicas = *o.liveReplicas
 		}
 		k8stools.ServerMajorVersion = 1
 		k8stools.ServerMinorVersion = minorVersion
@@ -176,7 +181,7 @@ func Test_updateSTSPVC(t *testing.T) {
 			cl.Actions = nil
 		}
 		synctest.Test(t, func(t *testing.T) {
-			err := updateSTSPVC(ctx, cl, o.sts, o.prevVCTs)
+			err := updateSTSPVC(ctx, cl, o.sts, o.prevVCTs, liveReplicas)
 			if o.wantErrText != "" {
 				assert.ErrorContains(t, err, o.wantErrText)
 			} else {
@@ -1581,6 +1586,157 @@ func Test_updateSTSPVC(t *testing.T) {
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeAttributesClassName: ptr.To("missing-class"),
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("10Gi"),
+						},
+					},
+				},
+				Status: corev1.PersistentVolumeClaimStatus{
+					Capacity: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("10Gi"),
+					},
+				},
+			},
+		},
+	})
+
+	// no error when scaling up from 0 live replicas and no PVCs exist yet
+	f(opts{
+		sts: buildSTS(func(sts *appsv1.StatefulSet) {
+			sts.Spec.Replicas = ptr.To[int32](1)
+			sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "data"},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						Resources: corev1.VolumeResourceRequirements{
+							Requests: map[corev1.ResourceName]resource.Quantity{
+								corev1.ResourceStorage: resource.MustParse("10Gi"),
+							},
+						},
+					},
+				},
+			}
+		}),
+		liveReplicas: ptr.To[int32](0),
+		expected:     []corev1.PersistentVolumeClaim{},
+	})
+
+	// error when live replicas > 0 but no PVCs found
+	f(opts{
+		sts: buildSTS(func(sts *appsv1.StatefulSet) {
+			sts.Spec.Replicas = ptr.To[int32](1)
+			sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "data"},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						Resources: corev1.VolumeResourceRequirements{
+							Requests: map[corev1.ResourceName]resource.Quantity{
+								corev1.ResourceStorage: resource.MustParse("10Gi"),
+							},
+						},
+					},
+				},
+			}
+		}),
+		liveReplicas: ptr.To[int32](1),
+		wantErrText:  "got 0 pvcs",
+		expected:     []corev1.PersistentVolumeClaim{},
+	})
+
+	// PVCs retained from a prior scale-down are still updated even with 0 live replicas
+	f(opts{
+		sts: buildSTS(func(sts *appsv1.StatefulSet) {
+			sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "vmselect-cachedir",
+						Annotations: map[string]string{
+							"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
+							"test": "after",
+						},
+						Labels: map[string]string{"app": "vmselect"},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						Resources: corev1.VolumeResourceRequirements{
+							Requests: map[corev1.ResourceName]resource.Quantity{
+								corev1.ResourceStorage: resource.MustParse("10Gi"),
+							},
+						},
+					},
+				},
+			}
+		}),
+		prevVCTs: []corev1.PersistentVolumeClaim{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "vmselect-cachedir",
+				Annotations: map[string]string{
+					"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
+					"test": "after",
+				},
+				Labels: map[string]string{
+					"app": "vmselect",
+				},
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				Resources: corev1.VolumeResourceRequirements{
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("10Gi"),
+					},
+				},
+			},
+		}},
+		liveReplicas: ptr.To[int32](0),
+		preRun: func(c client.Client) {
+			assert.NoError(t, c.Create(context.TODO(), &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      pvc1NSN.Name,
+					Namespace: pvc1NSN.Namespace,
+					Labels: map[string]string{
+						"app": "vmselect",
+					},
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
+						"test": "before",
+					},
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("10Gi"),
+						},
+					},
+				},
+			}))
+			assert.NoError(t, c.Create(context.TODO(), &storagev1.StorageClass{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "standard",
+					Annotations: map[string]string{
+						"volume.beta.kubernetes.io/storage-class": "true",
+					},
+				},
+			}))
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
+			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
+		},
+		expected: []corev1.PersistentVolumeClaim{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      pvc1NSN.Name,
+					Namespace: pvc1NSN.Namespace,
+					Labels: map[string]string{
+						"app": "vmselect",
+					},
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
+						"test": "after",
+					},
+					ResourceVersion: "4",
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{
 						Requests: map[corev1.ResourceName]resource.Quantity{
 							corev1.ResourceStorage: resource.MustParse("10Gi"),

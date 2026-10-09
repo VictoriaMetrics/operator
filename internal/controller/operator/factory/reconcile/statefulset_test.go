@@ -2,6 +2,7 @@ package reconcile
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 	"testing/synctest"
@@ -11,9 +12,11 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -870,6 +873,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 				},
 			},
 			Status: appsv1.StatefulSetStatus{
+				Replicas:        4,
 				ReadyReplicas:   4,
 				UpdatedReplicas: 4,
 			},
@@ -1323,6 +1327,142 @@ func TestStatefulsetReconcile(t *testing.T) {
 			assert.Equal(t, ptr.To[int32](6), s.Spec.Replicas)
 		},
 	})
+}
+
+func TestStatefulsetReconcile_ExistingObjNotStaleAfterNotFoundRetry(t *testing.T) {
+	ctx := context.Background()
+	nn := types.NamespacedName{Name: "test-stale", Namespace: "default"}
+
+	liveSTS := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas:            ptr.To[int32](5),
+			Selector:            &metav1.LabelSelector{MatchLabels: map[string]string{"label": "value"}},
+			PodManagementPolicy: appsv1.OrderedReadyPodManagement,
+			UpdateStrategy:      appsv1.StatefulSetUpdateStrategy{Type: appsv1.RollingUpdateStatefulSetStrategyType},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"label": "value"}},
+				Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "app", Image: "old-image:tag"}}},
+			},
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+				{ObjectMeta: metav1.ObjectMeta{Name: "data"}},
+			},
+		},
+		Status: appsv1.StatefulSetStatus{Replicas: 5, ReadyReplicas: 5, UpdatedReplicas: 5},
+	}
+
+	newObj := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
+		Spec: appsv1.StatefulSetSpec{
+			Selector:            &metav1.LabelSelector{MatchLabels: map[string]string{"label": "value"}},
+			PodManagementPolicy: appsv1.OrderedReadyPodManagement,
+			UpdateStrategy:      appsv1.StatefulSetUpdateStrategy{Type: appsv1.RollingUpdateStatefulSetStrategyType},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"label": "value"}},
+				Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "app", Image: "new-image:tag"}}},
+			},
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+				{ObjectMeta: metav1.ObjectMeta{Name: "data"}},
+			},
+		},
+	}
+
+	var getAttempts, updateAttempts int
+	fclient := k8stools.GetTestClientWithObjectsAndInterceptors([]runtime.Object{liveSTS}, interceptor.Funcs{
+		Get: func(ctx context.Context, cl client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+			if _, ok := obj.(*appsv1.StatefulSet); ok {
+				getAttempts++
+				if getAttempts == 2 {
+					return k8serrors.NewNotFound(schema.GroupResource{Resource: "statefulsets"}, key.Name)
+				}
+			}
+			return cl.Get(ctx, key, obj)
+		},
+		Update: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
+			if _, ok := obj.(*appsv1.StatefulSet); !ok {
+				return cl.Update(ctx, obj, opts...)
+			}
+			updateAttempts++
+			if updateAttempts == 1 {
+				// simulate the object being deleted by another actor between retries
+				_ = cl.Delete(ctx, liveSTS)
+				return k8serrors.NewConflict(schema.GroupResource{Resource: "statefulsets"}, nn.Name, fmt.Errorf("conflict"))
+			}
+			return cl.Update(ctx, obj, opts...)
+		},
+	})
+
+	synctest.Test(t, func(t *testing.T) {
+		assert.NoError(t, StatefulSet(ctx, fclient, newObj, nil, nil, nil))
+	})
+}
+
+func TestStatefulsetReconcile_NewObjNotStaleAcrossRetries(t *testing.T) {
+	ctx := context.Background()
+	nn := types.NamespacedName{Name: "test-hpa-stale", Namespace: "default"}
+
+	liveSTS := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas:            ptr.To[int32](5),
+			Selector:            &metav1.LabelSelector{MatchLabels: map[string]string{"label": "value"}},
+			PodManagementPolicy: appsv1.OrderedReadyPodManagement,
+			UpdateStrategy:      appsv1.StatefulSetUpdateStrategy{Type: appsv1.RollingUpdateStatefulSetStrategyType},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"label": "value"}},
+				Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "app", Image: "old-image:tag"}}},
+			},
+		},
+		Status: appsv1.StatefulSetStatus{Replicas: 5, ReadyReplicas: 5, UpdatedReplicas: 5},
+	}
+
+	// Replicas is nil, the convention PatchSpec callbacks use to signal "HPA manages this"
+	newObj := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
+		Spec: appsv1.StatefulSetSpec{
+			Selector:            &metav1.LabelSelector{MatchLabels: map[string]string{"label": "value"}},
+			PodManagementPolicy: appsv1.OrderedReadyPodManagement,
+			UpdateStrategy:      appsv1.StatefulSetUpdateStrategy{Type: appsv1.RollingUpdateStatefulSetStrategyType},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"label": "value"}},
+				Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "app", Image: "new-image:tag"}}},
+			},
+		},
+	}
+
+	var updateAttempts int
+	fclient := k8stools.GetTestClientWithObjectsAndInterceptors([]runtime.Object{liveSTS}, interceptor.Funcs{
+		Update: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
+			if _, ok := obj.(*appsv1.StatefulSet); !ok {
+				return cl.Update(ctx, obj, opts...)
+			}
+			updateAttempts++
+			if updateAttempts == 1 {
+				// simulate HPA scaling the live object between retries
+				var live appsv1.StatefulSet
+				if err := cl.Get(ctx, nn, &live); err != nil {
+					return err
+				}
+				live.Spec.Replicas = ptr.To[int32](9)
+				if err := cl.Update(ctx, &live); err != nil {
+					return err
+				}
+				return k8serrors.NewConflict(schema.GroupResource{Resource: "statefulsets"}, nn.Name, fmt.Errorf("conflict"))
+			}
+			return cl.Update(ctx, obj, opts...)
+		},
+	})
+
+	synctest.Test(t, func(t *testing.T) {
+		_ = StatefulSet(ctx, fclient, newObj, nil, nil, &StatefulSetOpts{
+			PatchSpec: func(existingSpec, newSpec *appsv1.StatefulSetSpec) {},
+		})
+	})
+
+	var got appsv1.StatefulSet
+	assert.NoError(t, fclient.Get(ctx, nn, &got))
+	assert.Equal(t, 2, updateAttempts)
+	assert.Equal(t, ptr.To[int32](9), got.Spec.Replicas, "must use the live replicas as of the successful retry, not a stale value from the conflicting attempt")
 }
 
 func TestValidateStatefulSetFail(t *testing.T) {

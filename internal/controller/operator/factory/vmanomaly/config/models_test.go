@@ -45,19 +45,61 @@ detection_direction: above_expected
 	}
 }
 
+func TestAutoPeerModelRoundTrip(t *testing.T) {
+	input := []byte(`class: auto
+tuned_class_name: peer_outlier
+queries: [cpu]
+clip_predictions: true
+optimization_params:
+  anomaly_percentage: 0.02
+  frozen_params:
+    groupby: [service, mode]
+    min_peer_count: 5
+  exact: true
+`)
+	var m model
+	require.NoError(t, m.Validate(input))
+	output, err := yaml.Marshal(&m)
+	require.NoError(t, err)
+	var before, after map[string]any
+	require.NoError(t, yaml.Unmarshal(input, &before))
+	require.NoError(t, yaml.Unmarshal(output, &after))
+	assert.Equal(t, before, after)
+	m.addPrefix("ns-config")
+	assert.Equal(t, []string{"ns-config-cpu"}, m.queries())
+	assert.Equal(t, "peer_outlier", m.anomalyModel.(*autoTunedModel).TunedClassName)
+}
+
 func TestPeerOutlierModelValidation(t *testing.T) {
-	for _, params := range []string{
-		"min_peer_count: 2", "epsilon_quantile: 0", "epsilon_quantile: 1",
-		"tolerance: 0", "decay: 0", "decay: 1.1", "min_n_samples_seen: 0",
-		"args: {unknown: 1}", "decay: 0.9", "decay: 0.5\nmin_n_samples_seen: 3",
+	for _, tc := range []struct {
+		params  string
+		wantErr string
+	}{
+		{"min_peer_count: 2", "min_peer_count must be at least 3"},
+		{"epsilon_quantile: 0", "epsilon_quantile must be in range (0, 1)"},
+		{"epsilon_quantile: 1", "epsilon_quantile must be in range (0, 1)"},
+		{"tolerance: 0", "tolerance must be finite and greater than 0"},
+		{"tolerance: -1", "tolerance must be finite and greater than 0"},
+		{"tolerance: .inf", "tolerance must be finite and greater than 0"},
+		{"tolerance: -.inf", "tolerance must be finite and greater than 0"},
+		{"tolerance: .nan", "tolerance must be finite and greater than 0"},
+		{"decay: 0", "decay must be in range (0, 1]"},
+		{"decay: 1.1", "decay must be in range (0, 1]"},
+		{"min_n_samples_seen: 0", "min_n_samples_seen must be positive"},
+		{"args: {unknown: 1}", "peer_outlier does not accept arbitrary args"},
+		{"decay: 0.9", "warmup derived from epsilon_quantile (32) cannot be reached with decay 0.9"},
+		{"decay: 0.9\nepsilon_quantile: 0.9", "warmup derived from epsilon_quantile (80) cannot be reached with decay 0.9"},
+		{"decay: 0.5\nmin_n_samples_seen: 3", "min_n_samples_seen (3) cannot be reached with decay 0.5"},
 	} {
-		t.Run(params, func(t *testing.T) {
+		t.Run(tc.params, func(t *testing.T) {
 			var m model
-			assert.Error(t, m.Validate(fmt.Appendf(nil, "class: peer_outlier\n%s\n", params)))
+			assert.ErrorContains(t, m.Validate(fmt.Appendf(nil, "class: peer_outlier\n%s\n", tc.params)), tc.wantErr)
 		})
 	}
 	var m model
 	require.NoError(t, m.Validate([]byte("class: peer_outlier\ndecay: 0.5\nmin_n_samples_seen: 2\n")))
+	require.NoError(t, m.Validate([]byte("class: peer_outlier\ndecay: 0.9\nmin_n_samples_seen: 16\n")))
+	require.NoError(t, m.Validate([]byte("class: peer_outlier\ndecay: 0.9\nepsilon_quantile: 0.5\n")))
 }
 
 func TestV130ModelValidation(t *testing.T) {

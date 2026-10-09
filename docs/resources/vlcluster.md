@@ -166,6 +166,42 @@ at the cost of temporary unavailability.
 The timeout for each node to become ready is controlled by the Operator environment variable
 `VM_PODWAITREADYTIMEOUT` (default `80s`). The poll interval is `VM_PODWAITREADYINTERVALCHECK` (default `5s`).
 
+### Storage node maintenance mode
+
+`vlstorage.maintenanceInsertNodeIDs` and `vlstorage.maintenanceSelectNodeIDs` exclude the listed pod ordinals
+from `vlinsert`/`vlselect` routing, for example while the underlying Kubernetes node is cordoned or drained
+for maintenance and the `vlstorage` pod is expected to stay `Pending`/`NotReady` for an extended period.
+
+A pod ordinal listed in **both** fields (excluded from insert and select routing at the same time) is also
+skipped by the Operator's readiness wait during reconciliation. Previously, such a pod being not ready blocked
+every reconcile of the cluster — including unrelated changes to `vlinsert` or `vlselect` — until it recovered,
+even though it was already excluded from all routing.
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VLCluster
+metadata:
+  name: example
+spec:
+  vlstorage:
+    replicaCount: 3
+    maintenanceInsertNodeIDs: [2]
+    maintenanceSelectNodeIDs: [2]   # pod-2 excluded from routing and from the readiness wait
+```
+
+**Limitations:**
+
+- A pod ordinal must appear in *both* `maintenanceInsertNodeIDs` and `maintenanceSelectNodeIDs` to be exempted
+  from the readiness wait. An ordinal excluded from only one of the two still blocks reconcile until it becomes
+  ready.
+- The skip only reliably prevents reconcile from blocking under the default `rollingUpdateStrategy: OnDelete`.
+  With `rollingUpdateStrategy: RollingUpdate`, the StatefulSet uses Kubernetes' native `OrderedReady` pod
+  management, which itself refuses to create or update any pod at a higher ordinal until a lower-ordinal pod
+  is ready. In that mode a maintenance pod can still stall the rollout — this is enforced by Kubernetes itself,
+  not the Operator, and cannot be bypassed from the Operator side.
+- The skip only affects the Operator's own readiness wait; it does not change the pod's actual status or
+  affect routing, which is already controlled by the same two fields.
+
 ### vlinsert and vlselect
 
 `vlinsert` and `vlselect` nodes support standard Deployment update parameters:

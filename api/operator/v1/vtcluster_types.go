@@ -515,6 +515,8 @@ type VTStorage struct {
 	// +optional
 	MaintenanceInsertNodeIDs []int32 `json:"maintenanceInsertNodeIDs,omitempty"`
 	// MaintenanceSelectNodeIDs - excludes given node ids from select requests routing, must contain pod suffixes - for pod-0, id will be 0 and etc.
+	// A node id listed in both MaintenanceInsertNodeIDs and MaintenanceSelectNodeIDs is also exempted from the storage pod readiness wait during reconcile.
+	// This only reliably prevents reconcile from blocking under the default OnDelete rollingUpdateStrategy; with RollingUpdate, Kubernetes' own OrderedReady pod management can still block on an unready node.
 	// +optional
 	MaintenanceSelectNodeIDs []int32 `json:"maintenanceSelectNodeIDs,omitempty"`
 
@@ -768,6 +770,17 @@ func (cr *VTCluster) AvailableStorageNodeIDs(kind vmv1beta1.ClusterComponent) []
 		result = append(result, i)
 	}
 	return result
+}
+
+// StorageNodeIDsUnderMaintenance returns the storage pod ordinals excluded from both
+// insert and select routing via MaintenanceInsertNodeIDs and MaintenanceSelectNodeIDs.
+func (cr *VTCluster) StorageNodeIDsUnderMaintenance() sets.Set[int32] {
+	if cr.Spec.Storage == nil {
+		return nil
+	}
+	insertNodes := sets.New(cr.Spec.Storage.MaintenanceInsertNodeIDs...)
+	selectNodes := sets.New(cr.Spec.Storage.MaintenanceSelectNodeIDs...)
+	return insertNodes.Intersection(selectNodes)
 }
 
 // LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated

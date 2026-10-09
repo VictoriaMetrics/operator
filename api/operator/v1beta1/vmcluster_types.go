@@ -592,6 +592,8 @@ type VMStorage struct {
 	// +optional
 	MaintenanceInsertNodeIDs []int32 `json:"maintenanceInsertNodeIDs,omitempty"`
 	// MaintenanceSelectNodeIDs - excludes given node ids from select requests routing, must contain pod suffixes - for pod-0, id will be 0 and etc.
+	// A node id listed in both MaintenanceInsertNodeIDs and MaintenanceSelectNodeIDs is also exempted from the storage pod readiness wait during reconcile.
+	// This only reliably prevents reconcile from blocking under the default OnDelete rollingUpdateStrategy; with RollingUpdate, Kubernetes' own OrderedReady pod management can still block on an unready node.
 	// +optional
 	MaintenanceSelectNodeIDs []int32 `json:"maintenanceSelectNodeIDs,omitempty"`
 
@@ -936,6 +938,17 @@ func (cr *VMCluster) AvailableStorageNodeIDs(kind ClusterComponent) []int32 {
 		result = append(result, i)
 	}
 	return result
+}
+
+// StorageNodeIDsUnderMaintenance returns the vmstorage pod ordinals excluded from both
+// insert and select routing via MaintenanceInsertNodeIDs and MaintenanceSelectNodeIDs.
+func (cr *VMCluster) StorageNodeIDsUnderMaintenance() sets.Set[int32] {
+	if cr.Spec.VMStorage == nil {
+		return nil
+	}
+	insertNodes := sets.New(cr.Spec.VMStorage.MaintenanceInsertNodeIDs...)
+	selectNodes := sets.New(cr.Spec.VMStorage.MaintenanceSelectNodeIDs...)
+	return insertNodes.Intersection(selectNodes)
 }
 
 // FinalLabels adds cluster labels to the base labels and filters by prefix if needed

@@ -408,6 +408,44 @@ spec:
 The timeout for each node to become ready is controlled by the Operator environment variable
 `VM_PODWAITREADYTIMEOUT` (default `80s`). The poll interval is `VM_PODWAITREADYINTERVALCHECK` (default `5s`).
 
+### Storage node maintenance mode
+
+`vmstorage.maintenanceInsertNodeIDs` and `vmstorage.maintenanceSelectNodeIDs` exclude the listed pod ordinals
+from `vminsert`/`vmselect` routing, for example while the underlying Kubernetes node is cordoned or drained
+for maintenance and the `vmstorage` pod is expected to stay `Pending`/`NotReady` for an extended period.
+
+A pod ordinal listed in **both** fields (excluded from insert and select routing at the same time) is also
+skipped by the Operator's readiness wait during reconciliation. Previously, such a pod being not ready blocked
+every reconcile of the cluster — including unrelated changes to `vminsert` or `vmselect` — until it recovered,
+even though it was already excluded from all routing.
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example
+spec:
+  vmstorage:
+    replicaCount: 3
+    maintenanceInsertNodeIDs: [2]
+    maintenanceSelectNodeIDs: [2]   # pod-2 excluded from routing and from the readiness wait
+```
+
+**Limitations:**
+
+- A pod ordinal must appear in *both* `maintenanceInsertNodeIDs` and `maintenanceSelectNodeIDs` to be exempted
+  from the readiness wait. An ordinal excluded from only one of the two still blocks reconcile until it becomes
+  ready.
+- The skip only reliably prevents reconcile from blocking under the default `rollingUpdateStrategy: OnDelete`.
+  With `rollingUpdateStrategy: RollingUpdate`, the StatefulSet uses Kubernetes' native `OrderedReady` pod
+  management, which itself refuses to create or update any pod at a higher ordinal until a lower-ordinal pod
+  is ready. In that mode a maintenance pod can still stall the rollout — this is enforced by Kubernetes itself,
+  not the Operator, and cannot be bypassed from the Operator side.
+- These fields cannot be combined with [automatic vmstorage discovery](#automatic-vmstorage-discovery), since
+  node selection is delegated to the `filter` regexp there.
+- The skip only affects the Operator's own readiness wait; it does not change the pod's actual status or
+  affect routing, which is already controlled by the same two fields.
+
 ### vminsert
 
 `vminsert` nodes can be configured with standard Deployment update parameters:

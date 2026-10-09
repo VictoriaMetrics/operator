@@ -21,8 +21,8 @@ type VMUserOIDC struct {
 // VMAccessClaim defines vm_access claim parameters used for request templating
 type VMAccessClaim struct {
 	// MetricsAccountID defines accountID to use for metrics requests templating
-	// Pointer is used to distinguish an unset value from an explicit zero value,
-	// since zero is a valid accountID and selects the default tenant.
+	// MetricsAccountID defines accountID to use for metrics requests templating
+	// Set it to 0 to select the default tenant; omit the field to leave it unset, so an explicit zero is preserved instead of being dropped.
 	// +optional
 	MetricsAccountID *uint32 `json:"metricsAccountID,omitempty"`
 	// MetricsProjectID defines projectID to use for metrics requests templating

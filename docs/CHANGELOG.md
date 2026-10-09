@@ -26,7 +26,7 @@ aliases:
 
 * BUGFIX: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/) and [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): respect `spec.ignoreNamespaceSelectors`. Previously, since v0.69.0, scrape objects still discovered targets in the namespaces from their `namespaceSelector`. See [#2684](https://github.com/VictoriaMetrics/operator/issues/2684).
 
-* BUGFIX: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): allow `spec.jwt.defaultVMAccessClaim` to express an explicit tenant ID of `0`. The tenant ID fields are `uint32` with `omitempty` and the renderer skipped zero values, so `metricsAccountID: 0` rendered as an empty claim - byte-identical to the documented empty-object opt-in, with nothing reporting that the value had been dropped. See [#2718](https://github.com/VictoriaMetrics/operator/issues/2718).
+* BUGFIX: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): allow `spec.jwt.defaultVMAccessClaim` to preserve an explicitly configured tenant ID of `0`. Previously, it was rendered indistinguishably from the documented empty-object opt-in. See [#2718](https://github.com/VictoriaMetrics/operator/issues/2718).
 
 ## [v0.75.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.0)
 **Release date:** 25 September 2026

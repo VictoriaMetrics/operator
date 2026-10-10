@@ -83,7 +83,7 @@ func getPVCByName(vcts []corev1.PersistentVolumeClaim, name string) *corev1.Pers
 	return nil
 }
 
-func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.StatefulSet, prevVCTs []corev1.PersistentVolumeClaim) error {
+func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.StatefulSet, prevVCTs []corev1.PersistentVolumeClaim, liveReplicas int32) error {
 	// fast path
 	if sts.Spec.Replicas != nil && *sts.Spec.Replicas == 0 {
 		return nil
@@ -106,6 +106,9 @@ func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Statef
 		return pvcs.Items[i].Name < pvcs.Items[j].Name
 	})
 	if len(pvcs.Items) == 0 {
+		if liveReplicas == 0 {
+			return nil
+		}
 		return fmt.Errorf("got 0 pvcs under %s for selector %v, statefulset could not be working", sts.Namespace, sts.Spec.Selector.MatchLabels)
 	}
 	nsn := types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace}

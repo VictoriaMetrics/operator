@@ -189,6 +189,7 @@ func createOrUpdateVLStorageSTS(ctx context.Context, rclient client.Client, cr, 
 				cr.Spec.VLStorage.ReplicaCount = existingSpec.Replicas
 			}
 		},
+		IgnoreNotReadyPodOrdinals: cr.StorageNodeIDsUnderMaintenance(),
 	}
 	owner := cr.AsOwner()
 	return reconcile.StatefulSet(ctx, rclient, newSts, prevSts, &owner, &o)

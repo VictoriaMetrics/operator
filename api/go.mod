@@ -9,7 +9,7 @@ require (
 	github.com/VictoriaMetrics/metricsql v0.87.5
 	github.com/prometheus/alertmanager v0.34.1
 	github.com/stretchr/testify v1.12.1
-	golang.org/x/net v0.59.0
+	golang.org/x/net v0.60.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.37.1
 	k8s.io/apiextensions-apiserver v0.37.1

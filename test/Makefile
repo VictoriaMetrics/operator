@@ -30,6 +30,7 @@ MIRRORD_ARCH=$(if $(filter mac,$(MIRRORD_OS)),universal,$(if $(filter x86_64,$(s
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
 test-e2e: load-kind ginkgo crust-gather mirrord
 	env CGO_ENABLED=1 OPERATOR_IMAGE=$(OPERATOR_IMAGE) CONFIG_RELOADER_IMAGE=$(CONFIG_RELOADER_IMAGE) REPORTS_DIR=$(shell pwd) CRUST_GATHER_BIN=$(CRUST_GATHER_BIN) $(MIRRORD_BIN) exec -f ./mirrord.json -- $(GINKGO_BIN) \
+		-race \
 		-ldflags="-linkmode=external" \
 		--output-interceptor-mode=none \
 		-procs=$(E2E_TESTS_CONCURRENCY) \

@@ -7,6 +7,7 @@ import (
 	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -21,7 +22,29 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
+
+func TestReleaseAppliedConditions(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1beta1.VMAlertmanager{ObjectMeta: metav1.ObjectMeta{Name: "am1", Namespace: "ns"}}
+	amc := &vmv1beta1.VMAlertmanagerConfig{ObjectMeta: metav1.ObjectMeta{Name: "amc1", Namespace: "ns"}}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{amc})
+
+	// simulate a prior reconcile that selected the config and wrote the Applied condition
+	parent := "am1.ns.vmalertmanager"
+	require.NoError(t, reconcile.StatusForChildObjects(ctx, fclient, parent, []*vmv1beta1.VMAlertmanagerConfig{amc}))
+
+	var got vmv1beta1.VMAlertmanagerConfig
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "amc1"}, &got))
+	require.NotEmpty(t, got.Status.Conditions, "precondition: vmalertmanager must have written its condition")
+
+	// cr is being deleted: it no longer selects anything
+	require.NoError(t, ReleaseAppliedConditions(ctx, fclient, cr))
+
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "amc1"}, &got))
+	assert.Empty(t, got.Status.Conditions, "condition must be released once the vmalertmanager is deleted")
+}
 
 func TestCreateOrUpdateAlertManager(t *testing.T) {
 	type opts struct {

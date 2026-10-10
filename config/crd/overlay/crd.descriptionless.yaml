@@ -15522,6 +15522,10 @@ spec:
                   group_wait:
                     pattern: '[0-9]+(ms|s|m|h)'
                     type: string
+                  labels:
+                    additionalProperties:
+                      type: string
+                    type: object
                   matchers:
                     items:
                       type: string

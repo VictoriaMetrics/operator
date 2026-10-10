@@ -396,6 +396,60 @@ func TestValidateVMAlertmanagerConfigFail(t *testing.T) {
         }
     }
 }`, `unknown field "insecure_skip_verify"`)
+
+	// invalid label name at root route labels
+	f(`
+{
+    "apiVersion": "v1",
+    "kind": "VMAlertmanagerConfig",
+    "metadata": {
+        "name": "test-fail"
+    },
+    "spec": {
+        "receivers": [
+            {
+                "name": "blackhole"
+            }
+        ],
+        "route": {
+            "receiver": "blackhole",
+            "labels": {
+                "": "empty-name"
+            }
+        }
+    }
+}`, `invalid label name "" at labels for route_receiver=blackhole`)
+
+	// invalid label name at nested route labels
+	f(`
+{
+    "apiVersion": "v1",
+    "kind": "VMAlertmanagerConfig",
+    "metadata": {
+        "name": "test-fail"
+    },
+    "spec": {
+        "receivers": [
+            {
+                "name": "blackhole"
+            }
+        ],
+        "route": {
+            "receiver": "blackhole",
+            "labels": {
+                "reason": "{{ .GroupLabels.alertname }}"
+            },
+            "routes": [
+                {
+                    "receiver": "blackhole",
+                    "labels": {
+                        "": "empty-name"
+                    }
+                }
+            ]
+        }
+    }
+}`, `invalid label name "" at labels for route_receiver=blackhole`)
 }
 
 func TestValidateVMAlertmanagerConfigOk(t *testing.T) {
@@ -984,6 +1038,41 @@ func TestValidateVMAlertmanagerConfigOk(t *testing.T) {
         ],
         "route": {
             "receiver": "teams"
+        }
+    }
+}`)
+
+	// route labels with templated values, inherited and overridden at nested route
+	f(`{
+    "apiVersion": "v1",
+    "kind": "VMAlertmanagerConfig",
+    "metadata": {
+        "name": "route-labels"
+    },
+    "spec": {
+        "receivers": [
+            {
+                "name": "blackhole"
+            }
+        ],
+        "route": {
+            "receiver": "blackhole",
+            "group_by": ["alertname"],
+            "labels": {
+                "reason": "{{ .GroupLabels.alertname }}",
+                "description": "{{ .GroupLabels.alertname }} firing ({{ routeLabels \"reason\" }})"
+            },
+            "routes": [
+                {
+                    "receiver": "blackhole",
+                    "matchers": ["service=\"database\""],
+                    "group_by": ["alertname", "database"],
+                    "labels": {
+                        "reason": "database {{ .GroupLabels.database }}",
+                        "team_owner": "dba"
+                    }
+                }
+            ]
         }
     }
 }`)

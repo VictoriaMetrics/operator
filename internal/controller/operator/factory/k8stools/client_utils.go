@@ -78,7 +78,34 @@ func MergePatchContainers(base, patches []corev1.Container) ([]corev1.Container,
 		}
 	}
 
+	for i := range out {
+		out[i].LivenessProbe = defaultProbeFields(out[i].LivenessProbe)
+		out[i].ReadinessProbe = defaultProbeFields(out[i].ReadinessProbe)
+		out[i].StartupProbe = defaultProbeFields(out[i].StartupProbe)
+	}
+
 	return out, nil
+}
+
+// defaultProbeFields returns a copy of p with its numeric fields filled in with the same defaults the API server applies when they are left unset.
+func defaultProbeFields(p *corev1.Probe) *corev1.Probe {
+	if p == nil {
+		return nil
+	}
+	p = p.DeepCopy()
+	if p.TimeoutSeconds == 0 {
+		p.TimeoutSeconds = 1
+	}
+	if p.PeriodSeconds == 0 {
+		p.PeriodSeconds = 10
+	}
+	if p.SuccessThreshold == 0 {
+		p.SuccessThreshold = 1
+	}
+	if p.FailureThreshold == 0 {
+		p.FailureThreshold = 3
+	}
+	return p
 }
 
 // UpdatePodAnnotations - updates configmap-sync-time annotation

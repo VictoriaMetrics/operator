@@ -86,8 +86,10 @@ func Probe(container *corev1.Container, cr probeCRD, params *vmv1beta1.CommonApp
 		container.StartupProbe = getProbe(nil, true, true)
 		return
 	}
-	if cr.ProbeNeedLiveness() {
-		container.LivenessProbe = getProbe(liveness, true, false)
+	// ProbeNeedLiveness controls whether a DEFAULT liveness probe is added;
+	// a probe the user explicitly declared must always render.
+	if cr.ProbeNeedLiveness() || liveness != nil {
+		container.LivenessProbe = getProbe(liveness, cr.ProbeNeedLiveness(), false)
 	}
 	container.StartupProbe = getProbe(startup, false, true)
 	container.ReadinessProbe = getProbe(readiness, true, false)

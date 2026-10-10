@@ -268,6 +268,70 @@ func TestAddVLDistributedDefaultsWithLicenseAndNoVLSingle(t *testing.T) {
 	assert.Nil(t, cr.Spec.ZoneCommon.VLSingle)
 }
 
+func TestAddVMDistributedDefaultsWithLicenseAndVMSingleBackend(t *testing.T) {
+	f := func(vmSingle *vmv1alpha1.VMDistributedZoneSingle, wantLicense *vmv1beta1.License) {
+		t.Helper()
+		cr := &vmv1alpha1.VMDistributed{
+			Spec: vmv1alpha1.VMDistributedSpec{
+				BackendType: vmv1alpha1.VMDistributedBackendTypeVMSingle,
+				License:     &vmv1beta1.License{Key: ptr.To("license-key")},
+				ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{
+					VMSingle: vmSingle,
+				},
+				Zones: []vmv1alpha1.VMDistributedZone{{Name: "zone-a"}},
+			},
+		}
+		addVMDistributedDefaults(cr)
+		assert.NoError(t, cr.Validate())
+		assert.Equal(t, vmv1beta1.VMClusterSpec{}, cr.Spec.ZoneCommon.VMCluster.Spec)
+		assert.Equal(t, wantLicense, cr.Spec.ZoneCommon.VMSingle.Spec.License)
+		assert.Equal(t, "-zone-a", cr.Spec.Zones[0].VMSingleName(cr))
+	}
+
+	// no vmsingle
+	f(nil, &vmv1beta1.License{Key: ptr.To("license-key")})
+
+	// vmsingle without spec
+	f(&vmv1alpha1.VMDistributedZoneSingle{}, &vmv1beta1.License{Key: ptr.To("license-key")})
+
+	// vmsingle with own license
+	f(&vmv1alpha1.VMDistributedZoneSingle{
+		Spec: &vmv1beta1.VMSingleSpec{License: &vmv1beta1.License{Key: ptr.To("own-key")}},
+	}, &vmv1beta1.License{Key: ptr.To("own-key")})
+}
+
+func TestAddVLDistributedDefaultsWithLicenseAndVLSingleBackend(t *testing.T) {
+	f := func(vlSingle *vmv1alpha1.VLDistributedZoneSingle, wantLicense *vmv1beta1.License) {
+		t.Helper()
+		cr := &vmv1alpha1.VLDistributed{
+			Spec: vmv1alpha1.VLDistributedSpec{
+				BackendType: vmv1alpha1.VLDistributedBackendTypeVLSingle,
+				License:     &vmv1beta1.License{Key: ptr.To("license-key")},
+				ZoneCommon: vmv1alpha1.VLDistributedZoneCommon{
+					VLSingle: vlSingle,
+				},
+				Zones: []vmv1alpha1.VLDistributedZone{{Name: "zone-a"}},
+			},
+		}
+		addVLDistributedDefaults(cr)
+		assert.NoError(t, cr.Validate())
+		assert.Equal(t, vmv1.VLClusterSpec{}, cr.Spec.ZoneCommon.VLCluster.Spec)
+		assert.Equal(t, wantLicense, cr.Spec.ZoneCommon.VLSingle.Spec.License)
+		assert.Equal(t, "-zone-a", cr.Spec.Zones[0].VLSingleName(cr))
+	}
+
+	// no vlsingle
+	f(nil, &vmv1beta1.License{Key: ptr.To("license-key")})
+
+	// vlsingle without spec
+	f(&vmv1alpha1.VLDistributedZoneSingle{}, &vmv1beta1.License{Key: ptr.To("license-key")})
+
+	// vlsingle with own license
+	f(&vmv1alpha1.VLDistributedZoneSingle{
+		Spec: &vmv1.VLSingleSpec{License: &vmv1beta1.License{Key: ptr.To("own-key")}},
+	}, &vmv1beta1.License{Key: ptr.To("own-key")})
+}
+
 func TestSetTag(t *testing.T) {
 	type opts struct {
 		componentVersion string

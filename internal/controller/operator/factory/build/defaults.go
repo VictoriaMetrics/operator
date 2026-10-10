@@ -95,11 +95,21 @@ func addVMDistributedDefaults(objI any) {
 		if !cr.Spec.ZoneCommon.VMAgent.Spec.License.IsProvided() {
 			cr.Spec.ZoneCommon.VMAgent.Spec.License = cr.Spec.License.DeepCopy()
 		}
-		if !cr.Spec.ZoneCommon.VMCluster.Spec.License.IsProvided() {
-			cr.Spec.ZoneCommon.VMCluster.Spec.License = cr.Spec.License.DeepCopy()
-		}
-		if cr.Spec.ZoneCommon.VMSingle != nil && cr.Spec.ZoneCommon.VMSingle.Spec != nil && !cr.Spec.ZoneCommon.VMSingle.Spec.License.IsProvided() {
-			cr.Spec.ZoneCommon.VMSingle.Spec.License = cr.Spec.License.DeepCopy()
+		switch cr.Spec.BackendType {
+		case vmv1alpha1.VMDistributedBackendTypeVMSingle:
+			if cr.Spec.ZoneCommon.VMSingle == nil {
+				cr.Spec.ZoneCommon.VMSingle = &vmv1alpha1.VMDistributedZoneSingle{}
+			}
+			if cr.Spec.ZoneCommon.VMSingle.Spec == nil {
+				cr.Spec.ZoneCommon.VMSingle.Spec = &vmv1beta1.VMSingleSpec{}
+			}
+			if !cr.Spec.ZoneCommon.VMSingle.Spec.License.IsProvided() {
+				cr.Spec.ZoneCommon.VMSingle.Spec.License = cr.Spec.License.DeepCopy()
+			}
+		default:
+			if !cr.Spec.ZoneCommon.VMCluster.Spec.License.IsProvided() {
+				cr.Spec.ZoneCommon.VMCluster.Spec.License = cr.Spec.License.DeepCopy()
+			}
 		}
 	}
 }
@@ -135,8 +145,21 @@ func addVLDistributedDefaults(objI any) {
 		if !cr.Spec.ZoneCommon.VLAgent.Spec.License.IsProvided() {
 			cr.Spec.ZoneCommon.VLAgent.Spec.License = cr.Spec.License.DeepCopy()
 		}
-		if !cr.Spec.ZoneCommon.VLCluster.Spec.License.IsProvided() {
-			cr.Spec.ZoneCommon.VLCluster.Spec.License = cr.Spec.License.DeepCopy()
+		switch cr.Spec.BackendType {
+		case vmv1alpha1.VLDistributedBackendTypeVLSingle:
+			if cr.Spec.ZoneCommon.VLSingle == nil {
+				cr.Spec.ZoneCommon.VLSingle = &vmv1alpha1.VLDistributedZoneSingle{}
+			}
+			if cr.Spec.ZoneCommon.VLSingle.Spec == nil {
+				cr.Spec.ZoneCommon.VLSingle.Spec = &vmv1.VLSingleSpec{}
+			}
+			if !cr.Spec.ZoneCommon.VLSingle.Spec.License.IsProvided() {
+				cr.Spec.ZoneCommon.VLSingle.Spec.License = cr.Spec.License.DeepCopy()
+			}
+		default:
+			if !cr.Spec.ZoneCommon.VLCluster.Spec.License.IsProvided() {
+				cr.Spec.ZoneCommon.VLCluster.Spec.License = cr.Spec.License.DeepCopy()
+			}
 		}
 	}
 }

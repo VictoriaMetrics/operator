@@ -14,6 +14,8 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes,verbs=get;list;watch;create;update;patch;delete
+
 // HTTPRoute creates or updates HTTPRoute object
 func HTTPRoute(ctx context.Context, rclient client.Client, newObj, prevObj *gwapiv1.HTTPRoute, owner *metav1.OwnerReference) error {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}

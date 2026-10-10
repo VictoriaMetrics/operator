@@ -16,6 +16,9 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
+// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=services/finalizers,verbs=patch
+
 // Service - reconcile needed and actual state of service for given crd,
 // it will recreate service if needed.
 // NOTE it doesn't perform validation:

@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -98,6 +99,8 @@ func (m *model) init(class string) error {
 		mdl = new(temporalEnvelopeModel)
 	case "model.online.TemporalEnvelopeMultivariateModel", "temporal_envelope_multivariate":
 		mdl = new(temporalEnvelopeMultivariateModel)
+	case "model.online.PeerOutlierModel", "peer_outlier":
+		mdl = new(peerOutlierModel)
 	default:
 		return fmt.Errorf("model class=%q is not supported", class)
 	}
@@ -134,6 +137,59 @@ func (m *model) UnmarshalYAML(unmarshal func(any) error) error {
 	}
 	if err := unmarshal(m.anomalyModel); err != nil {
 		return err
+	}
+	return nil
+}
+
+// Pointer fields preserve omission so vmanomaly owns model defaults.
+type peerOutlierModel struct {
+	commonModelParams `yaml:",inline"`
+	MinPeerCount      *int          `yaml:"min_peer_count,omitempty"`
+	EpsilonQuantile   *float64      `yaml:"epsilon_quantile,omitempty"`
+	Tolerance         *float64      `yaml:"tolerance,omitempty"`
+	Decay             *float64      `yaml:"decay,omitempty"`
+	MinSamplesSeen    *int          `yaml:"min_n_samples_seen,omitempty"`
+	GroupBy           []string      `yaml:"groupby,omitempty"`
+	Args              yaml.MapSlice `yaml:"args,omitempty"`
+}
+
+func (m *peerOutlierModel) validate() error {
+	if len(m.Args) > 0 {
+		return fmt.Errorf("peer_outlier does not accept arbitrary args")
+	}
+	if m.MinPeerCount != nil && *m.MinPeerCount < 3 {
+		return fmt.Errorf("min_peer_count must be at least 3")
+	}
+	quantile := 0.75
+	if m.EpsilonQuantile != nil {
+		quantile = *m.EpsilonQuantile
+	}
+	if !(quantile > 0 && quantile < 1) {
+		return fmt.Errorf("epsilon_quantile must be in range (0, 1)")
+	}
+	if m.Tolerance != nil && (!(*m.Tolerance > 0) || math.IsInf(*m.Tolerance, 0)) {
+		return fmt.Errorf("tolerance must be finite and greater than 0")
+	}
+	decay := 1.0
+	if m.Decay != nil {
+		decay = *m.Decay
+	}
+	if !(decay > 0 && decay <= 1) {
+		return fmt.Errorf("decay must be in range (0, 1]")
+	}
+	// Match vmanomaly's effective-sample warmup guard, including omitted defaults.
+	warmup := math.Ceil(8/(1-quantile) - 1e-12)
+	if m.MinSamplesSeen != nil {
+		if *m.MinSamplesSeen < 1 {
+			return fmt.Errorf("min_n_samples_seen must be positive")
+		}
+		warmup = float64(*m.MinSamplesSeen)
+	}
+	if decay < 1 && warmup >= (1+decay)/(1-decay) {
+		if m.MinSamplesSeen == nil {
+			return fmt.Errorf("warmup derived from epsilon_quantile (%g) cannot be reached with decay %g; increase decay or explicitly set a reachable min_n_samples_seen", warmup, decay)
+		}
+		return fmt.Errorf("min_n_samples_seen (%g) cannot be reached with decay %g; increase decay or lower min_n_samples_seen", warmup, decay)
 	}
 	return nil
 }

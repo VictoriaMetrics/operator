@@ -20,12 +20,13 @@ const (
 	storageKind = vmv1beta1.ClusterComponentStorage
 )
 
+// createOrUpdateStorage reconciles storage nodes, which are deployed only in cluster mode
 func createOrUpdateStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator, configHash string) error {
-	if cr.Spec.Storage == nil {
+	if cr.Spec.Storage == nil || !cr.IsClusterMode() {
 		return nil
 	}
 	var prev componentObjects
-	if prevCR != nil && prevCR.Spec.Storage == nil {
+	if prevCR != nil && (prevCR.Spec.Storage == nil || !prevCR.IsClusterMode()) {
 		prevCR = nil
 	}
 	if prevCR != nil {
@@ -134,12 +135,9 @@ func createOrUpdateStorageSTS(ctx context.Context, rclient client.Client, cr, pr
 
 func buildStorageSTS(cr *vmv1.VMEstimator, configHash string) (*appsv1.StatefulSet, error) {
 	storage := cr.Spec.Storage
-	var args []string
-	if cr.IsClusterMode() {
-		// storage nodes expose local cardinality estimations at the separate path
-		// in order to keep them away of the default scrape path, since select nodes expose merged estimations
-		args = append(args, "-cardinalityMetrics.exposeAt=/cardinality/metrics")
-	}
+	// storage nodes expose local cardinality estimations at the separate path
+	// in order to keep them away of the default scrape path, since select nodes expose merged estimations
+	args := []string{"-cardinalityMetrics.exposeAt=/cardinality/metrics"}
 	podSpec, err := buildPodTemplate(cr, &podOpts{
 		kind:       storageKind,
 		params:     &storage.CommonAppsParams,
@@ -172,9 +170,5 @@ func buildStorageSTS(cr *vmv1.VMEstimator, configHash string) (*appsv1.StatefulS
 		},
 	}
 	build.StatefulSetAddCommonParams(sts, &storage.CommonAppsParams)
-	if !cr.IsClusterMode() {
-		// single mode runs exactly one storage node, since there are no select nodes to merge estimations
-		sts.Spec.Replicas = ptr.To[int32](1)
-	}
 	return sts, nil
 }

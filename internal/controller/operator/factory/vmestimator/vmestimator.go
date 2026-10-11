@@ -62,6 +62,9 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VMEstim
 	if err != nil {
 		return fmt.Errorf("cannot reconcile config: %w", err)
 	}
+	if err := createOrUpdateSingle(ctx, rclient, cr, prevCR, configHash); err != nil {
+		return fmt.Errorf("cannot reconcile single: %w", err)
+	}
 	if err := createOrUpdateStorage(ctx, rclient, cr, prevCR, configHash); err != nil {
 		return fmt.Errorf("cannot reconcile storage: %w", err)
 	}
@@ -128,7 +131,33 @@ func createOrUpdateComponentObjects(ctx context.Context, rclient client.Client, 
 
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMEstimator) error {
 	cc := finalize.NewChildCleaner()
-	if storage := cr.Spec.Storage; storage == nil {
+	// the single-replica Deployment is deployed only in single mode
+	if storage := cr.Spec.Storage; storage == nil || cr.IsClusterMode() {
+		if err := finalize.OnVMEstimatorSingleDelete(ctx, rclient, cr, true); err != nil {
+			return fmt.Errorf("cannot remove orphaned single resources: %w", err)
+		}
+	} else {
+		commonName := cr.PrefixedName(singleKind)
+		if storage.PodDisruptionBudget != nil {
+			cc.KeepPDB(commonName)
+		}
+		if storage.NetworkPolicy != nil {
+			cc.KeepNetworkPolicy(commonName)
+		}
+		if storage.VPA != nil {
+			cc.KeepVPA(commonName)
+		}
+		if !ptr.Deref(storage.DisableSelfServiceScrape, false) {
+			cc.KeepScrape(commonName)
+		}
+		cc.KeepService(commonName)
+		if storage.ServiceSpec != nil && !storage.ServiceSpec.UseAsDefault {
+			cc.KeepService(storage.ServiceSpec.NameOrDefault(commonName))
+		}
+	}
+
+	// storage nodes are deployed only in cluster mode
+	if storage := cr.Spec.Storage; storage == nil || !cr.IsClusterMode() {
 		if err := finalize.OnStorageDelete(ctx, rclient, cr, true); err != nil {
 			return fmt.Errorf("cannot remove orphaned storage resources: %w", err)
 		}

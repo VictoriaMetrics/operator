@@ -320,21 +320,22 @@ func TestCreateOrUpdate(t *testing.T) {
 			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-base"), &cm))
 			assert.Equal(t, testStreams, parseStreams(t, cm.Data[configFileName]))
 
-			var sts appsv1.StatefulSet
-			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-storage-base"), &sts))
+			var dep appsv1.Deployment
+			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-single-base"), &dep))
 			assert.Equal(t, map[string]string{
-				"app.kubernetes.io/name":      "vmestimator-storage",
+				"app.kubernetes.io/name":      "vmestimator-single",
 				"app.kubernetes.io/part-of":   "vmestimator",
 				"app.kubernetes.io/instance":  "base",
 				"app.kubernetes.io/component": "monitoring",
 				"managed-by":                  "vm-operator",
-			}, sts.Labels)
-			assert.Equal(t, cr.SelectorLabels(vmv1beta1.ClusterComponentStorage), sts.Spec.Selector.MatchLabels)
-			assert.Equal(t, ptr.To(int32(1)), sts.Spec.Replicas)
-			assert.Equal(t, "vmestimator-base", sts.Spec.Template.Spec.ServiceAccountName)
-			assert.Len(t, sts.Spec.Template.Annotations[configHashAnnotation], 64)
-			require.Len(t, sts.Spec.Template.Spec.Containers, 1)
-			cnt := sts.Spec.Template.Spec.Containers[0]
+			}, dep.Labels)
+			assert.Equal(t, cr.SelectorLabels(vmv1.VMEstimatorComponentSingle), dep.Spec.Selector.MatchLabels)
+			assert.Equal(t, ptr.To(int32(1)), dep.Spec.Replicas)
+			assert.Equal(t, appsv1.RollingUpdateDeploymentStrategyType, dep.Spec.Strategy.Type)
+			assert.Equal(t, "vmestimator-base", dep.Spec.Template.Spec.ServiceAccountName)
+			assert.Len(t, dep.Spec.Template.Annotations[configHashAnnotation], 64)
+			require.Len(t, dep.Spec.Template.Spec.Containers, 1)
+			cnt := dep.Spec.Template.Spec.Containers[0]
 			assert.Equal(t, "vmestimator", cnt.Name)
 			assert.Equal(t, "victoriametrics/vmestimator:v0.1.16", cnt.Image)
 			// estimations are exposed at the default /metrics path
@@ -342,22 +343,26 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.Equal(t, []corev1.VolumeMount{{Name: "config", MountPath: "/etc/vmestimator/config", ReadOnly: true}}, cnt.VolumeMounts)
 			require.NotNil(t, cnt.ReadinessProbe)
 			assert.Equal(t, "/health", cnt.ReadinessProbe.HTTPGet.Path)
-			require.Len(t, sts.Spec.Template.Spec.Volumes, 1)
-			assert.Equal(t, "vmestimator-base", sts.Spec.Template.Spec.Volumes[0].ConfigMap.Name)
+			require.Len(t, dep.Spec.Template.Spec.Volumes, 1)
+			assert.Equal(t, "vmestimator-base", dep.Spec.Template.Spec.Volumes[0].ConfigMap.Name)
 
+			// remote write requests are accepted by the single service
 			var svc corev1.Service
-			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-storage-base"), &svc))
-			assert.Equal(t, corev1.ClusterIPNone, svc.Spec.ClusterIP)
-			// remote write requests are accepted by the insert service in both modes
-			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-storage-base-insert"), &svc))
+			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-single-base"), &svc))
 			assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
+			assert.NotEqual(t, corev1.ClusterIPNone, svc.Spec.ClusterIP)
 			assert.Equal(t, int32(8490), svc.Spec.Ports[0].Port)
+			assert.Equal(t, cr.SelectorLabels(vmv1.VMEstimatorComponentSingle), svc.Spec.Selector)
 
 			var svs vmv1beta1.VMServiceScrape
-			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-storage-base"), &svs))
+			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-single-base"), &svs))
 			assert.Equal(t, "/metrics", svs.Spec.Endpoints[0].Path)
 
-			// select isn't deployed in single mode
+			// storage and select nodes aren't deployed in single mode
+			assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn("vmestimator-storage-base"), &appsv1.StatefulSet{})))
+			for _, name := range []string{"vmestimator-storage-base", "vmestimator-storage-base-insert"} {
+				assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn(name), &corev1.Service{})), "service=%s", name)
+			}
 			assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn("vmestimator-select-base"), &appsv1.Deployment{})))
 		},
 	})
@@ -376,9 +381,10 @@ func TestCreateOrUpdate(t *testing.T) {
 			},
 		},
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VMEstimator) {
-			var sts appsv1.StatefulSet
-			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-storage-base"), &sts))
-			assert.Equal(t, ptr.To(int32(1)), sts.Spec.Replicas)
+			var dep appsv1.Deployment
+			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-single-base"), &dep))
+			assert.Equal(t, ptr.To(int32(1)), dep.Spec.Replicas)
+			assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn("vmestimator-storage-base"), &appsv1.StatefulSet{})))
 			assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn("vmestimator-select-base"), &appsv1.Deployment{})))
 			assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn("vmestimator-select-base"), &corev1.Service{})))
 		},
@@ -533,7 +539,7 @@ func TestCreateOrUpdate(t *testing.T) {
 						EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "vmestimator-external"},
 						Spec:                   corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort},
 					},
-					RollingUpdateStrategy: appsv1.RollingUpdateStatefulSetStrategyType,
+					RollingUpdateStrategy: appsv1.OnDeleteStatefulSetStrategyType,
 					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						UseStrictSecurity: ptr.To(true),
 					},
@@ -542,8 +548,8 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		cfgMutator: enableVPA,
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VMEstimator) {
-			name := "vmestimator-storage-base"
-			selector := cr.SelectorLabels(vmv1beta1.ClusterComponentStorage)
+			name := "vmestimator-single-base"
+			selector := cr.SelectorLabels(vmv1.VMEstimatorComponentSingle)
 
 			var pdb policyv1.PodDisruptionBudget
 			require.NoError(t, rclient.Get(ctx, nsn(name), &pdb))
@@ -556,7 +562,7 @@ func TestCreateOrUpdate(t *testing.T) {
 
 			var vpa vpav1.VerticalPodAutoscaler
 			require.NoError(t, rclient.Get(ctx, nsn(name), &vpa))
-			assert.Equal(t, "StatefulSet", vpa.Spec.TargetRef.Kind)
+			assert.Equal(t, "Deployment", vpa.Spec.TargetRef.Kind)
 			assert.Equal(t, name, vpa.Spec.TargetRef.Name)
 
 			var svc corev1.Service
@@ -565,12 +571,13 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.Equal(t, selector, svc.Spec.Selector)
 			assert.Equal(t, "managed", svc.Labels[vmv1beta1.AdditionalServiceLabel])
 
-			var sts appsv1.StatefulSet
-			require.NoError(t, rclient.Get(ctx, nsn(name), &sts))
-			assert.Equal(t, appsv1.RollingUpdateStatefulSetStrategyType, sts.Spec.UpdateStrategy.Type)
-			assert.Equal(t, "observability", sts.Labels["team"])
-			assert.Equal(t, "sre", sts.Annotations["owner"])
-			sc := sts.Spec.Template.Spec.Containers[0].SecurityContext
+			var dep appsv1.Deployment
+			require.NoError(t, rclient.Get(ctx, nsn(name), &dep))
+			// StatefulSet update strategy doesn't apply to the Deployment
+			assert.Equal(t, appsv1.RollingUpdateDeploymentStrategyType, dep.Spec.Strategy.Type)
+			assert.Equal(t, "observability", dep.Labels["team"])
+			assert.Equal(t, "sre", dep.Annotations["owner"])
+			sc := dep.Spec.Template.Spec.Containers[0].SecurityContext
 			require.NotNil(t, sc)
 			assert.True(t, ptr.Deref(sc.RunAsNonRoot, false))
 
@@ -697,7 +704,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			},
 		},
 		validate: func(ctx context.Context, rclient client.Client, cr *vmv1.VMEstimator) {
-			assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn("vmestimator-storage-base"), &appsv1.StatefulSet{})))
+			assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn("vmestimator-single-base"), &appsv1.Deployment{})))
 			assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn("vmestimator-base"), &corev1.ConfigMap{})))
 		},
 	})
@@ -753,42 +760,126 @@ func TestCreateOrUpdate(t *testing.T) {
 }
 
 func TestCreateOrUpdate_ConfigChange(t *testing.T) {
+	f := func(mode vmv1.VMEstimatorMode) {
+		t.Helper()
+		ctx := context.TODO()
+		fclient := k8stools.GetTestClientWithObjects(nil)
+		build.AddDefaults(fclient.Scheme())
+		cr := &vmv1.VMEstimator{
+			ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
+			Spec: vmv1.VMEstimatorSpec{
+				Mode:    mode,
+				Streams: []vmv1.VMEstimatorStream{{Interval: "5m"}},
+			},
+		}
+		singleName := types.NamespacedName{Name: "vmestimator-single-base", Namespace: "default"}
+		stsName := types.NamespacedName{Name: "vmestimator-storage-base", Namespace: "default"}
+		getConfigHash := func() string {
+			t.Helper()
+			if mode == vmv1.VMEstimatorModeCluster {
+				var sts appsv1.StatefulSet
+				require.NoError(t, fclient.Get(ctx, stsName, &sts))
+				return sts.Spec.Template.Annotations[configHashAnnotation]
+			}
+			var dep appsv1.Deployment
+			require.NoError(t, fclient.Get(ctx, singleName, &dep))
+			return dep.Spec.Template.Annotations[configHashAnnotation]
+		}
+		synctest.Test(t, func(t *testing.T) {
+			fclient.Scheme().Default(cr)
+			require.NoError(t, CreateOrUpdate(ctx, fclient, cr))
+			hash := getConfigHash()
+			assert.NotEmpty(t, hash)
+			if mode == vmv1.VMEstimatorModeCluster {
+				createReadyStsPods(ctx, t, fclient, stsName)
+			}
+
+			// reconcile without changes keeps hash
+			cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+			require.NoError(t, CreateOrUpdate(ctx, fclient, cr))
+			assert.Equal(t, hash, getConfigHash())
+
+			// streams change must trigger pods rollout
+			cr.Spec.Streams = append(cr.Spec.Streams, vmv1.VMEstimatorStream{Interval: "5m", GroupBy: []string{"job"}})
+			require.NoError(t, CreateOrUpdate(ctx, fclient, cr))
+			assert.NotEqual(t, hash, getConfigHash())
+		})
+	}
+
+	f(vmv1.VMEstimatorModeSingle)
+	f(vmv1.VMEstimatorModeCluster)
+}
+
+func TestCreateOrUpdate_ModeSwitch(t *testing.T) {
 	ctx := context.TODO()
 	fclient := k8stools.GetTestClientWithObjects(nil)
 	build.AddDefaults(fclient.Scheme())
+	nsn := func(name string) types.NamespacedName {
+		return types.NamespacedName{Name: name, Namespace: "default"}
+	}
+	assertNotFound := func(name string, obj client.Object) {
+		t.Helper()
+		assert.True(t, k8serrors.IsNotFound(fclient.Get(ctx, nsn(name), obj)), "%T=%s", obj, name)
+	}
 	cr := &vmv1.VMEstimator{
 		ObjectMeta: metav1.ObjectMeta{Name: "base", Namespace: "default"},
 		Spec: vmv1.VMEstimatorSpec{
-			Streams: []vmv1.VMEstimatorStream{{Interval: "5m"}},
+			Streams: testStreams,
+			Storage: &vmv1.VMEstimatorStorage{
+				PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{MaxUnavailable: ptr.To(intstr.FromInt32(1))},
+			},
 		},
-	}
-	stsName := types.NamespacedName{Name: "vmestimator-storage-base", Namespace: "default"}
-	getConfigHash := func() string {
-		t.Helper()
-		var sts appsv1.StatefulSet
-		require.NoError(t, fclient.Get(ctx, stsName, &sts))
-		return sts.Spec.Template.Annotations[configHashAnnotation]
 	}
 	synctest.Test(t, func(t *testing.T) {
 		fclient.Scheme().Default(cr)
 		require.NoError(t, CreateOrUpdate(ctx, fclient, cr))
-		hash := getConfigHash()
-		assert.NotEmpty(t, hash)
-		createReadyStsPods(ctx, t, fclient, stsName)
+		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-single-base"), &appsv1.Deployment{}))
+		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-single-base"), &corev1.Service{}))
+		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-single-base"), &policyv1.PodDisruptionBudget{}))
 
-		// reconcile without changes keeps hash
+		// switch to cluster mode replaces the single-replica Deployment with storage and select nodes
 		cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+		cr.Spec.Mode = vmv1.VMEstimatorModeCluster
+		fclient.Scheme().Default(cr)
 		require.NoError(t, CreateOrUpdate(ctx, fclient, cr))
-		assert.Equal(t, hash, getConfigHash())
+		var sts appsv1.StatefulSet
+		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-storage-base"), &sts))
+		assert.Contains(t, sts.Spec.Template.Spec.Containers[0].Args, "-cardinalityMetrics.exposeAt=/cardinality/metrics")
+		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-select-base"), &appsv1.Deployment{}))
+		for _, name := range []string{"vmestimator-storage-base", "vmestimator-storage-base-insert", "vmestimator-select-base"} {
+			require.NoError(t, fclient.Get(ctx, nsn(name), &corev1.Service{}), "service=%s", name)
+		}
+		// storage settings are applied to storage nodes
+		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-storage-base"), &policyv1.PodDisruptionBudget{}))
+		assertNotFound("vmestimator-single-base", &appsv1.Deployment{})
+		assertNotFound("vmestimator-single-base", &corev1.Service{})
+		assertNotFound("vmestimator-single-base", &vmv1beta1.VMServiceScrape{})
+		assertNotFound("vmestimator-single-base", &policyv1.PodDisruptionBudget{})
+		createReadyStsPods(ctx, t, fclient, nsn("vmestimator-storage-base"))
 
-		// streams change must trigger pods rollout
-		cr.Spec.Streams = append(cr.Spec.Streams, vmv1.VMEstimatorStream{Interval: "5m", GroupBy: []string{"job"}})
+		// switch back to single mode removes storage and select nodes
+		cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+		cr.Spec.Mode = vmv1.VMEstimatorModeSingle
+		fclient.Scheme().Default(cr)
 		require.NoError(t, CreateOrUpdate(ctx, fclient, cr))
-		assert.NotEqual(t, hash, getConfigHash())
+		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-single-base"), &appsv1.Deployment{}))
+		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-single-base"), &corev1.Service{}))
+		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-single-base"), &vmv1beta1.VMServiceScrape{}))
+		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-single-base"), &policyv1.PodDisruptionBudget{}))
+		assertNotFound("vmestimator-storage-base", &appsv1.StatefulSet{})
+		assertNotFound("vmestimator-storage-base", &policyv1.PodDisruptionBudget{})
+		assertNotFound("vmestimator-select-base", &appsv1.Deployment{})
+		for _, name := range []string{"vmestimator-storage-base", "vmestimator-storage-base-insert", "vmestimator-select-base"} {
+			assertNotFound(name, &corev1.Service{})
+		}
+		for _, name := range []string{"vmestimator-storage-base", "vmestimator-select-base"} {
+			assertNotFound(name, &vmv1beta1.VMServiceScrape{})
+		}
 	})
 }
 
-func TestCreateOrUpdate_ModeSwitch(t *testing.T) {
+func TestCreateOrUpdate_RemoveSingleOptionalObjects(t *testing.T) {
+	defer withConfig(enableVPA)()
 	ctx := context.TODO()
 	fclient := k8stools.GetTestClientWithObjects(nil)
 	build.AddDefaults(fclient.Scheme())
@@ -801,47 +892,35 @@ func TestCreateOrUpdate_ModeSwitch(t *testing.T) {
 			Streams: testStreams,
 			Storage: &vmv1.VMEstimatorStorage{
 				PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{MaxUnavailable: ptr.To(intstr.FromInt32(1))},
+				NetworkPolicy:       &vmv1beta1.EmbeddedNetworkPolicy{Ingress: []networkingv1.NetworkPolicyIngressRule{{}}},
+				VPA:                 testVPA(),
+				ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+					EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "single-external"},
+				},
 			},
 		},
 	}
-	storageArgs := func() []string {
-		t.Helper()
-		var sts appsv1.StatefulSet
-		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-storage-base"), &sts))
-		return sts.Spec.Template.Spec.Containers[0].Args
-	}
-	exposeAtArg := "-cardinalityMetrics.exposeAt=/cardinality/metrics"
+	name := "vmestimator-single-base"
 	synctest.Test(t, func(t *testing.T) {
 		fclient.Scheme().Default(cr)
 		require.NoError(t, CreateOrUpdate(ctx, fclient, cr))
-		assert.NotContains(t, storageArgs(), exposeAtArg)
-		createReadyStsPods(ctx, t, fclient, nsn("vmestimator-storage-base"))
+		require.NoError(t, fclient.Get(ctx, nsn(name), &policyv1.PodDisruptionBudget{}))
+		require.NoError(t, fclient.Get(ctx, nsn(name), &networkingv1.NetworkPolicy{}))
+		require.NoError(t, fclient.Get(ctx, nsn(name), &vpav1.VerticalPodAutoscaler{}))
+		require.NoError(t, fclient.Get(ctx, nsn("single-external"), &corev1.Service{}))
 
-		// switch to cluster mode keeps storage settings and deploys select
+		// remove all optional objects
 		cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
-		cr.Spec.Mode = vmv1.VMEstimatorModeCluster
+		cr.Spec.Storage = &vmv1.VMEstimatorStorage{}
 		fclient.Scheme().Default(cr)
 		require.NoError(t, CreateOrUpdate(ctx, fclient, cr))
-		assert.Contains(t, storageArgs(), exposeAtArg)
-		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-select-base"), &appsv1.Deployment{}))
-		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-select-base"), &corev1.Service{}))
-		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-storage-base"), &policyv1.PodDisruptionBudget{}))
+		assert.True(t, k8serrors.IsNotFound(fclient.Get(ctx, nsn(name), &policyv1.PodDisruptionBudget{})))
+		assert.True(t, k8serrors.IsNotFound(fclient.Get(ctx, nsn(name), &networkingv1.NetworkPolicy{})))
+		assert.True(t, k8serrors.IsNotFound(fclient.Get(ctx, nsn(name), &vpav1.VerticalPodAutoscaler{})))
+		assert.True(t, k8serrors.IsNotFound(fclient.Get(ctx, nsn("single-external"), &corev1.Service{})))
 
-		// switch back to single mode removes select
-		cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
-		cr.Spec.Mode = vmv1.VMEstimatorModeSingle
-		fclient.Scheme().Default(cr)
-		require.NoError(t, CreateOrUpdate(ctx, fclient, cr))
-		assert.NotContains(t, storageArgs(), exposeAtArg)
-		assert.True(t, k8serrors.IsNotFound(fclient.Get(ctx, nsn("vmestimator-select-base"), &appsv1.Deployment{})))
-		assert.True(t, k8serrors.IsNotFound(fclient.Get(ctx, nsn("vmestimator-select-base"), &corev1.Service{})))
-		assert.True(t, k8serrors.IsNotFound(fclient.Get(ctx, nsn("vmestimator-select-base"), &vmv1beta1.VMServiceScrape{})))
-		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-storage-base"), &policyv1.PodDisruptionBudget{}))
-
-		// remote write URL is the same in both modes
-		for _, name := range []string{"vmestimator-storage-base", "vmestimator-storage-base-insert"} {
-			assert.NoError(t, fclient.Get(ctx, nsn(name), &corev1.Service{}), "service=%s", name)
-		}
+		// default service must be kept
+		assert.NoError(t, fclient.Get(ctx, nsn(name), &corev1.Service{}))
 	})
 }
 

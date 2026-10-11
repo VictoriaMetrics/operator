@@ -60388,11 +60388,12 @@ spec:
                 default: single
                 description: |-
                   Mode defines vmestimator deployment mode.
-                  In single mode the operator runs a single storage node, which accepts remote write requests
-                  and exposes cardinality estimations, spec.select is ignored.
+                  In single mode the operator runs the vmestimator-single-<name> Deployment with a single replica,
+                  which accepts remote write requests and exposes cardinality estimations, spec.select is ignored.
                   In cluster mode the operator runs spec.storage.replicaCount storage nodes, which accept remote write requests,
                   and select nodes, which query all storage nodes, merge their estimations and expose them as metrics.
-                  Remote write URL is the same in both modes.
+                  Remote write requests are accepted by the vmestimator-single-<name> service in single mode
+                  and by the vmestimator-storage-<name>-insert service in cluster mode.
                   See https://docs.victoriametrics.com/victoriametrics/vmestimator/#cluster
                 enum:
                 - single
@@ -61798,7 +61799,8 @@ spec:
               storage:
                 description: |-
                   Storage defines vmestimator storage nodes, which accept remote write requests and maintain cardinality estimations.
-                  In single mode only one storage node is deployed and spec.storage.replicaCount is ignored.
+                  In single mode it configures the single-replica Deployment instead,
+                  and spec.storage.replicaCount, rollingUpdateStrategy and rollingUpdateStrategyBehavior are ignored.
                 properties:
                   affinity:
                     description: Affinity If specified, the pod's scheduling constraints.

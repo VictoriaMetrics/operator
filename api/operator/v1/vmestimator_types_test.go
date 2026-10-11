@@ -163,7 +163,15 @@ func TestVMEstimator_Validate(t *testing.T) {
 		},
 	}, true)
 
-	// storage service name collides with the default or insert service
+	// storage service name collides with the single, default or insert service
+	f(VMEstimatorSpec{
+		Streams: streams,
+		Storage: &VMEstimatorStorage{
+			ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+				EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "vmestimator-single-test"},
+			},
+		},
+	}, true)
 	f(VMEstimatorSpec{
 		Streams: streams,
 		Storage: &VMEstimatorStorage{
@@ -180,6 +188,17 @@ func TestVMEstimator_Validate(t *testing.T) {
 			},
 		},
 	}, true)
+
+	// single service isn't used by select nodes, so it could be overridden
+	f(VMEstimatorSpec{
+		Streams: streams,
+		Storage: &VMEstimatorStorage{
+			ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
+				UseAsDefault: true,
+				Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeNodePort},
+			},
+		},
+	}, false)
 
 	// storage service must stay headless for select nodes
 	f(VMEstimatorSpec{
@@ -296,8 +315,9 @@ func TestVMEstimator_URLs(t *testing.T) {
 		}
 	}
 
-	// remote write URL points to the storage insert service even if components aren't defaulted yet
-	f(VMEstimatorSpec{}, "http://vmestimator-storage-test-insert.monitoring.svc:8490/cardinality/api/v1/write", map[vmv1beta1.ClusterComponent]string{
+	// remote write URL points to the single service even if components aren't defaulted yet
+	f(VMEstimatorSpec{}, "http://vmestimator-single-test.monitoring.svc:8490/cardinality/api/v1/write", map[vmv1beta1.ClusterComponent]string{
+		VMEstimatorComponentSingle:        "",
 		vmv1beta1.ClusterComponentStorage: "",
 		vmv1beta1.ClusterComponentSelect:  "",
 	})
@@ -313,11 +333,11 @@ func TestVMEstimator_URLs(t *testing.T) {
 				},
 			},
 		},
-	}, "https://vmestimator-storage-test-insert.monitoring.svc:9000/estimator/cardinality/api/v1/write", map[vmv1beta1.ClusterComponent]string{
-		vmv1beta1.ClusterComponentStorage: "https://vmestimator-storage-test.monitoring.svc:9000",
+	}, "https://vmestimator-single-test.monitoring.svc:9000/estimator/cardinality/api/v1/write", map[vmv1beta1.ClusterComponent]string{
+		VMEstimatorComponentSingle: "https://vmestimator-single-test.monitoring.svc:9000",
 	})
 
-	// remote write URL is the same in cluster mode
+	// in cluster mode remote write requests are load-balanced among storage nodes by the insert service
 	f(VMEstimatorSpec{
 		Mode:    VMEstimatorModeCluster,
 		Storage: &VMEstimatorStorage{},
@@ -380,6 +400,16 @@ func TestVMEstimator_PodLabels(t *testing.T) {
 	}, cr.PodLabels(vmv1beta1.ClusterComponentStorage))
 	assert.Equal(t, map[string]string{"owner": "sre"}, cr.PodAnnotations(vmv1beta1.ClusterComponentStorage))
 
+	// the single-replica Deployment uses spec.storage pod metadata
+	assert.Equal(t, map[string]string{
+		"app.kubernetes.io/name":      "vmestimator-single",
+		"app.kubernetes.io/instance":  "test",
+		"app.kubernetes.io/component": "monitoring",
+		"managed-by":                  "vm-operator",
+		"team":                        "observability",
+	}, cr.PodLabels(VMEstimatorComponentSingle))
+	assert.Equal(t, map[string]string{"owner": "sre"}, cr.PodAnnotations(VMEstimatorComponentSingle))
+
 	// components without pod metadata
 	assert.Equal(t, cr.SelectorLabels(vmv1beta1.ClusterComponentSelect), cr.PodLabels(vmv1beta1.ClusterComponentSelect))
 	assert.Nil(t, cr.PodAnnotations(vmv1beta1.ClusterComponentSelect))
@@ -406,9 +436,11 @@ func TestVMEstimator_ValidateNames(t *testing.T) {
 	single := VMEstimatorSpec{Streams: streams}
 	cluster := VMEstimatorSpec{Mode: VMEstimatorModeCluster, Streams: streams}
 
-	// storage StatefulSet name vmestimator-storage-<name> must not exceed 52 chars in both modes
-	f(nameOfLen(32), single, false)
-	f(nameOfLen(33), single, true)
+	// single Service name vmestimator-single-<name> must not exceed 63 chars
+	f(nameOfLen(44), single, false)
+	f(nameOfLen(45), single, true)
+
+	// storage StatefulSet name vmestimator-storage-<name> must not exceed 52 chars
 	f(nameOfLen(32), cluster, false)
 	f(nameOfLen(33), cluster, true)
 
@@ -430,6 +462,9 @@ func TestVMEstimator_RemoteWriteURLWithServiceOverride(t *testing.T) {
 			},
 		},
 	}
+	assert.Equal(t, "http://vmestimator-single-test.monitoring.svc:80/cardinality/api/v1/write", cr.RemoteWriteURL())
+
 	// insert service inherits ports of the default storage service
+	cr.Spec.Mode = VMEstimatorModeCluster
 	assert.Equal(t, "http://vmestimator-storage-test-insert.monitoring.svc:80/cardinality/api/v1/write", cr.RemoteWriteURL())
 }

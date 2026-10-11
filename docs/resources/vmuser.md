@@ -91,6 +91,7 @@ Operator supports following kinds in `kind` field:
 - `VLCluster/vmselect`, `VLCluster/vlinsert` and `VLCluster/vlstorage` for [VLCluster](https://docs.victoriametrics.com/operator/resources/vlcluster/)
 - `VTCluster/vtselect`, `VTCluster/vtinsert` and `VTCluster/vtstorage` for [VTCluster](https://docs.victoriametrics.com/operator/resources/vtcluster/)
 - `VLAgent` for [VLAgent](https://docs.victoriametrics.com/operator/resources/vlagent/)
+- `VTAgent` for [VTAgent](https://docs.victoriametrics.com/operator/resources/vtagent/)
 
 Also, you can check out the [examples](https://docs.victoriametrics.com/operator/resources/vmuser/#examples) section.
 

@@ -19,12 +19,12 @@ import (
 // VMClusterSpec defines the desired state of VMCluster
 // +k8s:openapi-gen=true
 type VMClusterSpec struct {
-	// RetentionPeriod defines how long to retain stored metrics, specified as a duration (e.g., "1d", "1w", "1m").
+	// RetentionPeriod defines how long to retain stored metrics, specified as a duration (e.g., "1d", "1w", "1M").
 	// Data with timestamps outside the RetentionPeriod is automatically deleted. The minimum allowed value is 1d, or 24h.
 	// The default value is 1 (one month).
 	// See [retention](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention) docs for details.
 	// +optional
-	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|w|y)?$"
+	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|w|y|M)?$"
 	RetentionPeriod string `json:"retentionPeriod,omitempty"`
 	// ReplicationFactor defines how many copies of data make among
 	// distinct storage nodes

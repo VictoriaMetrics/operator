@@ -21,11 +21,14 @@ type VMUserOIDC struct {
 // VMAccessClaim defines vm_access claim parameters used for request templating
 type VMAccessClaim struct {
 	// MetricsAccountID defines accountID to use for metrics requests templating
+	// Set it to 0 to select the default tenant; omit the field to leave it unset, so an explicit zero is preserved instead of being dropped.
 	// +optional
-	MetricsAccountID uint32 `json:"metricsAccountID,omitempty"`
+	MetricsAccountID *uint32 `json:"metricsAccountID,omitempty"`
 	// MetricsProjectID defines projectID to use for metrics requests templating
+	// Pointer is used to distinguish an unset value from an explicit zero value,
+	// since zero is a valid projectID and selects the default tenant.
 	// +optional
-	MetricsProjectID uint32 `json:"metricsProjectID,omitempty"`
+	MetricsProjectID *uint32 `json:"metricsProjectID,omitempty"`
 	// MetricsExtraFilters defines a list of promql filters to apply for metrics requests templating
 	// +optional
 	MetricsExtraFilters []string `json:"metricsExtraFilters,omitempty"`
@@ -33,11 +36,15 @@ type VMAccessClaim struct {
 	// +optional
 	MetricsExtraLabels []string `json:"metricsExtraLabels,omitempty"`
 	// LogsAccountID defines accountID to use for logs requests templating
+	// Pointer is used to distinguish an unset value from an explicit zero value,
+	// since zero is a valid accountID and selects the default tenant.
 	// +optional
-	LogsAccountID uint32 `json:"logsAccountID,omitempty"`
+	LogsAccountID *uint32 `json:"logsAccountID,omitempty"`
 	// LogsProjectID defines projectID to use for logs requests templating
+	// Pointer is used to distinguish an unset value from an explicit zero value,
+	// since zero is a valid projectID and selects the default tenant.
 	// +optional
-	LogsProjectID uint32 `json:"logsProjectID,omitempty"`
+	LogsProjectID *uint32 `json:"logsProjectID,omitempty"`
 	// LogsExtraFilters defines a list of logsql filters to apply for logs requests templating
 	// +optional
 	LogsExtraFilters []string `json:"logsExtraFilters,omitempty"`
@@ -236,8 +243,8 @@ type NamespacedName struct {
 // CRDRef describe CRD target reference.
 type CRDRef struct {
 	// Kind one of:
-	// VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert,VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage VMAnomaly and VLAgent
-	// +kubebuilder:validation:Enum=VMAgent;VMAlert;VMSingle;VLogs;VMAlertManager;VMAlertmanager;VMCluster/vmselect;VMCluster/vmstorage;VMCluster/vminsert;VLSingle;VLCluster/vlinsert;VLCluster/vlselect;VLCluster/vlstorage;VLAgent;VTCluster/vtinsert;VTCluster/vtselect;VTCluster/vtstorage;VTSingle;VMAnomaly
+	// VMAgent, VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage, VMCluster/vminsert, VMAlertManager, VLSingle, VLCluster/vlinsert, VLCluster/vlselect, VLCluster/vlstorage, VTSingle, VTCluster/vtinsert, VTCluster/vtselect, VTCluster/vtstorage, VTAgent, VMAnomaly and VLAgent
+	// +kubebuilder:validation:Enum=VMAgent;VMAlert;VMSingle;VLogs;VMAlertManager;VMAlertmanager;VMCluster/vmselect;VMCluster/vmstorage;VMCluster/vminsert;VLSingle;VLCluster/vlinsert;VLCluster/vlselect;VLCluster/vlstorage;VLAgent;VTCluster/vtinsert;VTCluster/vtselect;VTCluster/vtstorage;VTSingle;VTAgent;VMAnomaly
 	Kind           string `json:"kind"`
 	NamespacedName `json:",inline"`
 	// Objects defines list of name/namespace pairs that define existing k8s object

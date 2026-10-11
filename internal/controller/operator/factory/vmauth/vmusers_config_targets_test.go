@@ -16,7 +16,7 @@ import (
 func Test_newTargetObject(t *testing.T) {
 	for _, kind := range []string{
 		"VMAgent", "VMAlert", "VMSingle", "VLogs", "VMAlertmanager", "VMAlertManager",
-		"VMAnomaly", "VLSingle", "VLAgent", "VTSingle",
+		"VMAnomaly", "VLSingle", "VLAgent", "VTSingle", "VTAgent",
 	} {
 		if _, err := newTargetObject(kind); err != nil {
 			t.Errorf("kind=%q: %s", kind, err)

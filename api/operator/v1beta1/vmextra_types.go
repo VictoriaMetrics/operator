@@ -1839,8 +1839,37 @@ type Condition struct {
 	Message string `json:"message,omitempty"`
 }
 
+// StringOrInt represents a string value, which could be defined as an integer as well,
+// e.g. `0` is the same as `"0"`
+// +kubebuilder:validation:XIntOrString
+// +kubebuilder:validation:Type=""
+type StringOrInt string
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (s *StringOrInt) UnmarshalJSON(data []byte) error {
+	if len(data) == 0 || string(data) == "null" {
+		return nil
+	}
+	if data[0] == '"' {
+		var strV string
+		if err := json.Unmarshal(data, &strV); err != nil {
+			return fmt.Errorf("cannot parse string value: %w", err)
+		}
+		*s = StringOrInt(strV)
+		return nil
+	}
+	var iv int64
+	if err := json.Unmarshal(data, &iv); err != nil {
+		return fmt.Errorf("cannot parse value as integer or string: %w", err)
+	}
+	*s = StringOrInt(strconv.FormatInt(iv, 10))
+	return nil
+}
+
 // BytesString represents bytes value defined directly as integer
 // or as a string with suffix - kb,mb,gb,tb,KiB,MiB,GiB,TiB
+// +kubebuilder:validation:XIntOrString
+// +kubebuilder:validation:Type=""
 type BytesString string
 
 var bytesStringRe = regexp.MustCompile(`^[0-9]+(kb|mb|gb|tb|KB|MB|GB|TB|KiB|MiB|GiB|TiB)?$`)

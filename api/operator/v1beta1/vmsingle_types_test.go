@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -212,6 +213,23 @@ func TestVMSingle_Validate(t *testing.T) {
 		RetentionPeriod:  "1y",
 		RetentionFilters: &RetentionFiltersConfig{{Filter: `{env="dev"}`, Retention: "1y"}},
 	}, false)
+}
+
+func TestVMSingle_UnmarshalRetentionPeriod(t *testing.T) {
+	f := func(retentionPeriod string, want StringOrInt) {
+		t.Helper()
+		var cr VMSingle
+		assert.NoError(t, json.Unmarshal([]byte(`{"spec":{"retentionPeriod":`+retentionPeriod+`}}`), &cr))
+		assert.Empty(t, cr.Status.ParsingSpecError)
+		assert.Equal(t, want, cr.Spec.RetentionPeriod)
+		assert.NoError(t, cr.Validate())
+	}
+
+	// number of months defined as integer
+	f(`1`, "1")
+
+	// duration with unit
+	f(`"1y"`, "1y")
 }
 
 func TestVMSingle_PrefixedName(t *testing.T) {

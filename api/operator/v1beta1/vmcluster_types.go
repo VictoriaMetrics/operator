@@ -24,8 +24,9 @@ type VMClusterSpec struct {
 	// The default value is 1 (one month).
 	// See [retention](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention) docs for details.
 	// +optional
+	// +kubebuilder:validation:XIntOrString
 	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|w|y|M)?$"
-	RetentionPeriod string `json:"retentionPeriod,omitempty"`
+	RetentionPeriod StringOrInt `json:"retentionPeriod,omitempty"`
 	// ReplicationFactor defines how many copies of data make among
 	// distinct storage nodes
 	// +optional
@@ -843,7 +844,7 @@ func (cr *VMCluster) Validate() error {
 				return err
 			}
 		}
-		if err := vms.RetentionFilters.validate(cr.Spec.License, cr.Spec.RetentionPeriod); err != nil {
+		if err := vms.RetentionFilters.validate(cr.Spec.License, string(cr.Spec.RetentionPeriod)); err != nil {
 			return err
 		}
 		if vms.RollingUpdateStrategyBehavior != nil {

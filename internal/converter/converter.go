@@ -1396,7 +1396,7 @@ func convertVMSingleSpec(values *VMSingleHelmValues) (*vmv1beta1.VMSingleSpec, e
 	spec.VolumeMounts = cfg.VolumeMounts
 
 	if values.Server.RetentionPeriod != nil {
-		spec.RetentionPeriod = fmt.Sprint(values.Server.RetentionPeriod)
+		spec.RetentionPeriod = vmv1beta1.StringOrInt(fmt.Sprint(values.Server.RetentionPeriod))
 	}
 
 	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
@@ -1648,7 +1648,7 @@ func convertVMClusterSpec(values *VMClusterHelmValues) (*vmv1beta1.VMClusterSpec
 	}
 
 	if values.VMStorage.RetentionPeriod != nil {
-		spec.RetentionPeriod = fmt.Sprint(values.VMStorage.RetentionPeriod)
+		spec.RetentionPeriod = vmv1beta1.StringOrInt(fmt.Sprint(values.VMStorage.RetentionPeriod))
 	}
 
 	if values.VMSelect.Enabled == nil || *values.VMSelect.Enabled {
@@ -1877,7 +1877,7 @@ func convertVLogsSpec(values *VLogsHelmValues) (*vmv1beta1.VLogsSpec, error) {
 	spec.ServiceSpec = cfg.ServiceSpec
 
 	if values.Server.RetentionPeriod != nil {
-		spec.RetentionPeriod = fmt.Sprint(values.Server.RetentionPeriod)
+		spec.RetentionPeriod = vmv1beta1.StringOrInt(fmt.Sprint(values.Server.RetentionPeriod))
 	}
 
 	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
@@ -1902,7 +1902,7 @@ func convertVTSingleSpec(values *VTSingleHelmValues) (*vmv1.VTSingleSpec, error)
 	spec.ServiceSpec = cfg.ServiceSpec
 
 	if values.Server.RetentionPeriod != nil {
-		spec.RetentionPeriod = fmt.Sprint(values.Server.RetentionPeriod)
+		spec.RetentionPeriod = vmv1beta1.StringOrInt(fmt.Sprint(values.Server.RetentionPeriod))
 	}
 
 	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {

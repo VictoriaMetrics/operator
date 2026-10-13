@@ -634,5 +634,5 @@ func Test_CreateOrUpdate_Paused(t *testing.T) {
 	// check that retention is not updated
 	err = fclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: "test-dist-paused-zone-1"}, &vmCluster)
 	assert.NoError(t, err)
-	assert.Equal(t, "1", vmCluster.Spec.RetentionPeriod)
+	assert.Equal(t, vmv1beta1.StringOrInt("1"), vmCluster.Spec.RetentionPeriod)
 }

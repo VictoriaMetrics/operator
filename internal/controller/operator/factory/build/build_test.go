@@ -306,7 +306,7 @@ func TestDeepMerge(t *testing.T) {
 		validate: func(_, merged *vmv1beta1.VMClusterSpec, err error) {
 			assert.Equal(t, "v2.0.0", merged.ClusterVersion)
 			assert.Equal(t, "global-sa", merged.ServiceAccountName)
-			assert.Equal(t, "30d", merged.RetentionPeriod)
+			assert.Equal(t, vmv1beta1.StringOrInt("30d"), merged.RetentionPeriod)
 		},
 	})
 
@@ -320,7 +320,7 @@ func TestDeepMerge(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, "v2.0.0", merged.ClusterVersion)
 			assert.Equal(t, "global-sa", merged.ServiceAccountName)
-			assert.Equal(t, "30d", merged.RetentionPeriod)
+			assert.Equal(t, vmv1beta1.StringOrInt("30d"), merged.RetentionPeriod)
 		},
 	}, opts{
 		override: &vmv1beta1.VMClusterSpec{
@@ -329,9 +329,9 @@ func TestDeepMerge(t *testing.T) {
 		},
 		validate: func(_, merged *vmv1beta1.VMClusterSpec, err error) {
 			assert.NoError(t, err)
-			assert.Equal(t, "v3.0.0", merged.ClusterVersion)        // Cluster-specific override should take precedence
-			assert.Equal(t, "global-sa", merged.ServiceAccountName) // From global override, unchanged by cluster override
-			assert.Equal(t, "10d", merged.RetentionPeriod)          // From cluster override
+			assert.Equal(t, "v3.0.0", merged.ClusterVersion)                      // Cluster-specific override should take precedence
+			assert.Equal(t, "global-sa", merged.ServiceAccountName)               // From global override, unchanged by cluster override
+			assert.Equal(t, vmv1beta1.StringOrInt("10d"), merged.RetentionPeriod) // From cluster override
 		},
 	})
 }

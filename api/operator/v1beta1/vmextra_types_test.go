@@ -176,6 +176,31 @@ func TestStringOrIntMarshal(t *testing.T) {
 	f("15:13", json.Marshal, `"15:13"`)
 }
 
+func TestBytesStringUnmarshal(t *testing.T) {
+	f := func(src string, expected BytesString, wantErr bool) {
+		t.Helper()
+		var got BytesString
+		err := json.Unmarshal([]byte(src), &got)
+		if wantErr {
+			assert.Error(t, err)
+			return
+		}
+		assert.NoError(t, err)
+		assert.Equal(t, expected, got)
+	}
+
+	// integer
+	f(`1073741824`, "1073741824", false)
+	f(`0`, "0", false)
+
+	// string with suffix
+	f(`"1GB"`, "1GB", false)
+
+	// negative values
+	f(`-1`, "", true)
+	f(`"-1"`, "", true)
+}
+
 func TestUseProxyProtocol(t *testing.T) {
 	type opts struct {
 		args     map[string]string

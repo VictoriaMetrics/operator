@@ -62,6 +62,7 @@ type VMSingleSpec struct {
 	// +optional
 	// +kubebuilder:validation:XIntOrString
 	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|w|y|M)?$"
+	// +kubebuilder:validation:XValidation:rule="type(self) == string || self >= 0",message="must not be negative"
 	RetentionPeriod StringOrInt `json:"retentionPeriod,omitempty"`
 	// VMBackup configuration for backup
 	// +optional

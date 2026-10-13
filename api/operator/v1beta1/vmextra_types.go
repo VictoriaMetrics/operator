@@ -1870,6 +1870,7 @@ func (s *StringOrInt) UnmarshalJSON(data []byte) error {
 // or as a string with suffix - kb,mb,gb,tb,KiB,MiB,GiB,TiB
 // +kubebuilder:validation:XIntOrString
 // +kubebuilder:validation:Type=""
+// +kubebuilder:validation:XValidation:rule="type(self) == string || self >= 0",message="must not be negative"
 type BytesString string
 
 var bytesStringRe = regexp.MustCompile(`^[0-9]+(kb|mb|gb|tb|KB|MB|GB|TB|KiB|MiB|GiB|TiB)?$`)
@@ -1894,6 +1895,9 @@ func (bs *BytesString) UnmarshalJSON(data []byte) error {
 	var iv int64
 	if err := json.Unmarshal(data, &iv); err != nil {
 		return fmt.Errorf("cannot parse BytesString as integer or string: %w", err)
+	}
+	if iv < 0 {
+		return fmt.Errorf("bytes value=%d must not be negative", iv)
 	}
 	sv := strconv.FormatInt(iv, 10)
 	*bs = BytesString(sv)

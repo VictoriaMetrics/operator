@@ -60392,8 +60392,9 @@ spec:
                   which accepts remote write requests and exposes cardinality estimations, spec.select is ignored.
                   In cluster mode the operator runs spec.storage.replicaCount storage nodes, which accept remote write requests,
                   and select nodes, which query all storage nodes, merge their estimations and expose them as metrics.
-                  Remote write requests are accepted by the vmestimator-single-<name> service in single mode
-                  and by the vmestimator-storage-<name>-insert service in cluster mode.
+                  In both modes remote write requests are accepted by the vmestimator-insert-<name> service
+                  and cardinality estimations are exposed by the vmestimator-<name> service,
+                  so switching the mode doesn't change their URLs.
                   See https://docs.victoriametrics.com/victoriametrics/vmestimator/#cluster
                 enum:
                 - single

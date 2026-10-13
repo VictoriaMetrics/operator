@@ -60,28 +60,15 @@ func buildStorageService(cr *vmv1.VMEstimator) *corev1.Service {
 	})
 }
 
-// buildStorageInsertService builds service, which load-balances remote write requests among storage nodes.
-// It's marked as additional service in order to exclude it from VMServiceScrape selector.
-func buildStorageInsertService(cr *vmv1.VMEstimator, storageSvc *corev1.Service) *corev1.Service {
-	return build.AdditionalServiceFromDefault(storageSvc, &vmv1beta1.AdditionalServiceSpec{
-		EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
-			Name: cr.PrefixedInsertName(),
-		},
-		Spec: corev1.ServiceSpec{
-			Type: corev1.ServiceTypeClusterIP,
-		},
-	})
-}
-
 func createOrUpdateStorageService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator) error {
 	var prevSvc, prevInsertSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil {
 		prevSvc = buildStorageService(prevCR)
-		prevInsertSvc = buildStorageInsertService(prevCR, prevSvc)
+		prevInsertSvc = buildInsertService(prevCR, prevSvc)
 		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.Storage.ServiceSpec)
 	}
 	svc := buildStorageService(cr)
-	insertSvc := buildStorageInsertService(cr, svc)
+	insertSvc := buildInsertService(cr, svc)
 	owner := cr.AsOwner()
 	if err := cr.Spec.Storage.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalSvc := build.AdditionalServiceFromDefault(svc, s)

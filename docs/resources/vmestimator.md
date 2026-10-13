@@ -31,12 +31,12 @@ The deployment mode is defined at `spec.mode`:
 In single mode `spec.storage.replicaCount`, `spec.storage.rollingUpdateStrategy` and `spec.storage.rollingUpdateStrategyBehavior`
 are ignored. Select nodes are configured at `spec.select` and used only in cluster mode.
 Both sections can be kept in the spec, so switching the mode requires changing only `spec.mode`.
+Remote write and query URLs are the same in both modes, see [Services and URLs](https://docs.victoriametrics.com/operator/resources/vmestimator/#services-and-urls),
+so remote write clients, for example `VMAgent`, don't need to be reconfigured.
 Switching the mode replaces the workloads of the previous mode, so estimations are accumulated again after the switch.
-Remote write URL depends on the mode, see [Services and URLs](https://docs.victoriametrics.com/operator/resources/vmestimator/#services-and-urls).
 
-For each component the Operator adds `Service` and `VMServiceScrape` in the same namespace,
-prefixed with `vmestimator-<component>-` and the name from `VMEstimator.metadata.name`.
-Because of this prefix, the object name must not exceed 44 characters in single mode and 32 characters in cluster mode.
+Objects of each component are prefixed with `vmestimator-<component>-` and the name from `VMEstimator.metadata.name`.
+Because of these prefixes, the object name must not exceed 44 characters in single mode and 32 characters in cluster mode.
 
 ## Specification
 
@@ -93,15 +93,11 @@ For a `VMEstimator` named `<name>` in namespace `<namespace>`, the Operator crea
 
 | Service name | Mode | Type | Port | Purpose |
 |---|---|---|---|---|
-| `vmestimator-single-<name>` | single | ClusterIP | 8490 | Remote write ingestion and cardinality metrics |
-| `vmestimator-storage-<name>-insert` | cluster | ClusterIP | 8490 | Remote write ingestion, load-balanced among storage nodes |
+| `vmestimator-insert-<name>` | single, cluster | ClusterIP | 8490 | Remote write ingestion: the single-replica `Deployment` in single mode, load-balanced among storage nodes in cluster mode |
+| `vmestimator-<name>` | single, cluster | ClusterIP | 8490 | Cardinality metrics: the single-replica `Deployment` in single mode, merged by select nodes in cluster mode |
 | `vmestimator-storage-<name>` | cluster | Headless | 8490 | Stable network identities of storage nodes, used by select nodes |
-| `vmestimator-select-<name>` | cluster | ClusterIP | 8490 | Merged cardinality metrics |
 
-Remote write URL:
-
-* single mode: `http://vmestimator-single-<name>.<namespace>.svc:8490/cardinality/api/v1/write`
-* cluster mode: `http://vmestimator-storage-<name>-insert.<namespace>.svc:8490/cardinality/api/v1/write`
+Remote write URL is the same in both modes: `http://vmestimator-insert-<name>.<namespace>.svc:8490/cardinality/api/v1/write`.
 
 In single mode vmestimator exposes cardinality estimations at `/metrics` path.
 In cluster mode storage nodes expose local cardinality estimations at `/cardinality/metrics` path,
@@ -146,8 +142,7 @@ spec:
   selectAllByDefault: true
   remoteWrite:
     - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
-    # remote write URL of VMEstimator in single mode
-    - url: "http://vmestimator-single-example.default.svc:8490/cardinality/api/v1/write"
+    - url: "http://vmestimator-insert-example.default.svc:8490/cardinality/api/v1/write"
   extraArgs:
     # values are applied to remoteWrite urls in the order of their definition
     remoteWrite.disableOnDiskQueue: "false,true"

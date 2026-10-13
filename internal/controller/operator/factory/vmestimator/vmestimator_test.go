@@ -346,23 +346,32 @@ func TestCreateOrUpdate(t *testing.T) {
 			require.Len(t, dep.Spec.Template.Spec.Volumes, 1)
 			assert.Equal(t, "vmestimator-base", dep.Spec.Template.Spec.Volumes[0].ConfigMap.Name)
 
-			// remote write requests are accepted by the single service
+			// cardinality estimations are exposed by the query service
 			var svc corev1.Service
-			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-single-base"), &svc))
+			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-base"), &svc))
 			assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
 			assert.NotEqual(t, corev1.ClusterIPNone, svc.Spec.ClusterIP)
 			assert.Equal(t, int32(8490), svc.Spec.Ports[0].Port)
 			assert.Equal(t, cr.SelectorLabels(vmv1.VMEstimatorComponentSingle), svc.Spec.Selector)
 
-			var svs vmv1beta1.VMServiceScrape
-			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-single-base"), &svs))
-			assert.Equal(t, "/metrics", svs.Spec.Endpoints[0].Path)
+			// remote write requests are accepted by the insert service
+			var insertSvc corev1.Service
+			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-insert-base"), &insertSvc))
+			assert.Equal(t, corev1.ServiceTypeClusterIP, insertSvc.Spec.Type)
+			assert.Equal(t, int32(8490), insertSvc.Spec.Ports[0].Port)
+			assert.Equal(t, cr.SelectorLabels(vmv1.VMEstimatorComponentSingle), insertSvc.Spec.Selector)
+			assert.Equal(t, "managed", insertSvc.Labels[vmv1beta1.AdditionalServiceLabel])
+
+			// insert service must not be scraped
+			var svsList vmv1beta1.VMServiceScrapeList
+			require.NoError(t, rclient.List(ctx, &svsList, client.InNamespace("default")))
+			require.Len(t, svsList.Items, 1)
+			assert.Equal(t, "vmestimator-base", svsList.Items[0].Name)
+			assert.Equal(t, "/metrics", svsList.Items[0].Spec.Endpoints[0].Path)
 
 			// storage and select nodes aren't deployed in single mode
 			assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn("vmestimator-storage-base"), &appsv1.StatefulSet{})))
-			for _, name := range []string{"vmestimator-storage-base", "vmestimator-storage-base-insert"} {
-				assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn(name), &corev1.Service{})), "service=%s", name)
-			}
+			assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn("vmestimator-storage-base"), &corev1.Service{})))
 			assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn("vmestimator-select-base"), &appsv1.Deployment{})))
 		},
 	})
@@ -386,7 +395,9 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.Equal(t, ptr.To(int32(1)), dep.Spec.Replicas)
 			assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn("vmestimator-storage-base"), &appsv1.StatefulSet{})))
 			assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn("vmestimator-select-base"), &appsv1.Deployment{})))
-			assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn("vmestimator-select-base"), &corev1.Service{})))
+			var svc corev1.Service
+			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-base"), &svc))
+			assert.Equal(t, cr.SelectorLabels(vmv1.VMEstimatorComponentSingle), svc.Spec.Selector)
 		},
 	})
 
@@ -436,7 +447,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.True(t, svc.Spec.PublishNotReadyAddresses)
 
 			var insertSvc corev1.Service
-			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-storage-base-insert"), &insertSvc))
+			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-insert-base"), &insertSvc))
 			assert.Equal(t, corev1.ServiceTypeClusterIP, insertSvc.Spec.Type)
 			assert.NotEqual(t, corev1.ClusterIPNone, insertSvc.Spec.ClusterIP)
 			assert.False(t, insertSvc.Spec.PublishNotReadyAddresses)
@@ -455,8 +466,10 @@ func TestCreateOrUpdate(t *testing.T) {
 				"-storageNode=http://vmestimator-storage-base-0.vmestimator-storage-base.default:8490,http://vmestimator-storage-base-1.vmestimator-storage-base.default:8490",
 			}, dep.Spec.Template.Spec.Containers[0].Args)
 
-			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-select-base"), &svc))
+			// merged cardinality estimations are exposed by the query service
+			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-base"), &svc))
 			assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
+			assert.Equal(t, cr.SelectorLabels(vmv1beta1.ClusterComponentSelect), svc.Spec.Selector)
 
 			// insert service must not be scraped
 			var svsList vmv1beta1.VMServiceScrapeList
@@ -465,7 +478,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			for _, svs := range svsList.Items {
 				scrapeNames = append(scrapeNames, svs.Name)
 			}
-			assert.ElementsMatch(t, []string{"vmestimator-storage-base", "vmestimator-select-base"}, scrapeNames)
+			assert.ElementsMatch(t, []string{"vmestimator-storage-base", "vmestimator-base"}, scrapeNames)
 		},
 	})
 
@@ -588,7 +601,7 @@ func TestCreateOrUpdate(t *testing.T) {
 
 			// additional services must not be scraped
 			var svs vmv1beta1.VMServiceScrape
-			require.NoError(t, rclient.Get(ctx, nsn(name), &svs))
+			require.NoError(t, rclient.Get(ctx, nsn("vmestimator-base"), &svs))
 			assert.Contains(t, svs.Spec.Selector.MatchExpressions, metav1.LabelSelectorRequirement{
 				Key:      vmv1beta1.AdditionalServiceLabel,
 				Operator: metav1.LabelSelectorOpDoesNotExist,
@@ -830,12 +843,35 @@ func TestCreateOrUpdate_ModeSwitch(t *testing.T) {
 			},
 		},
 	}
+	// query and insert services are the same in both modes, only pods behind them are changed
+	expectServices := func(queryKind, insertKind vmv1beta1.ClusterComponent) {
+		t.Helper()
+		var svc corev1.Service
+		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-base"), &svc))
+		assert.Equal(t, cr.SelectorLabels(queryKind), svc.Spec.Selector)
+		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-insert-base"), &svc))
+		assert.Equal(t, cr.SelectorLabels(insertKind), svc.Spec.Selector)
+		var svs vmv1beta1.VMServiceScrape
+		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-base"), &svs))
+		assert.Equal(t, cr.SelectorLabels(queryKind)["app.kubernetes.io/name"], svs.Spec.Selector.MatchLabels["app.kubernetes.io/name"])
+	}
+	scrapeNames := func() []string {
+		t.Helper()
+		var svsList vmv1beta1.VMServiceScrapeList
+		require.NoError(t, fclient.List(ctx, &svsList, client.InNamespace("default")))
+		var names []string
+		for _, svs := range svsList.Items {
+			names = append(names, svs.Name)
+		}
+		return names
+	}
 	synctest.Test(t, func(t *testing.T) {
 		fclient.Scheme().Default(cr)
 		require.NoError(t, CreateOrUpdate(ctx, fclient, cr))
 		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-single-base"), &appsv1.Deployment{}))
-		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-single-base"), &corev1.Service{}))
 		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-single-base"), &policyv1.PodDisruptionBudget{}))
+		expectServices(vmv1.VMEstimatorComponentSingle, vmv1.VMEstimatorComponentSingle)
+		assert.ElementsMatch(t, []string{"vmestimator-base"}, scrapeNames())
 
 		// switch to cluster mode replaces the single-replica Deployment with storage and select nodes
 		cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
@@ -846,14 +882,12 @@ func TestCreateOrUpdate_ModeSwitch(t *testing.T) {
 		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-storage-base"), &sts))
 		assert.Contains(t, sts.Spec.Template.Spec.Containers[0].Args, "-cardinalityMetrics.exposeAt=/cardinality/metrics")
 		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-select-base"), &appsv1.Deployment{}))
-		for _, name := range []string{"vmestimator-storage-base", "vmestimator-storage-base-insert", "vmestimator-select-base"} {
-			require.NoError(t, fclient.Get(ctx, nsn(name), &corev1.Service{}), "service=%s", name)
-		}
+		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-storage-base"), &corev1.Service{}))
+		expectServices(vmv1beta1.ClusterComponentSelect, vmv1beta1.ClusterComponentStorage)
+		assert.ElementsMatch(t, []string{"vmestimator-base", "vmestimator-storage-base"}, scrapeNames())
 		// storage settings are applied to storage nodes
 		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-storage-base"), &policyv1.PodDisruptionBudget{}))
 		assertNotFound("vmestimator-single-base", &appsv1.Deployment{})
-		assertNotFound("vmestimator-single-base", &corev1.Service{})
-		assertNotFound("vmestimator-single-base", &vmv1beta1.VMServiceScrape{})
 		assertNotFound("vmestimator-single-base", &policyv1.PodDisruptionBudget{})
 		createReadyStsPods(ctx, t, fclient, nsn("vmestimator-storage-base"))
 
@@ -863,18 +897,13 @@ func TestCreateOrUpdate_ModeSwitch(t *testing.T) {
 		fclient.Scheme().Default(cr)
 		require.NoError(t, CreateOrUpdate(ctx, fclient, cr))
 		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-single-base"), &appsv1.Deployment{}))
-		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-single-base"), &corev1.Service{}))
-		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-single-base"), &vmv1beta1.VMServiceScrape{}))
 		require.NoError(t, fclient.Get(ctx, nsn("vmestimator-single-base"), &policyv1.PodDisruptionBudget{}))
+		expectServices(vmv1.VMEstimatorComponentSingle, vmv1.VMEstimatorComponentSingle)
+		assert.ElementsMatch(t, []string{"vmestimator-base"}, scrapeNames())
 		assertNotFound("vmestimator-storage-base", &appsv1.StatefulSet{})
 		assertNotFound("vmestimator-storage-base", &policyv1.PodDisruptionBudget{})
+		assertNotFound("vmestimator-storage-base", &corev1.Service{})
 		assertNotFound("vmestimator-select-base", &appsv1.Deployment{})
-		for _, name := range []string{"vmestimator-storage-base", "vmestimator-storage-base-insert", "vmestimator-select-base"} {
-			assertNotFound(name, &corev1.Service{})
-		}
-		for _, name := range []string{"vmestimator-storage-base", "vmestimator-select-base"} {
-			assertNotFound(name, &vmv1beta1.VMServiceScrape{})
-		}
 	})
 }
 
@@ -919,8 +948,10 @@ func TestCreateOrUpdate_RemoveSingleOptionalObjects(t *testing.T) {
 		assert.True(t, k8serrors.IsNotFound(fclient.Get(ctx, nsn(name), &vpav1.VerticalPodAutoscaler{})))
 		assert.True(t, k8serrors.IsNotFound(fclient.Get(ctx, nsn("single-external"), &corev1.Service{})))
 
-		// default service must be kept
-		assert.NoError(t, fclient.Get(ctx, nsn(name), &corev1.Service{}))
+		// default services must be kept
+		for _, name := range []string{"vmestimator-base", "vmestimator-insert-base"} {
+			assert.NoError(t, fclient.Get(ctx, nsn(name), &corev1.Service{}), "service=%s", name)
+		}
 	})
 }
 
@@ -990,7 +1021,7 @@ func TestCreateOrUpdate_RemoveOptionalObjects(t *testing.T) {
 		assert.True(t, k8serrors.IsNotFound(fclient.Get(ctx, nsn("select-external"), &corev1.Service{})))
 
 		// default services must be kept
-		for _, name := range []string{"vmestimator-storage-base", "vmestimator-storage-base-insert", "vmestimator-select-base"} {
+		for _, name := range []string{"vmestimator-storage-base", "vmestimator-insert-base", "vmestimator-base"} {
 			assert.NoError(t, fclient.Get(ctx, nsn(name), &corev1.Service{}), "service=%s", name)
 		}
 	})

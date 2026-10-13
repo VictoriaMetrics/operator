@@ -50,23 +50,28 @@ func buildSingleScrape(cr *vmv1.VMEstimator, svc *corev1.Service) *vmv1beta1.VMS
 	return build.VMServiceScrape(svc, cr.Spec.Storage)
 }
 
+// buildSingleService builds the query service, which exposes cardinality estimations of the single-replica Deployment
 func buildSingleService(cr *vmv1.VMEstimator) *corev1.Service {
 	b := build.NewChildBuilder(cr, singleKind)
-	return build.Service(b, cr.Spec.Storage.Port, nil)
+	return build.Service(b, cr.Spec.Storage.Port, func(svc *corev1.Service) {
+		svc.Name = cr.PrefixedQueryName()
+	})
 }
 
 func createOrUpdateSingleService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator) error {
-	var prevSvc, prevAdditionalSvc *corev1.Service
+	var prevSvc, prevInsertSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil {
 		prevSvc = buildSingleService(prevCR)
+		prevInsertSvc = buildInsertService(prevCR, prevSvc)
 		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.Storage.ServiceSpec)
 	}
 	svc := buildSingleService(cr)
+	insertSvc := buildInsertService(cr, svc)
 	owner := cr.AsOwner()
 	if err := cr.Spec.Storage.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
-		if additionalSvc.Name == svc.Name {
-			return fmt.Errorf("single additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, svc.Name)
+		if additionalSvc.Name == svc.Name || additionalSvc.Name == insertSvc.Name {
+			return fmt.Errorf("single additional service name: %q cannot be the same as %q or %q", additionalSvc.Name, svc.Name, insertSvc.Name)
 		}
 		if err := reconcile.Service(ctx, rclient, additionalSvc, prevAdditionalSvc, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile single additional service: %w", err)
@@ -77,6 +82,9 @@ func createOrUpdateSingleService(ctx context.Context, rclient client.Client, cr,
 	}
 	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
 		return fmt.Errorf("cannot reconcile single service: %w", err)
+	}
+	if err := reconcile.Service(ctx, rclient, insertSvc, prevInsertSvc, &owner); err != nil {
+		return fmt.Errorf("cannot reconcile single insert service: %w", err)
 	}
 	if !ptr.Deref(cr.Spec.Storage.DisableSelfServiceScrape, false) {
 		svs := buildSingleScrape(cr, svc)

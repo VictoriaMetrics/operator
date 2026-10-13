@@ -55,7 +55,6 @@ const (
 	vmEstimatorName              = "vmestimator"
 	vmEstimatorDefaultPort       = "8490"
 	vmEstimatorRemoteWritePath   = "/cardinality/api/v1/write"
-	vmEstimatorInsertSuffix      = "-insert"
 	vmEstimatorDefaultInterval   = 5 * time.Minute
 	vmEstimatorMaxGroupByLabels  = 5
 	vmEstimatorStaticLabelPrefix = "by_"
@@ -119,8 +118,9 @@ type VMEstimatorSpec struct {
 	// which accepts remote write requests and exposes cardinality estimations, spec.select is ignored.
 	// In cluster mode the operator runs spec.storage.replicaCount storage nodes, which accept remote write requests,
 	// and select nodes, which query all storage nodes, merge their estimations and expose them as metrics.
-	// Remote write requests are accepted by the vmestimator-single-<name> service in single mode
-	// and by the vmestimator-storage-<name>-insert service in cluster mode.
+	// In both modes remote write requests are accepted by the vmestimator-insert-<name> service
+	// and cardinality estimations are exposed by the vmestimator-<name> service,
+	// so switching the mode doesn't change their URLs.
 	// See https://docs.victoriametrics.com/victoriametrics/vmestimator/#cluster
 	// +kubebuilder:default=single
 	// +optional
@@ -637,9 +637,16 @@ func (cr *VMEstimator) PrefixedInternalName(kind vmv1beta1.ClusterComponent) str
 	return vmv1beta1.ClusterPrefixedName(kind, cr.Name, vmEstimatorName+"-", true)
 }
 
-// PrefixedInsertName returns name of the storage service, which load-balances remote write requests among storage nodes
+// PrefixedInsertName returns name of the service, which accepts remote write requests in both modes.
+// It routes requests to the single-replica Deployment in single mode and load-balances them among storage nodes in cluster mode.
 func (cr *VMEstimator) PrefixedInsertName() string {
-	return cr.PrefixedName(vmv1beta1.ClusterComponentStorage) + vmEstimatorInsertSuffix
+	return fmt.Sprintf("%s-insert-%s", vmEstimatorName, cr.Name)
+}
+
+// PrefixedQueryName returns name of the service, which exposes cardinality estimations in both modes.
+// It routes requests to the single-replica Deployment in single mode and to select nodes in cluster mode.
+func (cr *VMEstimator) PrefixedQueryName() string {
+	return cr.PrefixedName(vmv1beta1.ClusterComponentRoot)
 }
 
 // GetConfigMapName returns name of the ConfigMap with vmestimator configuration
@@ -683,13 +690,16 @@ func (cr *VMEstimator) AsURL(kind vmv1beta1.ClusterComponent) string {
 	if port == "" {
 		port = vmEstimatorDefaultPort
 	}
-	svcName, port := vmv1beta1.ResolveServiceURL(cr.PrefixedName(kind), port, "http", svcSpec, false)
+	name := cr.PrefixedName(kind)
+	if kind == VMEstimatorComponentSingle || kind == vmv1beta1.ClusterComponentSelect {
+		name = cr.PrefixedQueryName()
+	}
+	svcName, port := vmv1beta1.ResolveServiceURL(name, port, "http", svcSpec, false)
 	return fmt.Sprintf("%s://%s.%s.svc:%s", vmv1beta1.HTTPProtoFromFlags(extraArgs), svcName, cr.Namespace, port)
 }
 
 // RemoteWriteURL returns url of Prometheus remote write API, which accepts data for cardinality estimation.
-// It points to the single-replica Deployment service in single mode
-// and to the service, which load-balances requests among storage nodes, in cluster mode.
+// It points to the insert service, so it's the same in both modes.
 func (cr *VMEstimator) RemoteWriteURL() string {
 	var port string
 	var svcSpec *vmv1beta1.AdditionalServiceSpec
@@ -700,15 +710,19 @@ func (cr *VMEstimator) RemoteWriteURL() string {
 	if port == "" {
 		port = vmEstimatorDefaultPort
 	}
-	svcName := cr.PrefixedName(VMEstimatorComponentSingle)
-	if cr.IsClusterMode() {
-		// insert service inherits ports of the default storage service, which could be changed with serviceSpec.useAsDefault
-		_, port = vmv1beta1.ResolveServiceURL(cr.PrefixedName(vmv1beta1.ClusterComponentStorage), port, "http", svcSpec, false)
-		svcName = cr.PrefixedInsertName()
-	} else {
-		svcName, port = vmv1beta1.ResolveServiceURL(svcName, port, "http", svcSpec, false)
-	}
+	// insert service inherits ports of the default service of the single-replica Deployment or storage nodes,
+	// which could be changed with serviceSpec.useAsDefault
+	svcName, port := vmv1beta1.ResolveServiceURL(cr.PrefixedInsertName(), port, "http", svcSpec, false)
 	return fmt.Sprintf("%s://%s.%s.svc:%s%s", vmv1beta1.HTTPProtoFromFlags(extraArgs), svcName, cr.Namespace, port, vmv1beta1.BuildPathWithPrefixFlag(extraArgs, vmEstimatorRemoteWritePath))
+}
+
+// serviceNames returns names of the default services, which are deployed in the current mode
+func (cr *VMEstimator) serviceNames() []string {
+	services := []string{cr.PrefixedQueryName(), cr.PrefixedInsertName()}
+	if cr.IsClusterMode() {
+		services = append(services, cr.PrefixedName(vmv1beta1.ClusterComponentStorage))
+	}
+	return services
 }
 
 // IsClusterMode returns true if vmestimator is deployed in cluster mode
@@ -741,9 +755,8 @@ func (cr *VMEstimator) Validate() error {
 		return err
 	}
 	if c := cr.Spec.Storage; c != nil {
-		names := []string{cr.PrefixedName(VMEstimatorComponentSingle), cr.PrefixedName(vmv1beta1.ClusterComponentStorage), cr.PrefixedInsertName()}
-		if c.ServiceSpec != nil && slices.Contains(names, c.ServiceSpec.Name) {
-			return fmt.Errorf("spec.storage.serviceSpec.name cannot be one of %q", names)
+		if c.ServiceSpec != nil && slices.Contains(cr.serviceNames(), c.ServiceSpec.Name) {
+			return fmt.Errorf("spec.storage.serviceSpec.name cannot be one of %q", cr.serviceNames())
 		}
 		// select nodes reach storage nodes via DNS records of the headless service
 		if cr.IsClusterMode() {
@@ -764,9 +777,8 @@ func (cr *VMEstimator) Validate() error {
 		}
 	}
 	if c := cr.Spec.Select; c != nil {
-		name := cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
-		if c.ServiceSpec != nil && c.ServiceSpec.Name == name {
-			return fmt.Errorf("spec.select.serviceSpec.name cannot be equal to prefixed name=%q", name)
+		if c.ServiceSpec != nil && slices.Contains(cr.serviceNames(), c.ServiceSpec.Name) {
+			return fmt.Errorf("spec.select.serviceSpec.name cannot be one of %q", cr.serviceNames())
 		}
 		if c.HPA != nil {
 			if err := c.HPA.Validate(); err != nil {
@@ -787,15 +799,13 @@ func (cr *VMEstimator) Validate() error {
 
 // validateNames checks that names of objects, which are derived from VMEstimator name, are accepted by Kubernetes
 func (cr *VMEstimator) validateNames() error {
-	services := []string{cr.PrefixedName(VMEstimatorComponentSingle)}
 	if cr.IsClusterMode() {
 		sts := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
 		if len(sts) > vmEstimatorMaxStatefulSetNameLen {
 			return fmt.Errorf("name=%q is too long: storage StatefulSet name %q must not exceed %d chars, otherwise its pods cannot be created", cr.Name, sts, vmEstimatorMaxStatefulSetNameLen)
 		}
-		services = []string{sts, cr.PrefixedInsertName(), cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}
 	}
-	for _, svc := range services {
+	for _, svc := range cr.serviceNames() {
 		if errs := validation.IsDNS1035Label(svc); len(errs) > 0 {
 			return fmt.Errorf("name=%q cannot be used: Service name %q is incorrect: %s", cr.Name, svc, strings.Join(errs, ", "))
 		}

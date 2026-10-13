@@ -129,6 +129,20 @@ func createOrUpdateComponentObjects(ctx context.Context, rclient client.Client, 
 	return nil
 }
 
+// buildInsertService builds service, which accepts remote write requests in both modes:
+// it routes them to the single-replica Deployment in single mode and load-balances them among storage nodes in cluster mode.
+// It's marked as additional service in order to exclude it from VMServiceScrape selector.
+func buildInsertService(cr *vmv1.VMEstimator, defaultSvc *corev1.Service) *corev1.Service {
+	return build.AdditionalServiceFromDefault(defaultSvc, &vmv1beta1.AdditionalServiceSpec{
+		EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
+			Name: cr.PrefixedInsertName(),
+		},
+		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceTypeClusterIP,
+		},
+	})
+}
+
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMEstimator) error {
 	cc := finalize.NewChildCleaner()
 	// the single-replica Deployment is deployed only in single mode
@@ -148,11 +162,12 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMEstim
 			cc.KeepVPA(commonName)
 		}
 		if !ptr.Deref(storage.DisableSelfServiceScrape, false) {
-			cc.KeepScrape(commonName)
+			cc.KeepScrape(cr.PrefixedQueryName())
 		}
-		cc.KeepService(commonName)
+		cc.KeepService(cr.PrefixedQueryName())
+		cc.KeepService(cr.PrefixedInsertName())
 		if storage.ServiceSpec != nil && !storage.ServiceSpec.UseAsDefault {
-			cc.KeepService(storage.ServiceSpec.NameOrDefault(commonName))
+			cc.KeepService(storage.ServiceSpec.NameOrDefault(cr.PrefixedQueryName()))
 		}
 	}
 
@@ -202,11 +217,11 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMEstim
 			cc.KeepVPA(commonName)
 		}
 		if !ptr.Deref(sel.DisableSelfServiceScrape, false) {
-			cc.KeepScrape(commonName)
+			cc.KeepScrape(cr.PrefixedQueryName())
 		}
-		cc.KeepService(commonName)
+		cc.KeepService(cr.PrefixedQueryName())
 		if sel.ServiceSpec != nil && !sel.ServiceSpec.UseAsDefault {
-			cc.KeepService(sel.ServiceSpec.NameOrDefault(commonName))
+			cc.KeepService(sel.ServiceSpec.NameOrDefault(cr.PrefixedQueryName()))
 		}
 	}
 

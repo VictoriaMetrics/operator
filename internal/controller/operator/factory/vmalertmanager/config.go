@@ -89,6 +89,7 @@ type receiver struct {
 type route struct {
 	Receiver            string            `yaml:"receiver,omitempty"`
 	GroupByStr          []string          `yaml:"group_by,omitempty"`
+	Labels              map[string]string `yaml:"labels,omitempty"`
 	Match               map[string]string `yaml:"match,omitempty"`
 	MatchRE             map[string]string `yaml:"match_re,omitempty"`
 	Continue            bool              `yaml:"continue,omitempty"`
@@ -359,6 +360,7 @@ func buildRoute(cr *vmv1beta1.VMAlertmanagerConfig, cfgRoute *vmv1beta1.Route, t
 	r.set("routes", nestedRoutes)
 	r.set("matchers", matchers)
 	r.set("group_by", cfgRoute.GroupBy)
+	r.set("labels", cfgRoute.Labels)
 	r.set("active_time_intervals", addPrefix(cfgRoute.ActiveTimeIntervals))
 	r.set("mute_time_intervals", addPrefix(cfgRoute.MuteTimeIntervals))
 	r.set("group_interval", cfgRoute.GroupInterval)

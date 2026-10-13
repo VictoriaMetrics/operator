@@ -35,7 +35,8 @@ Remote write and query URLs are the same in both modes, see [Services and URLs](
 so remote write clients, for example `VMAgent`, don't need to be reconfigured.
 Switching the mode replaces the workloads of the previous mode, so estimations are accumulated again after the switch.
 
-Objects of each component are prefixed with `vmestimator-<component>-` and the name from `VMEstimator.metadata.name`.
+Objects of each component, such as workloads, are prefixed with `vmestimator-<component>-` and the name from `VMEstimator.metadata.name`,
+while the query and insert services shared by both modes are named `vmestimator-<name>` and `vmestimator-insert-<name>`.
 Because of these prefixes, the object name must not exceed 44 characters in single mode and 32 characters in cluster mode.
 
 ## Specification

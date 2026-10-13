@@ -248,6 +248,9 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 				},
 				Spec: vmv1.VMEstimatorSpec{
 					Streams: []vmv1.VMEstimatorStream{{Interval: "5m"}},
+					// components are defined explicitly, since URLs of undefined components are empty
+					Storage: &vmv1.VMEstimatorStorage{},
+					Select:  &vmv1.VMEstimatorSelect{},
 				},
 			}
 			expectStatusAfterAction(ctx, &vmv1.VMEstimatorList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
@@ -268,6 +271,7 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 			// remote write and query URLs are the same in both modes, only pods behind their services are changed
 			writeURL := cr.RemoteWriteURL()
 			queryURL := cr.AsURL(vmv1.VMEstimatorComponentSingle)
+			Expect(queryURL).To(Equal(fmt.Sprintf("http://%s.%s.svc:8490", cr.PrefixedQueryName(), namespace)))
 			expectServices := func(queryKind, insertKind vmv1beta1.ClusterComponent) {
 				GinkgoHelper()
 				var got vmv1.VMEstimator
@@ -280,6 +284,7 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 				Expect(k8sClient.Get(ctx, insertNsn, &svc)).ToNot(HaveOccurred())
 				Expect(svc.Spec.Selector).To(Equal(got.SelectorLabels(insertKind)))
 				sendVMEstimatorSeries(ctx, writeURL, 10)
+				expectHTTPRequestToSucceed(ctx, httpRequestOpts{dstURL: queryURL + "/health"})
 			}
 			expectServices(vmv1.VMEstimatorComponentSingle, vmv1.VMEstimatorComponentSingle)
 			setMode := func(mode vmv1.VMEstimatorMode) {

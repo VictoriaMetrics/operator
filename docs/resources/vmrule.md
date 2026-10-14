@@ -19,7 +19,7 @@ or [recording](https://docs.victoriametrics.com/victoriametrics/vmalert/#recordi
 for [VMAlert](https://docs.victoriametrics.com/operator/resources/vmalert/) instances.
 
 The `VMRule` CRD declaratively defines groups of rules to be consumed by one or more `VMAlert` instances.
-Rule expressions are written in [MetricsQL](https://docs.victoriametrics.com/victoriametrics/metricsql/) (PromQL),
+Rule expressions are written in [MetricsQL](https://docs.victoriametrics.com/victoriametrics/metricsql/) (inspired by PromQL),
 [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/) or [Graphite](https://graphite.readthedocs.io/en/stable/render_api.html) query language,
 depending on the [type of the rule group](https://docs.victoriametrics.com/operator/resources/vmrule/#rule-group-type).
 
@@ -42,7 +42,7 @@ Also, you can check out the [examples](https://docs.victoriametrics.com/operator
 Each group in `spec.groups` has an optional `type` field, which defines the query language of the group's rule expressions
 and the datasource API used by `vmalert` to evaluate them:
 
-- `prometheus` (default) - [MetricsQL](https://docs.victoriametrics.com/victoriametrics/metricsql/) or PromQL expressions,
+- `prometheus` (default) - [MetricsQL](https://docs.victoriametrics.com/victoriametrics/metricsql/) or [PromQL](https://prometheus.io/docs/prometheus/latest/querying/basics/) expressions,
   evaluated via the Prometheus querying API of [VictoriaMetrics](https://docs.victoriametrics.com/victoriametrics/vmalert/#victoriametrics)
   or any Prometheus-compatible datasource;
 - `vlogs` - [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/) expressions,
@@ -50,12 +50,9 @@ and the datasource API used by `vmalert` to evaluate them:
 - `graphite` - [Graphite](https://graphite.readthedocs.io/en/stable/render_api.html) expressions,
   evaluated via the [Graphite Render API](https://docs.victoriametrics.com/victoriametrics/vmalert/#graphite).
 
-See [group attributes](https://docs.victoriametrics.com/victoriametrics/vmalert/#groups) in the vmalert docs.
-
 The operator validates `VMRule` objects with the vmalert's own parser: in the admission webhook if it is enabled,
-or while building the `VMAlert` configuration otherwise. A group without `type` is always validated as `prometheus`,
-the `-rule.defaultRuleType` command-line flag of a `VMAlert` does not affect this validation.
-So set `type` explicitly for every LogsQL and Graphite group, otherwise the `VMRule` is rejected
+or while building the `VMAlert` configuration otherwise.
+Set `type` explicitly for every LogsQL and Graphite group, otherwise the `VMRule` is rejected
 or skipped with an expression parsing error.
 
 A `VMAlert` has a single `datasource`, so rules of different types are usually evaluated by separate `VMAlert` instances,
@@ -63,6 +60,8 @@ each pointed to its datasource and selecting its `VMRule` objects via `ruleSelec
 see the [example](https://docs.victoriametrics.com/operator/resources/vmrule/#alerting-rule-for-victorialogs) below.
 It is also possible to route requests of a single `VMAlert` to several datasources via `vmauth`, see
 [how to use one vmalert for VictoriaLogs and VictoriaMetrics rules at the same time](https://docs.victoriametrics.com/victorialogs/vmalert/#how-to-use-one-vmalert-for-victorialogs-and-victoriametrics-rules-at-the-same-time).
+
+See [group attributes](https://docs.victoriametrics.com/victoriametrics/vmalert/#groups) in the vmalert docs for additional info.
 
 ## Enterprise features
 
@@ -147,7 +146,6 @@ spec:
 The group has `type: vlogs` and its expression is written in [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/).
 The `VMAlert` evaluating it uses a `VLSingle` as `datasource` and a `VMSingle` for `remoteWrite` and `remoteRead`,
 since alerts state and recording rule results are stored as metrics.
-See [alerting with logs](https://docs.victoriametrics.com/victorialogs/vmalert/) for details.
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -184,6 +182,8 @@ spec:
     matchLabels:
       rules: logs
 ```
+
+See [alerting with logs](https://docs.victoriametrics.com/victorialogs/vmalert/) for details.
 
 ### Recording rule for Graphite
 

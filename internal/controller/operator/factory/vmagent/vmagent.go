@@ -1188,7 +1188,7 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 					if err != nil {
 						return nil, nil, fmt.Errorf("cannot marshal remoteWrite[%d].oauth2.endpoint_params as json: %w", i, err)
 					}
-					oauth2EndpointParams.Add(fmt.Sprintf("'%s'", jsonData), i)
+					oauth2EndpointParams.Add(strconv.Quote(string(jsonData)), i)
 				}
 			}
 			if rw.AWS != nil {

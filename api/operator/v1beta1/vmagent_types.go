@@ -447,7 +447,7 @@ type VMAgentRemoteWriteSpec struct {
 	MaxDiskUsage *BytesString `json:"maxDiskUsage,omitempty"`
 	// ForceVMProto forces using VictoriaMetrics protocol for sending data to -remoteWrite.url
 	// +optional
-	ForceVMProto bool `json:"forceVMProto,omitempty"`
+	ForceVMProto *bool `json:"forceVMProto,omitempty"`
 	// ProxyURL for -remoteWrite.url. Supported proxies: http, https, socks5. Example: socks5://proxy:1234
 	// +optional
 	ProxyURL *string `json:"proxyURL,omitempty"`

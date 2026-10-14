@@ -52,7 +52,8 @@ and the datasource API used by `vmalert` to evaluate them:
 
 The operator validates `VMRule` objects with the vmalert's own parser: in the admission webhook if it is enabled,
 or while building the `VMAlert` configuration otherwise.
-Set `type` explicitly for every LogsQL and Graphite group, otherwise the `VMRule` is rejected
+The `-rule.defaultRuleType` flag set via `VMAlert` `spec.extraArgs` does not affect this validation,
+so set `type` explicitly for every LogsQL and Graphite group, otherwise the `VMRule` is rejected
 or skipped with an expression parsing error.
 
 A `VMAlert` has a single `datasource`, so rules of different types are usually evaluated by separate `VMAlert` instances,

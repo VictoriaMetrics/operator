@@ -3655,7 +3655,7 @@ Appears in: [VMRuleSpec (v1beta1)](#v1beta1-vmrulespec)
 | params<a href="#v1beta1-rulegroup-params" id="v1beta1-rulegroup-params">#</a><a id="rulegroup-params"></a><br/>_[Values](https://pkg.go.dev/net/url#Values)_ | _(Optional)_<br/>Params optional HTTP URL parameters added to each rule request |
 | rules<a href="#v1beta1-rulegroup-rules" id="v1beta1-rulegroup-rules">#</a><a id="rulegroup-rules"></a><br/>_[Rule (v1beta1)](#v1beta1-rule) array_ | _(Required)_<br/>Rules list of alert rules. |
 | tenant<a href="#v1beta1-rulegroup-tenant" id="v1beta1-rulegroup-tenant">#</a><a id="rulegroup-tenant"></a><br/>_string_ | _(Optional)_<br/>Tenant id for group, can be used only with enterprise version of vmalert.<br />See more details [here](https://docs.victoriametrics.com/victoriametrics/vmalert/#multitenancy). |
-| type<a href="#v1beta1-rulegroup-type" id="v1beta1-rulegroup-type">#</a><a id="rulegroup-type"></a><br/>_string_ | _(Optional)_<br/>Type defines datasource type for enterprise version of vmalert<br />possible values - prometheus,graphite,vlogs |
+| type<a href="#v1beta1-rulegroup-type" id="v1beta1-rulegroup-type">#</a><a id="rulegroup-type"></a><br/>_string_ | _(Optional)_<br/>Type defines datasource type for vmalert<br />possible values:<br />- prometheus<br />- graphite<br />- vlogs |
 
 #### SNSConfig {#v1beta1-snsconfig}
 <a id="snsconfig"></a>

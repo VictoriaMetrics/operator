@@ -64223,8 +64223,11 @@ spec:
                       type: string
                     type:
                       description: |-
-                        Type defines datasource type for enterprise version of vmalert
-                        possible values - prometheus,graphite,vlogs
+                        Type defines datasource type for vmalert
+                        possible values:
+                        - prometheus
+                        - graphite
+                        - vlogs
                       type: string
                   required:
                   - name

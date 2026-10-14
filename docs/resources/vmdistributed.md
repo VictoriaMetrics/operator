@@ -153,7 +153,7 @@ spec:
       spec:
         additionalRemoteWriteTargets:
           # shared by every zone
-          - url: https://vmcloud.example.com/api/v1/write
+          - url: https://vmestimator.example.com/api/v1/write
             bearerTokenSecret:
               name: vmcloud-token
               key: token

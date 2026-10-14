@@ -134,13 +134,18 @@ spec:
 
 ### Additional remote write targets
 
-By default every managed `VMAgent` writes only to the backends of the zones defined at the same
-`VMDistributed`. Those `remoteWrite` entries are owned by the operator and are rebuilt on every
+By default every managed `VMAgent` writes only to the backend of the zones defined in the same
+`VMDistributed` resource. Those `remoteWrite` entries are owned by the operator and are rebuilt on every
 reconcile.
 
-`additionalRemoteWriteTargets` adds further destinations, such as a central long-term store or a
-third-party endpoint. Each entry has the same shape as `VMAgent.spec.remoteWrite[]`, so
-`urlRelabelConfig`, `inlineUrlRelabelConfig` and `streamAggrConfig` are available per target.
+`additionalRemoteWriteTargets` allows additional endpoints to be manually added by the user. 
+Possible use cases include [vmestimator](https://docs.victoriametrics.com/victoriametrics/vmestimator/), 
+central long-term store or third-party endpoints. 
+
+The example below shows how zoneCommon and zone specific settings are merged.
+* They match on exact URLs
+* Global settings are set first
+* Zone specific settings override global settings per YAML key.
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1alpha1
@@ -152,47 +157,33 @@ spec:
     vmagent:
       spec:
         additionalRemoteWriteTargets:
-          # shared by every zone
-          - url: https://vmestimator.example.com/api/v1/write
+          - url: https://vmcloud.example.com/api/v1/write
             bearerTokenSecret:
               name: vmcloud-token
               key: token
             sendTimeout: 30s
-            forceVMProto: true
   zones:
     - name: zone-a
     - name: zone-b
       vmagent:
         spec:
           additionalRemoteWriteTargets:
-            # same url as in zoneCommon, so the two entries are merged.
-            # bearerTokenSecret and forceVMProto are inherited, sendTimeout is overridden.
+            # This entry will merge with zoneCommon, because they have the same URL.
+            # bearerTokenSecret is inherited from zoneCommon, but sendTimeout is overridden to 2m.
             - url: https://vmcloud.example.com/api/v1/write
               sendTimeout: 2m
-            # url is absent from zoneCommon, so this target is added for zone-b only
+            # This target is added for zone-b only
             - url: http://audit-sink.observability.svc:8480/insert/0/prometheus/api/v1/write
 ```
 
-**Merging by url.** Unlike every other list in this spec, which a zone replaces as a whole, the
-`zoneCommon` and per-zone lists are merged by `url`:
-
-*   an entry whose `url` appears in both is deep-merged, with the zone value winning field by field;
-*   an entry present only at `spec.zones[]` is appended;
-*   an entry present only at `spec.zoneCommon` is kept as is.
-
-Within a merged entry, a list of plain values such as `headers` is replaced as a whole, while a
-list of objects such as `inlineUrlRelabelConfig` is merged element by element. This matches how
-`zoneCommon` is merged everywhere else in this resource.
-
-**Templating.** `%ZONE%` is substituted with the zone name in both lists before urls are matched,
-so `url: https://ingest.example.com/%ZONE%/write` yields a per-zone destination and can be
-addressed from a zone either by the templated or by the already rendered url.
-
 **Ordering and persistent queues.** `vmagent` keys its persistent queue directories by
-`remoteWrite` index, so additional targets are always appended after the zone backends and an
+positional index and URL. Removing a URL that isn't the last one in the list drops all queues after it's self.
+To combat this, additional targets are always appended after the zone backends and an
 already known url keeps its position. Adding a target is therefore safe for the queues of the
 existing ones. Removing an entry that is not the last one shifts the indices of the entries after
-it, which also happens today when a zone is removed, so prefer draining before such a change.
+it, which also happens today when a zone is removed, ensure queues are fully drained before making changes.
+
+> This will likely be addressed in the near future. [#11709](https://github.com/VictoriaMetrics/VictoriaMetrics/pull/11709)
 
 **Multitenancy.** Managed `VMAgent` instances run with `-enableMultitenantHandlers=true`, which
 turns the tenant IDs from the ingestion path into `vm_account_id` and `vm_project_id` labels on
@@ -205,16 +196,9 @@ backends that are not VictoriaMetrics:
                 regex: "vm_(account|project)_id"
 ```
 
-Leave `forceVMProto` unset for such backends as well, so that the Prometheus remote write protocol
-is negotiated instead.
-
-**Persistent queue draining.** During a zone update the operator waits for the persistent queue of
-the zone backend to drain. It matches the queue by the `url` label of
-`vmagent_remotewrite_pending_data_bytes`, which `vmagent` only exports when
-`remoteWriteSettings.showURL` is enabled. Additional targets are never waited for, so a slow
-third-party endpoint cannot block a rollout. Note that enabling `showURL` also exposes the urls of
-the additional targets in the metrics, which matters when they carry credentials in query
-parameters.
+**Persistent queue draining.** Unlike zone backends, the operator does not wait 
+for additional remote write endpoints persistent queues to drain before performing modifications.
+This is by design, as waiting for external services would stall cluster operations.
 
 ### VMDistributed and distributed chart
 

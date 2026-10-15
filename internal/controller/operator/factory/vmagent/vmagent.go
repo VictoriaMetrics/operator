@@ -532,11 +532,11 @@ func buildSTSServiceName(cr *vmv1beta1.VMAgent) string {
 func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretCount int) (*corev1.PodSpec, error) {
 	var args []string
 
-	if rwArgs, err := buildRemoteWriteArgs(cr, ac); err != nil {
+	rwArgs, rwEnvs, err := buildRemoteWriteArgs(cr, ac)
+	if err != nil {
 		return nil, fmt.Errorf("failed to build remote write args: %w", err)
-	} else {
-		args = append(args, rwArgs...)
 	}
+	args = append(args, rwArgs...)
 
 	cfg := config.MustGetBaseConfig()
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
@@ -567,6 +567,8 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretC
 			},
 		})
 	}
+	// operator-managed envs are appended after extraEnvs, Validate forbids extraEnvs with the same prefix
+	envs = append(envs, rwEnvs...)
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
@@ -1079,7 +1081,7 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 			if rw.TLSConfig != nil {
 				creds, err := ac.BuildTLSCreds(cr.Namespace, rw.TLSConfig)
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 				tlsCAs.Add(creds.CAFile, i)
 				tlsCerts.Add(creds.CertFile, i)
@@ -1092,13 +1094,13 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 			if rw.BasicAuth != nil {
 				user, err := ac.LoadKeyFromSecret(cr.Namespace, &rw.BasicAuth.Username)
 				if err != nil {
-					return nil, fmt.Errorf("cannot load BasicAuth username: %w", err)
+					return nil, nil, fmt.Errorf("cannot load BasicAuth username: %w", err)
 				}
 				authUser.Add(strconv.Quote(user), i)
 				if len(rw.BasicAuth.Password.Name) > 0 {
 					passFile, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, &rw.BasicAuth.Password)
 					if err != nil {
-						return nil, fmt.Errorf("cannot load BasicAuth password: %w", err)
+						return nil, nil, fmt.Errorf("cannot load BasicAuth password: %w", err)
 					}
 					authPasswordFile.Add(passFile, i)
 				}
@@ -1109,7 +1111,7 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 			if rw.BearerTokenSecret != nil && rw.BearerTokenSecret.Name != "" {
 				value, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, rw.BearerTokenSecret)
 				if err != nil {
-					return nil, fmt.Errorf("cannot load BearerTokenSecret: %w", err)
+					return nil, nil, fmt.Errorf("cannot load BearerTokenSecret: %w", err)
 				}
 				bearerTokenFile.Add(strconv.Quote(value), i)
 			}
@@ -1152,14 +1154,14 @@ func buildRemoteWriteArgs(cr *vmv1beta1.VMAgent, ac *build.AssetsCache) ([]strin
 				if rw.OAuth2.ClientSecret != nil {
 					oaSecretKeyFile, err := ac.LoadPathFromSecret(build.SecretConfigResourceKind, cr.Namespace, rw.OAuth2.ClientSecret)
 					if err != nil {
-						return nil, fmt.Errorf("cannot load OAuth2 ClientSecret: %w", err)
+						return nil, nil, fmt.Errorf("cannot load OAuth2 ClientSecret: %w", err)
 					}
 					oauth2ClientSecretFile.Add(oaSecretKeyFile, i)
 				}
 				if len(rw.OAuth2.ClientID.PrefixedName()) > 0 {
 					secret, err := ac.LoadKeyFromSecretOrConfigMap(cr.Namespace, &rw.OAuth2.ClientID)
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 					oauth2ClientID.Add(secret, i)
 				}

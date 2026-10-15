@@ -14,6 +14,9 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
+// +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies/finalizers,verbs=patch
+
 // NetworkPolicy creates or updates a NetworkPolicy
 func NetworkPolicy(ctx context.Context, rclient client.Client, newObj, prevObj *networkingv1.NetworkPolicy, owner *metav1.OwnerReference) error {
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}

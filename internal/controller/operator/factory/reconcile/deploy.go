@@ -18,6 +18,9 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=deployments/finalizers,verbs=patch
+
 type DeploymentOpts struct {
 	PatchSpec func(existingSpec, newSpec *appsv1.DeploymentSpec)
 }
@@ -149,6 +152,8 @@ func getDeploymentCondition(status appsv1.DeploymentStatus, condType appsv1.Depl
 	}
 	return nil
 }
+
+// +kubebuilder:rbac:groups="",resources=pods,verbs=list;watch
 
 func reportFirstNotReadyPodOnError(ctx context.Context, rclient client.Client, origin error, ns string, selector labels.Selector, minReadySeconds int32) error {
 	// list pods and join statuses

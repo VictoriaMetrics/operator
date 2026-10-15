@@ -62,7 +62,7 @@ func (r *VMAlertmanagerConfigReconciler) Scheme() *runtime.Scheme {
 // Reconcile implements interface
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs/finalizers,verbs=*
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs/finalizers,verbs=patch
 
 func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)

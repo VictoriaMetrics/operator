@@ -67,21 +67,7 @@ func (r *VMAgentReconciler) Init(name string, rclient client.Client, l logr.Logg
 // Reconcile general reconcile method
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmagents,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmagents/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmagents/finalizers,verbs=*
-// +kubebuilder:rbac:groups="",resources=nodes,verbs=get;watch;list
-// +kubebuilder:rbac:groups="networking.k8s.io",resources=ingresses,verbs=get;list;watch
-// +kubebuilder:rbac:groups="networking.k8s.io",resources=networkpolicies,verbs=*
-// +kubebuilder:rbac:groups="",resources=events;endpoints;services,verbs=*
-// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;patch
-// +kubebuilder:rbac:groups=discovery.k8s.io,resources=endpointslices,verbs=get;watch;list
-// +kubebuilder:rbac:groups="",resources=services/finalizers,verbs=*
-// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=*,verbs=*
-// +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;watch;list
-// +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=roles;rolebindings;clusterrolebindings;clusterroles,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=autoscaling.k8s.io,resources=verticalpodautoscalers,verbs=*
-// +kubebuilder:rbac:groups=apps,resources=deployments;statefulsets;daemonsets,verbs=*
-// +kubebuilder:rbac:groups=apps,resources=statefulsets/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmagents/finalizers,verbs=patch
 
 func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)

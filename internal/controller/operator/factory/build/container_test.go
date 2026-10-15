@@ -1140,3 +1140,39 @@ func TestConfigReloaderWatchTargetPairing(t *testing.T) {
 		},
 	})
 }
+
+func TestProbeRendersDeclaredLiveness(t *testing.T) {
+	// A user-declared livenessProbe must render even for CRDs that do not
+	// add a default liveness probe (VMSingle and friends — PR #204 wired
+	// spec.livenessProbe for VMSingle, the centralized probe building
+	// silently dropped it for types with ProbeNeedLiveness()=false).
+	run := func(cr probeCRD, params *vmv1beta1.CommonAppsParams) corev1.Container {
+		t.Helper()
+		var c corev1.Container
+		Probe(&c, cr, params)
+		return c
+	}
+
+	single := &vmv1beta1.VMSingle{}
+	single.Spec.LivenessProbe = &corev1.Probe{PeriodSeconds: 11}
+
+	c := run(single, &single.Spec.CommonAppsParams)
+	assert.NotNil(t, c.LivenessProbe, "declared livenessProbe must render for VMSingle")
+	assert.Equal(t, int32(11), c.LivenessProbe.PeriodSeconds)
+	assert.NotNil(t, c.LivenessProbe.HTTPGet, "missing handler is filled from probe defaults")
+	assert.NotNil(t, c.ReadinessProbe)
+
+	bare := &vmv1beta1.VMSingle{}
+	c = run(bare, &bare.Spec.CommonAppsParams)
+	assert.Nil(t, c.LivenessProbe, "no default liveness probe appears when nothing is declared")
+
+	agent := &vmv1beta1.VMAgent{}
+	agent.Spec.LivenessProbe = &corev1.Probe{PeriodSeconds: 13}
+	c = run(agent, &agent.Spec.CommonAppsParams)
+	assert.NotNil(t, c.LivenessProbe)
+	assert.Equal(t, int32(13), c.LivenessProbe.PeriodSeconds)
+
+	bareAgent := &vmv1beta1.VMAgent{}
+	c = run(bareAgent, &bareAgent.Spec.CommonAppsParams)
+	assert.NotNil(t, c.LivenessProbe, "default liveness probe still added for types that opt in")
+}

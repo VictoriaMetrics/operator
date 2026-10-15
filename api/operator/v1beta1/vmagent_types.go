@@ -372,6 +372,10 @@ type AWS struct {
 	STSEndpoint string `json:"stsEndpoint,omitempty"`
 	// UseSigv4 enables SigV4 request signing for the corresponding -remoteWrite.url
 	UseSigv4 bool `json:"useSigv4,omitempty"`
+	// AccessKeySecret sets the AWS AccessKey for the -remoteWrite.url if useSigv4 is set.
+	AccessKeySecret *corev1.SecretKeySelector `json:"accessKeySecret,omitempty"`
+	// SecretKeySecret sets the SecretKey for the -remoteWrite.url if useSigv4 is set.
+	SecretKeySecret *corev1.SecretKeySelector `json:"secretKeySecret,omitempty"`
 }
 
 // VMAgentRemoteWriteSpec defines the remote storage configuration for VmAgent

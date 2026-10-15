@@ -57,8 +57,7 @@ so set `type` explicitly for every LogsQL and Graphite group, otherwise the `VMR
 or skipped with an expression parsing error.
 
 A `VMAlert` has a single `datasource`, so rules of different types are usually evaluated by separate `VMAlert` instances,
-each pointed to its datasource and selecting its `VMRule` objects via `ruleSelector`,
-see the [example](https://docs.victoriametrics.com/operator/resources/vmrule/#alerting-rule-for-victorialogs) below.
+each pointed to its datasource and selecting its `VMRule` objects via `ruleSelector`.
 It is also possible to route requests of a single `VMAlert` to several datasources via `vmauth`, see
 [how to use one vmalert for VictoriaLogs and VictoriaMetrics rules at the same time](https://docs.victoriametrics.com/victorialogs/vmalert/#how-to-use-one-vmalert-for-victorialogs-and-victoriametrics-rules-at-the-same-time).
 
@@ -145,16 +144,12 @@ spec:
 ### Alerting rule for VictoriaLogs
 
 The group has `type: vlogs` and its expression is written in [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/).
-The `VMAlert` evaluating it uses a `VLSingle` as `datasource` and a `VMSingle` for `remoteWrite` and `remoteRead`,
-since alerts state and recording rule results are stored as metrics.
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
   name: logs-alerting-example
-  labels:
-    rules: logs
 spec:
   groups:
     - name: service-logs
@@ -165,23 +160,6 @@ spec:
           expr: '{env=prod} status:in(error,warn) | stats by (k8s.pod.name) count() as error_logs | filter error_logs:>10'
           annotations:
             description: 'Too many errors and warnings on pod {{ index .Labels "k8s.pod.name" }} during the last 5 minutes: {{ $value }}'
----
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMAlert
-metadata:
-  name: logs-example
-spec:
-  datasource:
-    url: http://vlsingle-example.default.svc:9428
-  remoteWrite:
-    url: http://vmsingle-example.default.svc:8428
-  remoteRead:
-    url: http://vmsingle-example.default.svc:8428
-  notifier:
-    url: http://vmalertmanager-example.default.svc:9093
-  ruleSelector:
-    matchLabels:
-      rules: logs
 ```
 
 See [alerting with logs](https://docs.victoriametrics.com/victorialogs/vmalert/) for details.

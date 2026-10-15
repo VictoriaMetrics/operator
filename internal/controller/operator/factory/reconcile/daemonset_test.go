@@ -112,6 +112,21 @@ func TestDaemonSetReconcile(t *testing.T) {
 		},
 	})
 
+	// tolerates a pod template label added by an external admission webhook
+	f(opts{
+		new:  getDaemonSet(),
+		prev: getDaemonSet(),
+		predefinedObjects: []runtime.Object{
+			getDaemonSet(func(d *appsv1.DaemonSet) {
+				d.Spec.Template.Labels["clusterName"] = "some-cluster"
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "DaemonSet", Resource: nn},
+			{Verb: "Get", Kind: "DaemonSet", Resource: nn},
+		},
+	})
+
 	// no update on status change
 	f(opts{
 		new:  getDaemonSet(),

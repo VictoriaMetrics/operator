@@ -83,12 +83,16 @@ func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *ap
 	var recreatePod bool
 	var prevMeta *metav1.ObjectMeta
 	var prevTemplateAnnotations map[string]string
+	var prevTemplateLabels map[string]string
 	var prevVCTs []corev1.PersistentVolumeClaim
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
 		prevTemplateAnnotations = prevObj.Spec.Template.Annotations
+		prevTemplateLabels = prevObj.Spec.Template.Labels
 		prevVCTs = prevObj.Spec.VolumeClaimTemplates
 	}
+	desiredTemplateAnnotations := newObj.Spec.Template.Annotations
+	desiredTemplateLabels := newObj.Spec.Template.Labels
 
 	rclient.Scheme().Default(newObj)
 	updateStrategy := newObj.Spec.UpdateStrategy.Type
@@ -145,7 +149,8 @@ func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *ap
 			return err
 		}
 		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
-		newObj.Spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, newObj.Spec.Template.Annotations, prevTemplateAnnotations)
+		newObj.Spec.Template.Annotations = mergeMaps(existingObj.Spec.Template.Annotations, desiredTemplateAnnotations, prevTemplateAnnotations)
+		newObj.Spec.Template.Labels = mergeMaps(existingObj.Spec.Template.Labels, desiredTemplateLabels, prevTemplateLabels)
 		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec, "spec")
 		needsUpdate := metaChanged || len(specDiff) > 0
 		if !needsUpdate {

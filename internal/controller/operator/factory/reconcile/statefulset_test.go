@@ -2,6 +2,7 @@ package reconcile
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 	"testing/synctest"
@@ -11,9 +12,11 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -932,6 +935,24 @@ func TestStatefulsetReconcile(t *testing.T) {
 		},
 	})
 
+	// tolerates a pod template label added by an external admission webhook
+	f(opts{
+		new:  getSts(),
+		prev: getSts(),
+		predefinedObjects: []runtime.Object{
+			getSts(func(s *appsv1.StatefulSet) {
+				s.Spec.Template.Labels["clusterName"] = "some-cluster"
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+		},
+		validate: func(s *appsv1.StatefulSet) {
+			assert.Equal(t, "some-cluster", s.Spec.Template.Labels["clusterName"])
+		},
+	})
+
 	// add annotations
 	f(opts{
 		new: getSts(func(s *appsv1.StatefulSet) {
@@ -1323,6 +1344,65 @@ func TestStatefulsetReconcile(t *testing.T) {
 			assert.Equal(t, ptr.To[int32](6), s.Spec.Replicas)
 		},
 	})
+}
+
+func TestStatefulsetReconcile_ConflictRetryUsesDesiredLabels(t *testing.T) {
+	ctx := context.Background()
+	nn := types.NamespacedName{Name: "test-retry", Namespace: "default"}
+
+	mkSTS := func(templateLabels map[string]string, image string) *appsv1.StatefulSet {
+		return &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
+			Spec: appsv1.StatefulSetSpec{
+				Replicas:            ptr.To[int32](1),
+				Selector:            &metav1.LabelSelector{MatchLabels: map[string]string{"label": "value"}},
+				PodManagementPolicy: appsv1.OrderedReadyPodManagement,
+				UpdateStrategy:      appsv1.StatefulSetUpdateStrategy{Type: appsv1.RollingUpdateStatefulSetStrategyType},
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{Labels: templateLabels},
+					Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "app", Image: image}}},
+				},
+			},
+			Status: appsv1.StatefulSetStatus{
+				ReadyReplicas:   1,
+				UpdatedReplicas: 1,
+			},
+		}
+	}
+
+	liveSTS := mkSTS(map[string]string{"label": "value", "clusterName": "cluster-A"}, "old-image:tag")
+	newObj := mkSTS(map[string]string{"label": "value"}, "new-image:tag")
+
+	var updateAttempts int
+	fclient := k8stools.GetTestClientWithObjectsAndInterceptors([]runtime.Object{liveSTS}, interceptor.Funcs{
+		Update: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
+			if _, ok := obj.(*appsv1.StatefulSet); !ok {
+				return cl.Update(ctx, obj, opts...)
+			}
+			updateAttempts++
+			if updateAttempts == 1 {
+				var live appsv1.StatefulSet
+				if err := cl.Get(ctx, nn, &live); err != nil {
+					return err
+				}
+				live.Spec.Template.Labels["clusterName"] = "cluster-B"
+				if err := cl.Update(ctx, &live); err != nil {
+					return err
+				}
+				return k8serrors.NewConflict(schema.GroupResource{Resource: "statefulsets"}, nn.Name, fmt.Errorf("conflict"))
+			}
+			return cl.Update(ctx, obj, opts...)
+		},
+	})
+
+	synctest.Test(t, func(t *testing.T) {
+		assert.NoError(t, StatefulSet(ctx, fclient, newObj, nil, nil, nil))
+	})
+
+	var got appsv1.StatefulSet
+	assert.NoError(t, fclient.Get(ctx, nn, &got))
+	assert.Equal(t, 2, updateAttempts)
+	assert.Equal(t, "cluster-B", got.Spec.Template.Labels["clusterName"])
 }
 
 func TestValidateStatefulSetFail(t *testing.T) {

@@ -133,6 +133,24 @@ func TestDeployReconcile(t *testing.T) {
 		},
 	})
 
+	// tolerates a pod template label added by an external admission webhook
+	f(opts{
+		new:  getDeploy(),
+		prev: getDeploy(),
+		predefinedObjects: []runtime.Object{
+			getDeploy(func(d *appsv1.Deployment) {
+				d.Spec.Template.Labels["clusterName"] = "some-cluster"
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
+			{Verb: "Get", Kind: "Deployment", Resource: nn},
+		},
+		validate: func(d *appsv1.Deployment) {
+			assert.Equal(t, "some-cluster", d.Spec.Template.Labels["clusterName"])
+		},
+	})
+
 	// no update, only status change
 	f(opts{
 		new: getDeploy(),

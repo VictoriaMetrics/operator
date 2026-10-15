@@ -100,7 +100,7 @@ const (
 	VMAuthLBServiceProxyTargetLabel  = "operator.victoriametrics.com/vmauthlb-proxy-name"
 	VMAuthLBServiceProxyJobNameLabel = "operator.victoriametrics.com/vmauthlb-proxy-job-name"
 	KubeNodeEnvName                  = "KUBE_NODE_NAME"
-	RemoteWriteEnvPrefix = "VM_REMOTEWRITE_"
+	RemoteWriteEnvPrefix             = "VM_REMOTEWRITE_"
 	// IgnoreConversionLabel this annotation disables updating of corresponding VMObject
 	// must be added to annotation of VMObject
 	// annotations:

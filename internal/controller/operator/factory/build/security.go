@@ -117,6 +117,19 @@ func WarnOpenShiftVTClusterSpec(spec *vmv1.VTClusterSpec) []string {
 	return w
 }
 
+// WarnOpenShiftVMEstimatorSpec returns OpenShift security context warnings for all sub-components
+// of a VMEstimatorSpec (Single, Storage, Select).
+func WarnOpenShiftVMEstimatorSpec(spec *vmv1.VMEstimatorSpec) []string {
+	var w []string
+	if c := spec.Storage; c != nil {
+		w = append(w, WarnOpenShiftSecurityContext(c.SecurityContext)...)
+	}
+	if c := spec.Select; c != nil {
+		w = append(w, WarnOpenShiftSecurityContext(c.SecurityContext)...)
+	}
+	return w
+}
+
 // WarnOpenShiftSecurityContext returns warning messages for each security context field
 // that is explicitly set but would cause pod admission failures on OpenShift when the
 // restricted-v2 SCC assigns UIDs/GIDs from the namespace-allocated range.

@@ -25,6 +25,8 @@ type VLSingleExpansion interface{}
 
 type VMAnomalyExpansion interface{}
 
+type VMEstimatorExpansion interface{}
+
 type VTAgentExpansion interface{}
 
 type VTClusterExpansion interface{}

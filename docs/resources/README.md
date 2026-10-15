@@ -31,6 +31,7 @@ Metrics Operator introduces.
 - [VTSingle](https://docs.victoriametrics.com/operator/resources/vtsingle/)
 - [VTCluster](https://docs.victoriametrics.com/operator/resources/vtcluster/)
 - [VTAgent](https://docs.victoriametrics.com/operator/resources/vtagent/)
+- [VMEstimator](https://docs.victoriametrics.com/operator/resources/vmestimator/)
 
 Here is the scheme of relations between the custom resources:
 
@@ -59,6 +60,8 @@ Field `extraArgs` is supported for the following custom resources:
 - [VTSingle spec](https://docs.victoriametrics.com/operator/api/#v1-vtsinglespec)
 - [VTCluster spec](https://docs.victoriametrics.com/operator/api/#v1-vtclusterspec)
 - [VTAgent spec](https://docs.victoriametrics.com/operator/api/#v1-vtagentspec)
+- [VMEstimator/storage spec](https://docs.victoriametrics.com/operator/api/#v1-vmestimatorstorage)
+- [VMEstimator/select spec](https://docs.victoriametrics.com/operator/api/#v1-vmestimatorselect)
 
 Supported flags for each application can be found the in the corresponding documentation:
 
@@ -70,6 +73,7 @@ Supported flags for each application can be found the in the corresponding docum
 - [VLAgent](https://docs.victoriametrics.com/victorialogs/vlagent/#advanced-usage)
 - [VTSingle/VTCluster](https://docs.victoriametrics.com/victoriatraces/#list-of-command-line-flags)
 - [VTAgent](https://docs.victoriametrics.com/victoriatraces/vtagent/#advanced-usage)
+- [VMEstimator](https://docs.victoriametrics.com/victoriametrics/vmestimator/#command-line-flags)
 
 Usage example:
 
@@ -154,6 +158,7 @@ Every custom resource with deployable application has a fields for specifying ve
 - [Managing versions for VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/#version-management)
 - [Managing versions for VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth/#version-management)
 - [Managing versions for VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/#version-management)
+- [Managing versions for VMEstimator](https://docs.victoriametrics.com/operator/resources/vmestimator/#version-management)
 - [Managing versions for VMSingle](https://docs.victoriametrics.com/operator/resources/vmsingle/#version-management)
 
 ## Managing resources
@@ -166,6 +171,7 @@ Every custom resource with deployable application has a fields and operator para
 - [Managing resources for VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/#resource-management)
 - [Managing resources for VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth/#resource-management)
 - [Managing resources for VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/#resource-management)
+- [Managing resources for VMEstimator](https://docs.victoriametrics.com/operator/resources/vmestimator/#resource-management)
 - [Managing resources for VMSingle](https://docs.victoriametrics.com/operator/resources/vmsingle/#resource-management)
 
 ## High availability
@@ -178,6 +184,7 @@ VictoriaMetrics operator support high availability for each component of the mon
 - [VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/#high-availability)
 - [VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth/#high-availability)
 - [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster/#high-availability)
+- [VMEstimator](https://docs.victoriametrics.com/operator/resources/vmestimator/#high-availability)
 
 In addition, these CRD support common features, that can be used to increase high availability - resources above have the following fields:
 

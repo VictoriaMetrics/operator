@@ -199,6 +199,7 @@ rules:
   - vmauths
   - vmclusters
   - vmdistributed
+  - vmestimators
   - vmpodscrapes
   - vmprobes
   - vmrules
@@ -260,6 +261,7 @@ rules:
   - vmauths/status
   - vmclusters/status
   - vmdistributed/status
+  - vmestimators/status
   - vmnodescrapes/status
   - vmpodscrapes/status
   - vmprobes/status
@@ -283,6 +285,7 @@ rules:
   - vldistributed/finalizers
   - vlsingles/finalizers
   - vmdistributed/finalizers
+  - vmestimators/finalizers
   - vtclusters/finalizers
   - vtsingles/finalizers
   verbs:

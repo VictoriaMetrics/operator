@@ -51,6 +51,7 @@ func AddDefaults(scheme *runtime.Scheme) {
 	scheme.AddTypeDefaultingFunc(&vmv1.VTAgent{}, addVTAgentDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1.VTCluster{}, addVTClusterDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1.VMAnomaly{}, addVMAnomalyDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1.VMEstimator{}, addVMEstimatorDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMServiceScrape{}, addVMServiceScrapeDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1alpha1.VMDistributed{}, addVMDistributedDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1alpha1.VLDistributed{}, addVLDistributedDefaults)
@@ -820,6 +821,37 @@ func addEntSuffixToTag(versionTag string) string {
 	}
 
 	return versionTag
+}
+
+func addVMEstimatorDefaults(objI any) {
+	cr := objI.(*vmv1.VMEstimator)
+	c := getCfg()
+	addDefaultMetadata(cr)
+	cp := commonParams{
+		useStrictSecurity: cr.Spec.UseStrictSecurity,
+		tag:               cr.Spec.ComponentVersion,
+		imagePullSecrets:  cr.Spec.ImagePullSecrets,
+	}
+	if cr.Spec.ClusterDomainName == "" {
+		cr.Spec.ClusterDomainName = c.ClusterDomainName
+	}
+	if cr.Spec.Mode == "" {
+		cr.Spec.Mode = vmv1.VMEstimatorModeSingle
+	}
+	// spec.storage configures storage nodes in cluster mode and the single-replica Deployment in single mode,
+	// while select nodes are deployed only in cluster mode
+	if cr.Spec.Storage == nil {
+		cr.Spec.Storage = &vmv1.VMEstimatorStorage{}
+	}
+	if cr.IsClusterMode() && cr.Spec.Select == nil {
+		cr.Spec.Select = &vmv1.VMEstimatorSelect{}
+	}
+	storageDefaults := config.ApplicationDefaults(c.VMEstimator.Storage)
+	addDefaultsToCommonParams(&cr.Spec.Storage.CommonAppsParams, &cp, &storageDefaults)
+	if cr.Spec.Select != nil {
+		cv := config.ApplicationDefaults(c.VMEstimator.Select)
+		addDefaultsToCommonParams(&cr.Spec.Select.CommonAppsParams, &cp, &cv)
+	}
 }
 
 // setTag sets the tag if componentVersion or clusterVersion is not empty.

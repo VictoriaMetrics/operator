@@ -963,7 +963,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ac := getAssetsCache(ctx, fclient, o.cr)
 		sort.Strings(o.want)
-		got, gotEnvs, err := buildRemoteWriteArgs(o.cr, ac)
+		got, _, err := buildRemoteWriteArgs(o.cr, ac)
 		assert.NoError(t, err)
 		sort.Strings(got)
 		assert.Equal(t, o.want, got)

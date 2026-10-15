@@ -35,12 +35,13 @@ const podRevisionLabel = "controller-revision-hash"
 // StatefulSetOpts options for StatefulSet update
 // HPA and UpdateReplicaCount optional
 type StatefulSetOpts struct {
-	SelectorLabels map[string]string
-	PatchSpec      func(existingSpec, newSpec *appsv1.StatefulSetSpec)
-	UpdateBehavior *vmv1beta1.StatefulSetUpdateStrategyBehavior
+	SelectorLabels            map[string]string
+	PatchSpec                 func(existingSpec, newSpec *appsv1.StatefulSetSpec)
+	UpdateBehavior            *vmv1beta1.StatefulSetUpdateStrategyBehavior
+	IgnoreNotReadyPodOrdinals sets.Set[int32]
 }
 
-func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newObj *appsv1.StatefulSet) error {
+func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newObj *appsv1.StatefulSet, ignoreNotReadyPodOrdinals sets.Set[int32]) error {
 	err := wait.PollUntilContextTimeout(ctx, podWaitReadyInterval, appWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
 		var existingObj appsv1.StatefulSet
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: newObj.Namespace, Name: newObj.Name}, &existingObj); err != nil {
@@ -64,8 +65,34 @@ func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newObj 
 		if targetReplicas == nil {
 			return true, nil
 		}
-		if *targetReplicas != existingObj.Status.ReadyReplicas || *targetReplicas != existingObj.Status.UpdatedReplicas {
+		if *targetReplicas != existingObj.Status.UpdatedReplicas {
 			return false, nil
+		}
+		if ignoreNotReadyPodOrdinals.Len() == 0 {
+			return *targetReplicas == existingObj.Status.ReadyReplicas, nil
+		}
+		var podList corev1.PodList
+		if err := rclient.List(ctx, &podList, &client.ListOptions{
+			Namespace:     newObj.Namespace,
+			LabelSelector: labels.SelectorFromSet(newObj.Spec.Selector.MatchLabels),
+		}); err != nil {
+			return false, err
+		}
+		readyOrdinals := sets.New[int32]()
+		for _, pod := range podList.Items {
+			if PodIsReady(&pod, newObj.Spec.MinReadySeconds) {
+				if ordinal, err := podOrdinal(pod.Name); err == nil {
+					readyOrdinals.Insert(ordinal)
+				}
+			}
+		}
+		for i := int32(0); i < *targetReplicas; i++ {
+			if ignoreNotReadyPodOrdinals.Has(i) {
+				continue
+			}
+			if !readyOrdinals.Has(i) {
+				return false, nil
+			}
 		}
 		return true, nil
 	})
@@ -173,9 +200,10 @@ func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *ap
 	switch updateStrategy {
 	case appsv1.OnDeleteStatefulSetStrategyType:
 		opts := rollingUpdateOpts{
-			recreate:       recreatePod,
-			selector:       o.SelectorLabels,
-			maxUnavailable: 1,
+			recreate:               recreatePod,
+			selector:               o.SelectorLabels,
+			maxUnavailable:         1,
+			ignoreNotReadyOrdinals: o.IgnoreNotReadyPodOrdinals,
 		}
 		if o.UpdateBehavior != nil {
 			if o.UpdateBehavior.MaxUnavailable.String() == "100%" {
@@ -195,7 +223,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *ap
 		if hpaManaged {
 			newObj.Spec.Replicas = nil
 		}
-		if err := waitForStatefulSetReady(ctx, rclient, newObj); err != nil {
+		if err := waitForStatefulSetReady(ctx, rclient, newObj, o.IgnoreNotReadyPodOrdinals); err != nil {
 			return fmt.Errorf("cannot ensure that statefulset is ready with strategy=%q: %w", updateStrategy, err)
 		}
 	}
@@ -225,10 +253,11 @@ func getLatestStsState(ctx context.Context, rclient client.Client, targetSTS typ
 }
 
 type rollingUpdateOpts struct {
-	recreate       bool
-	maxUnavailable int
-	selector       map[string]string
-	delete         bool
+	recreate               bool
+	maxUnavailable         int
+	selector               map[string]string
+	delete                 bool
+	ignoreNotReadyOrdinals sets.Set[int32]
 }
 
 // patchSTSCurrentRevision patches statefulset status.currentRevision to match status.updateRevision
@@ -322,10 +351,27 @@ func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *
 		return patchSTSCurrentRevision(ctx, rclient, nsn, stsVersion, int32(neededPodCount))
 	}
 
+	// defer updates for pods excluded by maintenance node IDs
+	var deferredUpdate bool
+	filteredPodsForUpdate := podsForUpdate[:0]
+	for _, pod := range podsForUpdate {
+		if ordinal, err := podOrdinal(pod.Name); err == nil && o.ignoreNotReadyOrdinals.Has(ordinal) {
+			l.Info(fmt.Sprintf("deferring update for pod %s, excluded by maintenance node IDs", pod.Name))
+			deferredUpdate = true
+			continue
+		}
+		filteredPodsForUpdate = append(filteredPodsForUpdate, pod)
+	}
+	podsForUpdate = filteredPodsForUpdate
+
 	l.Info(fmt.Sprintf("discovered already updated pods=%d, pods needed to be update=%d", len(updatedPods), len(podsForUpdate)))
 
 	// check updated, by not ready pods
 	for _, pod := range updatedPods {
+		if ordinal, err := podOrdinal(pod.Name); err == nil && o.ignoreNotReadyOrdinals.Has(ordinal) {
+			l.Info(fmt.Sprintf("skipping not-ready check for pod %s, excluded by maintenance node IDs", pod.Name))
+			continue
+		}
 		l.Info(fmt.Sprintf("checking ready status for already updated pod %s to revision version=%q", pod.Name, stsVersion))
 		podNsn := types.NamespacedName{Namespace: obj.Namespace, Name: pod.Name}
 		if err := waitForPodReady(ctx, rclient, podNsn, stsVersion, sts.Spec.MinReadySeconds); err != nil {
@@ -389,6 +435,11 @@ func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *
 		if err := errG.Wait(); err != nil {
 			return fmt.Errorf("fail to perform batch update with size: %d: %w", len(batch), err)
 		}
+	}
+
+	if deferredUpdate {
+		l.Info("statefulset update is incomplete: some pods were deferred due to maintenance node IDs")
+		return nil
 	}
 
 	l.Info(fmt.Sprintf("finished statefulset update from revision=%q to revision=%q", sts.Status.CurrentRevision, stsVersion))
@@ -489,6 +540,18 @@ func podStatusesToError(origin error, pod *corev1.Pod) error {
 		return fmt.Errorf("%s: pod has crashed containers", msg)
 	}
 	return fmt.Errorf("%s: %w", msg, origin)
+}
+
+func podOrdinal(name string) (int32, error) {
+	n := strings.LastIndexByte(name, '-')
+	if n <= 0 {
+		return 0, fmt.Errorf("cannot find - at the pod name: %s", name)
+	}
+	id, err := strconv.ParseInt(name[n+1:], 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("cannot parse pod id number: %s from name: %s", name[n+1:], name)
+	}
+	return int32(id), nil
 }
 
 func sortStsPodsByID(src []corev1.Pod) error {

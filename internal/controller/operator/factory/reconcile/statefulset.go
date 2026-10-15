@@ -91,6 +91,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *ap
 	}
 
 	rclient.Scheme().Default(newObj)
+	desiredSpec := newObj.Spec.DeepCopy()
 	updateStrategy := newObj.Spec.UpdateStrategy.Type
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	removeFinalizer := true
@@ -100,6 +101,8 @@ func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *ap
 	var existingObj appsv1.StatefulSet
 	var hpaManaged bool
 	err := retryOnConflict(func() error {
+		newObj.Spec = *desiredSpec.DeepCopy()
+		existingObj = appsv1.StatefulSet{}
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
 				logger.WithContext(ctx).Info(fmt.Sprintf("creating new StatefulSet=%s", nsn.String()))
@@ -163,8 +166,8 @@ func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *ap
 	}
 
 	// check if pvcs need to resize
-	if len(existingObj.Spec.VolumeClaimTemplates) > 0 {
-		if err := updateSTSPVC(ctx, rclient, newObj, prevVCTs); err != nil {
+	if len(newObj.Spec.VolumeClaimTemplates) > 0 {
+		if err := updateSTSPVC(ctx, rclient, newObj, prevVCTs, existingObj.Status.Replicas); err != nil {
 			return err
 		}
 	}

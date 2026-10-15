@@ -10996,12 +10996,38 @@ spec:
                   properties:
                     aws:
                       properties:
+                        accessKeySecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
                         ec2Endpoint:
                           type: string
                         region:
                           type: string
                         roleARN:
                           type: string
+                        secretKeySecret:
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              default: ""
+                              type: string
+                            optional:
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
                         service:
                           type: string
                         stsEndpoint:

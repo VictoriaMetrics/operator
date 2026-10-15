@@ -38977,6 +38977,14 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                     type: object
+                  class:
+                    description: Class defines reader type, defaults to vm
+                    enum:
+                    - vm
+                    - reader.vm.VmReader
+                    - vlogs
+                    - reader.vlogs.VLogsReader
+                    type: string
                   dataRange:
                     description: Optional argumentallows defining valid data ranges
                       for input of all the queries in queries

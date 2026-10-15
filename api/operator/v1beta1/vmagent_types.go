@@ -176,9 +176,19 @@ func (cr *VMAgent) Validate() error {
 			return err
 		}
 	}
+	for _, e := range cr.Spec.ExtraEnvs {
+		if strings.HasPrefix(e.Name, RemoteWriteEnvPrefix) {
+			return fmt.Errorf("spec.extraEnvs[%q] cannot use reserved prefix %q", e.Name, RemoteWriteEnvPrefix)
+		}
+	}
 	for idx, rw := range cr.Spec.RemoteWrite {
 		if rw.URL == "" {
 			return fmt.Errorf("remoteWrite[%d].url cannot be empty", idx)
+		}
+		if rw.AWS != nil {
+			if err := rw.AWS.validate(); err != nil {
+				return fmt.Errorf("bad remoteWrite[%d].aws: %w", idx, err)
+			}
 		}
 		if len(rw.InlineUrlRelabelConfig) > 0 {
 			if err := checkRelabelConfigs(rw.InlineUrlRelabelConfig); err != nil {
@@ -376,6 +386,24 @@ type AWS struct {
 	AccessKeySecret *corev1.SecretKeySelector `json:"accessKeySecret,omitempty"`
 	// SecretKeySecret sets the SecretKey for the -remoteWrite.url if useSigv4 is set.
 	SecretKeySecret *corev1.SecretKeySelector `json:"secretKeySecret,omitempty"`
+}
+
+func (a *AWS) validate() error {
+	if (a.AccessKeySecret == nil) != (a.SecretKeySecret == nil) {
+		return fmt.Errorf("accessKeySecret and secretKeySecret must be set together")
+	}
+	if a.AccessKeySecret == nil {
+		return nil
+	}
+	if !a.UseSigv4 {
+		return fmt.Errorf("accessKeySecret and secretKeySecret require useSigv4=true")
+	}
+	for name, sel := range map[string]*corev1.SecretKeySelector{"accessKeySecret": a.AccessKeySecret, "secretKeySecret": a.SecretKeySecret} {
+		if sel.Name == "" || sel.Key == "" {
+			return fmt.Errorf("%s must have both name and key set", name)
+		}
+	}
+	return nil
 }
 
 // VMAgentRemoteWriteSpec defines the remote storage configuration for VmAgent

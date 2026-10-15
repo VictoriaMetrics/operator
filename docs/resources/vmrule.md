@@ -42,7 +42,7 @@ Also, you can check out the [examples](https://docs.victoriametrics.com/operator
 Each group in `spec.groups` has an optional `type` field, which defines the query language of the group's rule expressions
 and the datasource API used by `vmalert` to evaluate them:
 
-- `prometheus` (default) - [MetricsQL](https://docs.victoriametrics.com/victoriametrics/metricsql/) or [PromQL](https://prometheus.io/docs/prometheus/latest/querying/basics/) expressions,
+- `prometheus` (default unless overridden by `-rule.defaultRuleType`) - [MetricsQL](https://docs.victoriametrics.com/victoriametrics/metricsql/) or [PromQL](https://prometheus.io/docs/prometheus/latest/querying/basics/) expressions,
   evaluated via the Prometheus querying API of [VictoriaMetrics](https://docs.victoriametrics.com/victoriametrics/vmalert/#victoriametrics)
   or any Prometheus-compatible datasource;
 - `vlogs` - [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/) expressions,

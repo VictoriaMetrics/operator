@@ -29,6 +29,7 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 			Namespace: namespace,
 		}
 		tlsSecretName := "vmagent-remote-tls-certs"
+		awsSecretName := "vmagent-remote-aws-creds"
 
 		AfterEach(func() {
 			Expect(k8sClient.Delete(ctx, &vmv1beta1.VMAgent{
@@ -315,6 +316,90 @@ var _ = Describe("test vmagent Controller", Label("vm", "agent", "vmagent"), fun
 						}},
 					)).ToNot(HaveOccurred())
 
+				}),
+			Entry("with aws sigv4 static credentials", "remote-aws",
+				&vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      nsn.Name,
+					},
+					Spec: vmv1beta1.VMAgentSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{
+							ReplicaCount: ptr.To[int32](1),
+						},
+						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+							{
+								URL: "http://localhost:8428",
+								AWS: &vmv1beta1.AWS{
+									UseSigv4: true,
+									Region:   "us-east-1",
+									AccessKeySecret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: awsSecretName,
+										},
+										Key: "access-key",
+									},
+									SecretKeySecret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: awsSecretName,
+										},
+										Key: "secret-key",
+									},
+								},
+							},
+						},
+					},
+				},
+				func() {
+					awsSecret := &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      awsSecretName,
+							Namespace: namespace,
+						},
+						StringData: map[string]string{
+							"access-key": "E2EACCESSKEY",
+							"secret-key": "E2ESECRETKEY",
+						},
+					}
+					Expect(func() error {
+						if err := k8sClient.Create(ctx, awsSecret); err != nil &&
+							!k8serrors.IsAlreadyExists(err) {
+							return err
+						}
+						return nil
+					}()).ToNot(HaveOccurred())
+				},
+				func(cr *vmv1beta1.VMAgent) {
+					var dep appsv1.Deployment
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: namespace}, &dep)).ToNot(HaveOccurred())
+					vmagentCnt := dep.Spec.Template.Spec.Containers[0]
+					Expect(vmagentCnt.Name).To(Equal("vmagent"))
+					Expect(vmagentCnt.Args).To(ContainElements(
+						"-remoteWrite.aws.accessKey=%{VM_REMOTEWRITE_0_AWS_ACCESS_KEY}",
+						"-remoteWrite.aws.secretKey=%{VM_REMOTEWRITE_0_AWS_SECRET_KEY}",
+					))
+					Expect(vmagentCnt.Env).To(ContainElements(
+						corev1.EnvVar{Name: "VM_REMOTEWRITE_0_AWS_ACCESS_KEY", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: cr.Spec.RemoteWrite[0].AWS.AccessKeySecret}},
+						corev1.EnvVar{Name: "VM_REMOTEWRITE_0_AWS_SECRET_KEY", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: cr.Spec.RemoteWrite[0].AWS.SecretKeySecret}},
+					))
+					// credentials must only be referenced, never inlined into the pod spec
+					Expect(fmt.Sprint(dep.Spec.Template.Spec)).ToNot(Or(ContainSubstring("E2EACCESSKEY"), ContainSubstring("E2ESECRETKEY")))
+					Eventually(func() error {
+						return expectPodCount(ctx, k8sClient, &appsv1.ReplicaSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Namespace: namespace,
+								Labels:    cr.SelectorLabels(),
+							},
+						}, 1)
+					}, eventualDeploymentPodTimeout, 1).ShouldNot(HaveOccurred())
+					Expect(finalize.SafeDelete(
+						ctx,
+						k8sClient,
+						&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+							Name:      awsSecretName,
+							Namespace: nsn.Namespace,
+						}},
+					)).ToNot(HaveOccurred())
 				}),
 			Entry("with strict security", "strict-sec",
 				&vmv1beta1.VMAgent{

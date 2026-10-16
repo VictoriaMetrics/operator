@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 )
 
@@ -181,4 +182,50 @@ func TestVMAgent_IsUnmanaged(t *testing.T) {
 		Status: VMAgentStatus{ParsingSpecError: "some other unrelated parse failure"},
 		Spec:   VMAgentSpec{CommonScrapeParams: CommonScrapeParams{SelectAllByDefault: true}},
 	}, true)
+}
+
+func TestVMAgent_Validate_AWSRemoteWriteSettings(t *testing.T) {
+	f := func(rw VMAgentRemoteWriteSpec, wantErr bool) {
+		t.Helper()
+		rw.URL = "http://some-rw"
+		r := &VMAgent{Spec: VMAgentSpec{RemoteWrite: []VMAgentRemoteWriteSpec{rw}}}
+		if wantErr {
+			assert.Error(t, r.Validate())
+		} else {
+			assert.NoError(t, r.Validate())
+		}
+	}
+	// aws static credentials
+	validSel := &corev1.SecretKeySelector{
+		LocalObjectReference: corev1.LocalObjectReference{Name: "aws-creds"},
+		Key:                  "key",
+	}
+	f(VMAgentRemoteWriteSpec{AWS: &AWS{UseSigv4: true, AccessKeySecret: validSel, SecretKeySecret: validSel}}, false)
+	// must be set together
+	f(VMAgentRemoteWriteSpec{AWS: &AWS{UseSigv4: true, AccessKeySecret: validSel}}, true)
+	f(VMAgentRemoteWriteSpec{AWS: &AWS{UseSigv4: true, SecretKeySecret: validSel}}, true)
+	// silently ignored by vmagent without useSigv4
+	f(VMAgentRemoteWriteSpec{AWS: &AWS{AccessKeySecret: validSel, SecretKeySecret: validSel}}, true)
+	// incomplete selector
+	f(VMAgentRemoteWriteSpec{AWS: &AWS{
+		UseSigv4:        true,
+		AccessKeySecret: &corev1.SecretKeySelector{Key: "key"},
+		SecretKeySecret: validSel,
+	}}, true)
+	f(VMAgentRemoteWriteSpec{AWS: &AWS{
+		UseSigv4:        true,
+		AccessKeySecret: validSel,
+		SecretKeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "aws-creds"}},
+	}}, true)
+	// the pre-existing aws fields keep working on their own
+	f(VMAgentRemoteWriteSpec{AWS: &AWS{UseSigv4: true, Region: "us-east-1"}}, false)
+
+	// extraEnvs must not collide with the operator-managed prefix
+	r := &VMAgent{Spec: VMAgentSpec{
+		RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
+		CommonAppsParams: CommonAppsParams{
+			ExtraEnvs: []corev1.EnvVar{{Name: RemoteWriteEnvPrefix + "0_AWS_ACCESS_KEY", Value: "x"}},
+		},
+	}}
+	assert.Error(t, r.Validate())
 }

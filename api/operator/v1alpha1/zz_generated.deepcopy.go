@@ -706,7 +706,7 @@ func (in *VMDistributedZoneRemoteWriteSpec) DeepCopyInto(out *VMDistributedZoneR
 	if in.AWS != nil {
 		in, out := &in.AWS, &out.AWS
 		*out = new(v1beta1.AWS)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 }
 

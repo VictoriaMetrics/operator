@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+**Update note 1**: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): `VMAgent's` CRD must be updated after support for remote write AWS AccessKeySecret and SecretKeySecret was added.
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.154.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.154.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default version for VMAnomaly to [v1.31.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1310).
 
@@ -22,6 +24,7 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.12.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.12.0).
 
 * FEATURE: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): allow `targetRef.crd.kind` to reference a `VTAgent`, so `vmauth` can route to it by name instead of a static URL. See [#2687](https://github.com/VictoriaMetrics/operator/issues/2687).
+* FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): add `spec.remoteWrite[].aws.accessKeySecret` and `spec.remoteWrite[].aws.secretKeySecret` fields for static AWS SigV4 credentials. These fields keep credentials out of the pod spec and process arguments. The `VMAgent` CRD must be updated to get this feature. See [#2737](https://github.com/VictoriaMetrics/operator/pull/2737).
 
 * BUGFIX: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): allow `spec.configRawYaml` and `spec.configSecret` without `reader.queries` when queries are provided by selected [VMAnomalyConfig](https://docs.victoriametrics.com/operator/resources/vmanomalyconfig/) objects. Previously such a settings-only base config failed reconciliation with `reader.queries must be provided via configRawYaml or configSecret`. See [#2685](https://github.com/VictoriaMetrics/operator/pull/2685).
 * BUGFIX: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): fix the `victoria-metrics-alert` chart's legacy value aliases (`server.remote.read`, `server.remote.write`, `server.notifier.alertmanager`, nested `basicAuth`/`bearer` auth keys and a list-valued `server.notifier.url`) being silently dropped during conversion; they are now resolved the same way the chart does. Plaintext `remoteWrite` credentials are moved into a generated Secret like the other blocks. See [#2601](https://github.com/VictoriaMetrics/operator/issues/2601).

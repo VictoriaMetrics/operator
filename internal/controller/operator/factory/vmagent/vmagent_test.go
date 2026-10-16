@@ -963,7 +963,7 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ac := getAssetsCache(ctx, fclient, o.cr)
 		sort.Strings(o.want)
-		got, err := buildRemoteWriteArgs(o.cr, ac)
+		got, _, err := buildRemoteWriteArgs(o.cr, ac)
 		assert.NoError(t, err)
 		sort.Strings(got)
 		assert.Equal(t, o.want, got)
@@ -3420,4 +3420,163 @@ func TestMakeSpecForAgentOk_WatchTargetDirPairing(t *testing.T) {
 		want[fmt.Sprintf("/etc/vm/sc-raw-%d", i)] = fmt.Sprintf("/etc/vm/sc-files/sc-raw-%d", i)
 	}
 	k8stools.AssertConfigReloaderWatchTargetDirs(t, got.Containers, want)
+}
+
+func TestBuildRemoteWriteArgs_PerURLFlags(t *testing.T) {
+	type opts struct {
+		remoteWrite       []vmv1beta1.VMAgentRemoteWriteSpec
+		predefinedObjects []runtime.Object
+		// want lists only the flags under test, the always-present ones are added by the helper
+		want     []string
+		wantEnvs []corev1.EnvVar
+	}
+	f := func(o opts) {
+		t.Helper()
+		ctx := context.Background()
+		cr := &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{Name: "default-vmagent", Namespace: "default"},
+			Spec:       vmv1beta1.VMAgentSpec{RemoteWrite: o.remoteWrite},
+		}
+		urls := make([]string, 0, len(o.remoteWrite))
+		for _, rw := range o.remoteWrite {
+			urls = append(urls, rw.URL)
+		}
+		want := append([]string{},
+			"-remoteWrite.maxDiskUsagePerURL=1073741824",
+			"-remoteWrite.url="+strings.Join(urls, ","),
+			"-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data",
+		)
+		want = append(want, o.want...)
+		sort.Strings(want)
+
+		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
+		ac := getAssetsCache(ctx, fclient, cr)
+		got, gotEnvs, err := buildRemoteWriteArgs(cr, ac)
+		assert.NoError(t, err)
+		sort.Strings(got)
+		assert.Equal(t, want, got)
+		assert.Equal(t, o.wantEnvs, gotEnvs)
+	}
+
+	// aws static credentials are passed by env var reference, never as a literal value
+	f(opts{
+		remoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+			{URL: "localhost:8429"},
+			{
+				URL: "localhost:8430",
+				AWS: &vmv1beta1.AWS{
+					UseSigv4: true,
+					Region:   "us-east-1",
+					AccessKeySecret: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "remote2-aws-secret"},
+						Key:                  "accesskey",
+					},
+					SecretKeySecret: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "remote2-aws-secret"},
+						Key:                  "secretkey",
+					},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "remote2-aws-secret", Namespace: "default"},
+				Data: map[string][]byte{
+					"accesskey": []byte("accesskeytoken"),
+					"secretkey": []byte("secretkeytoken"),
+				},
+			},
+		},
+		want: []string{
+			`-remoteWrite.aws.region=,us-east-1`,
+			`-remoteWrite.aws.useSigv4=false,true`,
+			`-remoteWrite.aws.accessKey=,%{VM_REMOTEWRITE_1_AWS_ACCESS_KEY}`,
+			`-remoteWrite.aws.secretKey=,%{VM_REMOTEWRITE_1_AWS_SECRET_KEY}`,
+		},
+		wantEnvs: []corev1.EnvVar{
+			{
+				Name: "VM_REMOTEWRITE_1_AWS_ACCESS_KEY",
+				ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "remote2-aws-secret"},
+					Key:                  "accesskey",
+				}},
+			},
+			{
+				Name: "VM_REMOTEWRITE_1_AWS_SECRET_KEY",
+				ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "remote2-aws-secret"},
+					Key:                  "secretkey",
+				}},
+			},
+		},
+	})
+}
+
+func TestBuildRemoteWriteArgs_AWSSecretIsNotLeaked(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "default-vmagent", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{
+			RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+				{
+					URL: "localhost:8429",
+					AWS: &vmv1beta1.AWS{
+						UseSigv4: true,
+						AccessKeySecret: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "aws-creds"},
+							Key:                  "accesskey",
+						},
+						SecretKeySecret: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "aws-creds"},
+							Key:                  "secretkey",
+						},
+					},
+				},
+			},
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				ExtraEnvs: []corev1.EnvVar{{Name: "SOME_ENV", Value: "some-value"}},
+			},
+		},
+	}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "aws-creds", Namespace: "default"},
+			Data: map[string][]byte{
+				"accesskey": []byte("SUPERSECRETACCESSKEY"),
+				"secretkey": []byte("SUPERSECRETSECRETKEY"),
+			},
+		},
+	})
+	ac := getAssetsCache(ctx, fclient, cr)
+	podSpec, err := newPodSpec(cr, ac, 0)
+	assert.NoError(t, err)
+
+	rendered, err := yaml.Marshal(podSpec)
+	assert.NoError(t, err)
+	assert.NotContains(t, string(rendered), "SUPERSECRETACCESSKEY", "aws accessKey must never reach the pod spec")
+	assert.NotContains(t, string(rendered), "SUPERSECRETSECRETKEY", "aws secretKey must never reach the pod spec")
+
+	var envs []corev1.EnvVar
+	for _, c := range podSpec.Containers {
+		if c.Name == "vmagent" {
+			envs = c.Env
+		}
+	}
+	assert.Equal(t, []corev1.EnvVar{
+		{Name: "SOME_ENV", Value: "some-value"},
+		{
+			Name: "VM_REMOTEWRITE_0_AWS_ACCESS_KEY",
+			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: "aws-creds"},
+				Key:                  "accesskey",
+			}},
+		},
+		{
+			Name: "VM_REMOTEWRITE_0_AWS_SECRET_KEY",
+			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: "aws-creds"},
+				Key:                  "secretkey",
+			}},
+		},
+	}, envs, "operator-managed credentials must be appended after extraEnvs")
 }

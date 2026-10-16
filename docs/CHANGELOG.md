@@ -13,7 +13,7 @@ aliases:
 
 ## tip
 
-**Update note 1**: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): `VMAgent's` CRD must be updated.
+**Update note 1**: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): `VMAgent's` CRD must be updated after support for remote write AWS AccessKeySecret and SecretKeySecret was added.
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.154.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.154.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default version for VMAnomaly to [v1.31.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1310).

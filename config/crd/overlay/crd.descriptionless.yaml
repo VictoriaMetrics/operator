@@ -3953,10 +3953,16 @@ spec:
                         type: object
                     type: object
                   retentionMaxDiskSpaceUsageBytes:
-                    type: string
+                    x-kubernetes-int-or-string: true
+                    x-kubernetes-validations:
+                    - message: must not be negative
+                      rule: type(self) == string || self >= 0
                   retentionPeriod:
                     pattern: ^[0-9]+(h|d|w|y|M)?$
-                    type: string
+                    x-kubernetes-int-or-string: true
+                    x-kubernetes-validations:
+                    - message: must not be negative
+                      rule: type(self) == string || self >= 0
                   revisionHistoryLimitCount:
                     format: int32
                     type: integer
@@ -8819,10 +8825,16 @@ spec:
                     type: object
                 type: object
               retentionMaxDiskSpaceUsageBytes:
-                type: string
+                x-kubernetes-int-or-string: true
+                x-kubernetes-validations:
+                - message: must not be negative
+                  rule: type(self) == string || self >= 0
               retentionPeriod:
                 pattern: ^[0-9]+(h|d|w|y|M)?$
-                type: string
+                x-kubernetes-int-or-string: true
+                x-kubernetes-validations:
+                - message: must not be negative
+                  rule: type(self) == string || self >= 0
               revisionHistoryLimitCount:
                 format: int32
                 type: integer
@@ -22721,7 +22733,10 @@ spec:
                 type: object
               retentionPeriod:
                 pattern: ^[0-9]+(h|d|w|y|M)?$
-                type: string
+                x-kubernetes-int-or-string: true
+                x-kubernetes-validations:
+                - message: must not be negative
+                  rule: type(self) == string || self >= 0
               serviceAccountName:
                 type: string
               useLegacyNaming:
@@ -32397,7 +32412,7 @@ spec:
                         type: object
                       type: array
                     tenant:
-                      type: string
+                      x-kubernetes-int-or-string: true
                     type:
                       type: string
                   required:
@@ -41131,7 +41146,10 @@ spec:
                 type: array
               retentionPeriod:
                 pattern: ^[0-9]+(h|d|w|y|M)?$
-                type: string
+                x-kubernetes-int-or-string: true
+                x-kubernetes-validations:
+                - message: must not be negative
+                  rule: type(self) == string || self >= 0
               revisionHistoryLimitCount:
                 format: int32
                 type: integer
@@ -47989,10 +48007,16 @@ spec:
                         type: object
                     type: object
                   retentionMaxDiskSpaceUsageBytes:
-                    type: string
+                    x-kubernetes-int-or-string: true
+                    x-kubernetes-validations:
+                    - message: must not be negative
+                      rule: type(self) == string || self >= 0
                   retentionPeriod:
                     pattern: ^[0-9]+(h|d|w|y|M)?$
-                    type: string
+                    x-kubernetes-int-or-string: true
+                    x-kubernetes-validations:
+                    - message: must not be negative
+                      rule: type(self) == string || self >= 0
                   revisionHistoryLimitCount:
                     format: int32
                     type: integer
@@ -48847,10 +48871,16 @@ spec:
                     type: object
                 type: object
               retentionMaxDiskSpaceUsageBytes:
-                type: string
+                x-kubernetes-int-or-string: true
+                x-kubernetes-validations:
+                - message: must not be negative
+                  rule: type(self) == string || self >= 0
               retentionPeriod:
                 pattern: ^[0-9]+(h|d|w|y|M)?$
-                type: string
+                x-kubernetes-int-or-string: true
+                x-kubernetes-validations:
+                - message: must not be negative
+                  rule: type(self) == string || self >= 0
               revisionHistoryLimitCount:
                 format: int32
                 type: integer

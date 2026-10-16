@@ -127,6 +127,80 @@ func TestStringOrArrayUnMarshal(t *testing.T) {
 
 }
 
+func TestStringOrIntUnmarshal(t *testing.T) {
+	f := func(src string, unmarshalF func([]byte, any) error, expected StringOrInt) {
+		t.Helper()
+		var got StringOrInt
+		assert.NoError(t, unmarshalF([]byte(src), &got))
+		assert.Equal(t, expected, got)
+	}
+
+	// integer
+	f(`0`, json.Unmarshal, "0")
+	f(`15`, yaml.Unmarshal, "15")
+
+	// string
+	f(`"0"`, json.Unmarshal, "0")
+	f(`"15:13"`, json.Unmarshal, "15:13")
+	f(`1M`, yaml.Unmarshal, "1M")
+
+	// null keeps empty value
+	f(`null`, json.Unmarshal, "")
+}
+
+func TestStringOrIntUnmarshalError(t *testing.T) {
+	f := func(src string) {
+		t.Helper()
+		var got StringOrInt
+		assert.Error(t, json.Unmarshal([]byte(src), &got))
+	}
+
+	f(`1.5`)
+	f(`true`)
+	f(`{}`)
+	f(`["0"]`)
+}
+
+func TestStringOrIntMarshal(t *testing.T) {
+	f := func(src StringOrInt, marshalF func(any) ([]byte, error), expected string) {
+		t.Helper()
+		got, err := marshalF(src)
+		assert.NoError(t, err)
+		assert.Equal(t, expected, string(got))
+	}
+
+	// value defined as integer is kept as a string
+	f("0", json.Marshal, `"0"`)
+	f("0", yaml.Marshal, `"0"
+`)
+	f("15:13", json.Marshal, `"15:13"`)
+}
+
+func TestBytesStringUnmarshal(t *testing.T) {
+	f := func(src string, expected BytesString, wantErr bool) {
+		t.Helper()
+		var got BytesString
+		err := json.Unmarshal([]byte(src), &got)
+		if wantErr {
+			assert.Error(t, err)
+			return
+		}
+		assert.NoError(t, err)
+		assert.Equal(t, expected, got)
+	}
+
+	// integer
+	f(`1073741824`, "1073741824", false)
+	f(`0`, "0", false)
+
+	// string with suffix
+	f(`"1GB"`, "1GB", false)
+
+	// negative values
+	f(`-1`, "", true)
+	f(`"-1"`, "", true)
+}
+
 func TestUseProxyProtocol(t *testing.T) {
 	type opts struct {
 		args     map[string]string

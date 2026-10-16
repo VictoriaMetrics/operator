@@ -66,7 +66,7 @@ type RuleGroup struct {
 	// Tenant id for group, can be used only with enterprise version of vmalert.
 	// See more details [here](https://docs.victoriametrics.com/victoriametrics/vmalert/#multitenancy).
 	// +optional
-	Tenant string `json:"tenant,omitempty" yaml:"tenant,omitempty"`
+	Tenant StringOrInt `json:"tenant,omitempty" yaml:"tenant,omitempty"`
 	// Params optional HTTP URL parameters added to each rule request
 	// +optional
 	Params url.Values `json:"params,omitempty" yaml:"params,omitempty"`
@@ -181,7 +181,7 @@ func (cr *VMRule) Validate() error {
 		// remove tenant from copy, it's needed to properly validate it with vmalert lib
 		// since tenant is only supported at enterprise code
 		if group.Tenant != "" {
-			if err := validateRuleGroupTenantID(group.Tenant); err != nil {
+			if err := validateRuleGroupTenantID(string(group.Tenant)); err != nil {
 				return fmt.Errorf("at idx=%d bad tenant=%q: %w", i, group.Tenant, err)
 			}
 			group.Tenant = ""

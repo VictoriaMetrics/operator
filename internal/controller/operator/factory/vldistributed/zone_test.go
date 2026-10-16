@@ -195,7 +195,7 @@ func TestGetZones(t *testing.T) {
 			singles := zs.singleObjects()
 			assert.Equal(t, "dist-zone-a", singles[0].Name)
 			assert.Equal(t, "dist-zone-b", singles[1].Name)
-			assert.Equal(t, "14d", singles[1].Spec.RetentionPeriod)
+			assert.Equal(t, vmv1beta1.StringOrInt("14d"), singles[1].Spec.RetentionPeriod)
 			assert.Equal(t, singles[1].GetRemoteWriteURL(), zs.vlagents[0].Spec.RemoteWrite[1].URL)
 		},
 	})

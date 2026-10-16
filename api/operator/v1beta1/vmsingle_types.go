@@ -60,8 +60,10 @@ type VMSingleSpec struct {
 	// The default value is 1 (one month).
 	// See [retention](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention) docs for details.
 	// +optional
+	// +kubebuilder:validation:XIntOrString
 	// +kubebuilder:validation:Pattern:="^[0-9]+(h|d|w|y|M)?$"
-	RetentionPeriod string `json:"retentionPeriod,omitempty"`
+	// +kubebuilder:validation:XValidation:rule="type(self) == string || self >= 0",message="must not be negative"
+	RetentionPeriod StringOrInt `json:"retentionPeriod,omitempty"`
 	// VMBackup configuration for backup
 	// +optional
 	VMBackup *VMBackup `json:"vmBackup,omitempty"`
@@ -423,7 +425,7 @@ func (cr *VMSingle) Validate() error {
 	if err := cr.Spec.Downsampling.validate(cr.Spec.License); err != nil {
 		return err
 	}
-	if err := cr.Spec.RetentionFilters.validate(cr.Spec.License, cr.Spec.RetentionPeriod); err != nil {
+	if err := cr.Spec.RetentionFilters.validate(cr.Spec.License, string(cr.Spec.RetentionPeriod)); err != nil {
 		return err
 	}
 	scrapeClassNames := sets.New[string]()

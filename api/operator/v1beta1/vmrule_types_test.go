@@ -222,6 +222,46 @@ spec:
 	})
 }
 
+func TestVMRuleUnmarshalTenant(t *testing.T) {
+	type opts struct {
+		tenant  string
+		want    StringOrInt
+		wantErr bool
+	}
+	f := func(o opts) {
+		t.Helper()
+		src := `{"spec":{"groups":[{"name":"group","tenant":` + o.tenant + `,"rules":[{"alert":"test","expr":"vector(1)"}]}]}}`
+		var vmr VMRule
+		require.NoError(t, json.Unmarshal([]byte(src), &vmr))
+		if o.wantErr {
+			assert.NotEmpty(t, vmr.Status.ParsingSpecError)
+			return
+		}
+		assert.Empty(t, vmr.Status.ParsingSpecError)
+		require.Len(t, vmr.Spec.Groups, 1)
+		assert.Equal(t, o.want, vmr.Spec.Groups[0].Tenant)
+		assert.NoError(t, vmr.Validate())
+	}
+
+	// tenant defined as integer
+	f(opts{
+		tenant: `0`,
+		want:   "0",
+	})
+
+	// tenant defined as string
+	f(opts{
+		tenant: `"15:13"`,
+		want:   "15:13",
+	})
+
+	// tenant of unsupported type
+	f(opts{
+		tenant:  `true`,
+		wantErr: true,
+	})
+}
+
 func TestVMRuleRulesRoundTripAndValidate(t *testing.T) {
 	src := VMRule{
 		TypeMeta: metav1.TypeMeta{

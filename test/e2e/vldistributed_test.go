@@ -438,8 +438,8 @@ var _ = Describe("e2e VLDistributed", Label("vl", "vldistributed"), func() {
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: vlClusters[1].Name, Namespace: namespace}, &updatedCluster2)).ToNot(HaveOccurred())
 
 			// Global overrides should be applied
-			Expect(updatedCluster1.Spec.VLStorage.RetentionPeriod).To(Equal("60d"))
-			Expect(updatedCluster2.Spec.VLStorage.RetentionPeriod).To(Equal("60d"))
+			Expect(updatedCluster1.Spec.VLStorage.RetentionPeriod).To(Equal(vmv1beta1.StringOrInt("60d")))
+			Expect(updatedCluster2.Spec.VLStorage.RetentionPeriod).To(Equal(vmv1beta1.StringOrInt("60d")))
 
 			// Cluster-specific overrides should be applied after global overrides
 			Expect(*updatedCluster1.Spec.VLStorage.ReplicaCount).To(Equal(int32(1)))

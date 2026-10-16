@@ -68,7 +68,7 @@ type VLogsSpec struct {
 	// +optional
 	RemovePvcAfterDelete bool `json:"removePvcAfterDelete,omitempty"`
 	// RetentionPeriod for the stored logs
-	RetentionPeriod string `json:"retentionPeriod"`
+	RetentionPeriod StringOrInt `json:"retentionPeriod"`
 	// FutureRetention for the stored logs
 	// Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#retention
 	FutureRetention string `json:"futureRetention,omitempty"`

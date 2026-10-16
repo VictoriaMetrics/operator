@@ -7861,13 +7861,19 @@ spec:
                       This means that the total disk space usage may exceed the -retention.maxDiskSpaceUsageBytes,
                       if the size of the last two days of data exceeds the -retention.maxDiskSpaceUsageBytes.
                       https://docs.victoriametrics.com/victorialogs/#retention-by-disk-space-usage
-                    type: string
+                    x-kubernetes-int-or-string: true
+                    x-kubernetes-validations:
+                    - message: must not be negative
+                      rule: type(self) == string || self >= 0
                   retentionPeriod:
                     description: |-
                       RetentionPeriod for the stored logs
                       https://docs.victoriametrics.com/victorialogs/#retention
                     pattern: ^[0-9]+(h|d|w|y|M)?$
-                    type: string
+                    x-kubernetes-int-or-string: true
+                    x-kubernetes-validations:
+                    - message: must not be negative
+                      rule: type(self) == string || self >= 0
                   revisionHistoryLimitCount:
                     description: |-
                       The number of old ReplicaSets to retain to allow rollback in deployment or
@@ -17816,13 +17822,19 @@ spec:
                   This means that the total disk space usage may exceed the -retention.maxDiskSpaceUsageBytes,
                   if the size of the last two days of data exceeds the -retention.maxDiskSpaceUsageBytes.
                   https://docs.victoriametrics.com/victorialogs/#retention-by-disk-space-usage
-                type: string
+                x-kubernetes-int-or-string: true
+                x-kubernetes-validations:
+                - message: must not be negative
+                  rule: type(self) == string || self >= 0
               retentionPeriod:
                 description: |-
                   RetentionPeriod for the stored logs
                   https://docs.victoriametrics.com/victorialogs/#retention
                 pattern: ^[0-9]+(h|d|w|y|M)?$
-                type: string
+                x-kubernetes-int-or-string: true
+                x-kubernetes-validations:
+                - message: must not be negative
+                  rule: type(self) == string || self >= 0
               revisionHistoryLimitCount:
                 description: |-
                   The number of old ReplicaSets to retain to allow rollback in deployment or
@@ -44974,7 +44986,10 @@ spec:
                   The default value is 1 (one month).
                   See [retention](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention) docs for details.
                 pattern: ^[0-9]+(h|d|w|y|M)?$
-                type: string
+                x-kubernetes-int-or-string: true
+                x-kubernetes-validations:
+                - message: must not be negative
+                  rule: type(self) == string || self >= 0
               serviceAccountName:
                 description: |-
                   ServiceAccountName is the name of the ServiceAccount to use to run the
@@ -64220,7 +64235,7 @@ spec:
                       description: |-
                         Tenant id for group, can be used only with enterprise version of vmalert.
                         See more details [here](https://docs.victoriametrics.com/victoriametrics/vmalert/#multitenancy).
-                      type: string
+                      x-kubernetes-int-or-string: true
                     type:
                       description: |-
                         Type defines datasource type for vmalert
@@ -80359,7 +80374,10 @@ spec:
                   The default value is 1 (one month).
                   See [retention](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention) docs for details.
                 pattern: ^[0-9]+(h|d|w|y|M)?$
-                type: string
+                x-kubernetes-int-or-string: true
+                x-kubernetes-validations:
+                - message: must not be negative
+                  rule: type(self) == string || self >= 0
               revisionHistoryLimitCount:
                 description: |-
                   The number of old ReplicaSets to retain to allow rollback in deployment or
@@ -93704,13 +93722,19 @@ spec:
                       This means that the total disk space usage may exceed the -retention.maxDiskSpaceUsageBytes,
                       if the size of the last two days of data exceeds the -retention.maxDiskSpaceUsageBytes.
                       https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
-                    type: string
+                    x-kubernetes-int-or-string: true
+                    x-kubernetes-validations:
+                    - message: must not be negative
+                      rule: type(self) == string || self >= 0
                   retentionPeriod:
                     description: |-
                       RetentionPeriod for the stored traces
                       https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
                     pattern: ^[0-9]+(h|d|w|y|M)?$
-                    type: string
+                    x-kubernetes-int-or-string: true
+                    x-kubernetes-validations:
+                    - message: must not be negative
+                      rule: type(self) == string || self >= 0
                   revisionHistoryLimitCount:
                     description: |-
                       The number of old ReplicaSets to retain to allow rollback in deployment or
@@ -95372,13 +95396,19 @@ spec:
                   This means that the total disk space usage may exceed the -retention.maxDiskSpaceUsageBytes,
                   if the size of the last two days of data exceeds the -retention.maxDiskSpaceUsageBytes.
                   https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
-                type: string
+                x-kubernetes-int-or-string: true
+                x-kubernetes-validations:
+                - message: must not be negative
+                  rule: type(self) == string || self >= 0
               retentionPeriod:
                 description: |-
                   RetentionPeriod for the stored traces
                   https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
                 pattern: ^[0-9]+(h|d|w|y|M)?$
-                type: string
+                x-kubernetes-int-or-string: true
+                x-kubernetes-validations:
+                - message: must not be negative
+                  rule: type(self) == string || self >= 0
               revisionHistoryLimitCount:
                 description: |-
                   The number of old ReplicaSets to retain to allow rollback in deployment or

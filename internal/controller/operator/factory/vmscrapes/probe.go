@@ -3,6 +3,7 @@ package vmscrapes
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"gopkg.in/yaml.v2"
 
@@ -65,6 +66,7 @@ func generateProbeConfig(
 	scrapeClass := getScrapeClass(spec.ScrapeClassName, sp)
 	if scrapeClass != nil {
 		mergeEndpointAuthWithScrapeClass(&spec.EndpointAuth, scrapeClass)
+		spec.MetricRelabelConfigs = slices.Concat(scrapeClass.MetricRelabelConfigs, spec.MetricRelabelConfigs)
 	}
 
 	// add defaults
@@ -88,6 +90,12 @@ func generateProbeConfig(
 	cfg = addCommonScrapeParamsTo(cfg, spec.EndpointScrapeParams, se)
 
 	var relabelings []yaml.MapSlice
+
+	if scrapeClass != nil {
+		for _, r := range scrapeClass.RelabelConfigs {
+			relabelings = append(relabelings, generateRelabelConfig(r))
+		}
+	}
 
 	staticTarget := spec.Targets.StaticConfig
 	if spec.Targets.Static != nil {

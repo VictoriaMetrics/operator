@@ -707,4 +707,65 @@ relabel_configs:
   replacement: blackbox:9115
 `,
 	})
+
+	// scrapeClass relabelings and metric relabelings
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{Name: "default-vmagent", Namespace: "default"},
+			Spec: vmv1beta1.VMAgentSpec{
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					ScrapeClasses: []vmv1beta1.ScrapeClass{
+						{
+							Name: "probe-class",
+							EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+								RelabelConfigs:       []*vmv1beta1.RelabelConfig{{TargetLabel: "env", Replacement: ptr.To("prod")}},
+								MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{{SourceLabels: []string{"__name__"}, Regex: vmv1beta1.StringOrArray{"probe_.*"}, Action: "keep"}},
+							},
+						},
+					},
+				},
+			},
+		},
+		sc: &vmv1beta1.VMProbe{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "class-probe"},
+			Spec: vmv1beta1.VMProbeSpec{
+				ScrapeClassName: ptr.To("probe-class"),
+				VMProberSpec:    vmv1beta1.VMProberSpec{URL: "blackbox:9115"},
+				Targets: vmv1beta1.VMProbeTargets{
+					Static: &vmv1beta1.VMProbeTargetStatic{
+						Targets:        []string{"host-1"},
+						RelabelConfigs: []*vmv1beta1.RelabelConfig{{TargetLabel: "env", Replacement: ptr.To("user")}},
+					},
+				},
+				MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{{TargetLabel: "probe", Replacement: ptr.To("class-probe")}},
+			},
+		},
+		want: `job_name: probe/default/class-probe
+honor_labels: false
+metrics_path: /probe
+static_configs:
+- targets:
+  - host-1
+relabel_configs:
+- target_label: env
+  replacement: prod
+- source_labels:
+  - __address__
+  target_label: __param_target
+- target_label: env
+  replacement: user
+- source_labels:
+  - __param_target
+  target_label: instance
+- target_label: __address__
+  replacement: blackbox:9115
+metric_relabel_configs:
+- source_labels:
+  - __name__
+  regex: probe_.*
+  action: keep
+- target_label: probe
+  replacement: class-probe
+`,
+	})
 }

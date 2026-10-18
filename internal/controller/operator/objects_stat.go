@@ -105,6 +105,7 @@ func newCollector() *objectCollector {
 		"vmnodescrape", "vmpodscrape", "vmprobe", "vmscrapeconfig", "vmanomaly", "vlagent",
 		"vtsingle", "vtcluster", "vmdistributed", "podmonitor", "prometheusrule", "servicemonitor",
 		"alertmanagerconfig", "probe", "scrapeconfig", "vmanomalyconfig", "vldistributed",
+		"vmmcp",
 	}
 	for _, controller := range registeredObjects {
 		oc.objectsByController[controller] = sets.New[string]()

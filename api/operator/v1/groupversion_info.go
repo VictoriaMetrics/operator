@@ -46,6 +46,7 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&VTCluster{}, &VTClusterList{},
 		&VMAnomaly{}, &VMAnomalyList{},
 		&VMAnomalyConfig{}, &VMAnomalyConfigList{},
+		&VMMCP{}, &VMMCPList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

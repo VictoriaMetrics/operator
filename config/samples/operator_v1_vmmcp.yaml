@@ -1,0 +1,9 @@
+apiVersion: operator.victoriametrics.com/v1
+kind: VMMCP
+metadata:
+  labels:
+    app.kubernetes.io/name: victoriametrics-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: dev
+spec:
+  entrypoint: http://vmsingle-dev:8428

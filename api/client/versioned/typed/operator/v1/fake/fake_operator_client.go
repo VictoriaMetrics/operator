@@ -43,6 +43,10 @@ func (c *FakeOperatorV1) VMAnomalies(namespace string) v1.VMAnomalyInterface {
 	return newFakeVMAnomalies(c, namespace)
 }
 
+func (c *FakeOperatorV1) VMMCPs(namespace string) v1.VMMCPInterface {
+	return newFakeVMMCPs(c, namespace)
+}
+
 func (c *FakeOperatorV1) VTAgents(namespace string) v1.VTAgentInterface {
 	return newFakeVTAgents(c, namespace)
 }

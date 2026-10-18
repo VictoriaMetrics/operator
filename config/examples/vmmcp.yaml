@@ -1,0 +1,17 @@
+apiVersion: operator.victoriametrics.com/v1
+kind: VMMCP
+metadata:
+  name: example
+spec:
+  # vmselect service of VMCluster named example
+  entrypoint: http://vmselect-example:8481
+  instanceType: cluster
+  defaultTenantID: "0"
+  replicaCount: 2
+  podDisruptionBudget:
+    maxUnavailable: 1
+  disabledTools:
+    - export
+    - flags
+    - test_rules
+  logFormat: json

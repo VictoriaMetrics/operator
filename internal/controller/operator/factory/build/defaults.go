@@ -51,6 +51,7 @@ func AddDefaults(scheme *runtime.Scheme) {
 	scheme.AddTypeDefaultingFunc(&vmv1.VTAgent{}, addVTAgentDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1.VTCluster{}, addVTClusterDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1.VMAnomaly{}, addVMAnomalyDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1.VMMCP{}, addVMMCPDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMServiceScrape{}, addVMServiceScrapeDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1alpha1.VMDistributed{}, addVMDistributedDefaults)
 	scheme.AddTypeDefaultingFunc(&vmv1alpha1.VLDistributed{}, addVLDistributedDefaults)
@@ -462,6 +463,37 @@ func addVMAnomalyDefaults(objI any) {
 	if len(cr.Spec.Server.Port) == 0 {
 		cr.Spec.Server.Port = cv.Port
 	}
+}
+
+func addVMMCPDefaults(objI any) {
+	cr := objI.(*vmv1.VMMCP)
+	addDefaultMetadata(cr)
+	cv := config.ApplicationDefaults(getCfg().VMMCP)
+	addMCPDefaults(&cr.Spec.CommonMCPSpec, &cv)
+}
+
+// addMCPDefaults adds defaults shared by CRDs of MCP servers
+func addMCPDefaults(spec *vmv1.CommonMCPSpec, appDefaults *config.ApplicationDefaults) {
+	// the MCP server serves liveness checks at a separate path,
+	// while readiness path is used for all probes by default
+	if spec.LivenessProbe == nil {
+		spec.LivenessProbe = &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: vmv1.MCPLivenessPath,
+				},
+			},
+		}
+	}
+	// the MCP server starts listening only after loading the built-in documentation,
+	// which takes more than a minute with low CPU limits
+	if spec.StartupProbe == nil {
+		spec.StartupProbe = &corev1.Probe{
+			FailureThreshold: 60,
+		}
+	}
+	cp := commonParams{tag: spec.ComponentVersion}
+	addDefaultsToCommonParams(&spec.CommonAppsParams, &cp, appDefaults)
 }
 
 func addVLSingleDefaults(objI any) {

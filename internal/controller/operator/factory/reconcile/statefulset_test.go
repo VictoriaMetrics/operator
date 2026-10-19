@@ -1490,9 +1490,10 @@ func TestStatefulsetReconcile_NewObjNotStaleAcrossRetries(t *testing.T) {
 	})
 
 	synctest.Test(t, func(t *testing.T) {
-		_ = StatefulSet(ctx, fclient, newObj, nil, nil, &StatefulSetOpts{
+		err := StatefulSet(ctx, fclient, newObj, nil, nil, &StatefulSetOpts{
 			PatchSpec: func(existingSpec, newSpec *appsv1.StatefulSetSpec) {},
 		})
+		assert.ErrorContains(t, err, fmt.Sprintf("cannot wait for statefulSet=%s to become ready", nn.Name))
 	})
 
 	var got appsv1.StatefulSet

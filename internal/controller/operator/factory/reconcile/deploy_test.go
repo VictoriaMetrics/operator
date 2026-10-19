@@ -272,9 +272,10 @@ func TestDeployReconcile_NewObjNotStaleAcrossRetries(t *testing.T) {
 	})
 
 	synctest.Test(t, func(t *testing.T) {
-		_ = Deployment(ctx, fclient, newObj, nil, nil, &DeploymentOpts{
+		err := Deployment(ctx, fclient, newObj, nil, nil, &DeploymentOpts{
 			PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {},
 		})
+		assert.ErrorContains(t, err, fmt.Sprintf("cannot wait for Deployment=%s to become ready", nn.String()))
 	})
 
 	var got appsv1.Deployment

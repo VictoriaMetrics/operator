@@ -6481,7 +6481,7 @@ spec:
                     description: |-
                       FutureRetention for the stored logs
                       Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#retention
-                    pattern: ^[0-9]+(h|d|w|y)?$
+                    pattern: ^[0-9]+(h|d|w|y|M)?$
                     type: string
                   host_aliases:
                     description: |-
@@ -7868,7 +7868,7 @@ spec:
                     description: |-
                       RetentionPeriod for the stored logs
                       https://docs.victoriametrics.com/victorialogs/#retention
-                    pattern: ^[0-9]+(h|d|w|y)?$
+                    pattern: ^[0-9]+(h|d|w|y|M)?$
                     type: string
                   revisionHistoryLimitCount:
                     description: |-
@@ -17077,7 +17077,7 @@ spec:
                 description: |-
                   FutureRetention for the stored logs
                   Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#retention
-                pattern: ^[0-9]+(h|d|y)?$
+                pattern: ^[0-9]+(h|d|y|M)?$
                 type: string
               host_aliases:
                 description: |-
@@ -17829,7 +17829,7 @@ spec:
                 description: |-
                   RetentionPeriod for the stored logs
                   https://docs.victoriametrics.com/victorialogs/#retention
-                pattern: ^[0-9]+(h|d|w|y)?$
+                pattern: ^[0-9]+(h|d|w|y|M)?$
                 type: string
               revisionHistoryLimitCount:
                 description: |-
@@ -44979,11 +44979,11 @@ spec:
                 type: object
               retentionPeriod:
                 description: |-
-                  RetentionPeriod defines how long to retain stored metrics, specified as a duration (e.g., "1d", "1w", "1m").
+                  RetentionPeriod defines how long to retain stored metrics, specified as a duration (e.g., "1d", "1w", "1M").
                   Data with timestamps outside the RetentionPeriod is automatically deleted. The minimum allowed value is 1d, or 24h.
                   The default value is 1 (one month).
                   See [retention](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention) docs for details.
-                pattern: ^[0-9]+(h|d|w|y)?$
+                pattern: ^[0-9]+(h|d|w|y|M)?$
                 type: string
               serviceAccountName:
                 description: |-
@@ -64238,8 +64238,11 @@ spec:
                       type: string
                     type:
                       description: |-
-                        Type defines datasource type for enterprise version of vmalert
-                        possible values - prometheus,graphite,vlogs
+                        Type defines datasource type for vmalert
+                        possible values:
+                        - prometheus
+                        - graphite
+                        - vlogs
                       type: string
                   required:
                   - name
@@ -80360,11 +80363,11 @@ spec:
                 type: array
               retentionPeriod:
                 description: |-
-                  RetentionPeriod defines how long to retain stored metrics, specified as a duration (e.g., "1d", "1w", "1m").
+                  RetentionPeriod defines how long to retain stored metrics, specified as a duration (e.g., "1d", "1w", "1M").
                   Data with timestamps outside the RetentionPeriod is automatically deleted. The minimum allowed value is 1d, or 24h.
                   The default value is 1 (one month).
                   See [retention](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention) docs for details.
-                pattern: ^[0-9]+(h|d|w|y)?$
+                pattern: ^[0-9]+(h|d|w|y|M)?$
                 type: string
               revisionHistoryLimitCount:
                 description: |-
@@ -84376,8 +84379,10 @@ spec:
                       a token that only needs to pass matchClaims/oidc verification without vm_access.
                     properties:
                       logsAccountID:
-                        description: LogsAccountID defines accountID to use for logs
-                          requests templating
+                        description: |-
+                          LogsAccountID defines accountID to use for logs requests templating
+                          Pointer is used to distinguish an unset value from an explicit zero value,
+                          since zero is a valid accountID and selects the default tenant.
                         format: int32
                         type: integer
                       logsExtraFilters:
@@ -84393,13 +84398,16 @@ spec:
                           type: string
                         type: array
                       logsProjectID:
-                        description: LogsProjectID defines projectID to use for logs
-                          requests templating
+                        description: |-
+                          LogsProjectID defines projectID to use for logs requests templating
+                          Pointer is used to distinguish an unset value from an explicit zero value,
+                          since zero is a valid projectID and selects the default tenant.
                         format: int32
                         type: integer
                       metricsAccountID:
-                        description: MetricsAccountID defines accountID to use for
-                          metrics requests templating
+                        description: |-
+                          MetricsAccountID defines accountID to use for metrics requests templating
+                          Set it to 0 to select the default tenant; omit the field to leave it unset, so an explicit zero is preserved instead of being dropped.
                         format: int32
                         type: integer
                       metricsExtraFilters:
@@ -84415,8 +84423,10 @@ spec:
                           type: string
                         type: array
                       metricsProjectID:
-                        description: MetricsProjectID defines projectID to use for
-                          metrics requests templating
+                        description: |-
+                          MetricsProjectID defines projectID to use for metrics requests templating
+                          Pointer is used to distinguish an unset value from an explicit zero value,
+                          since zero is a valid projectID and selects the default tenant.
                         format: int32
                         type: integer
                     type: object
@@ -92318,7 +92328,7 @@ spec:
                       FutureRetention for the stored traces
                       Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion
                       see https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
-                    pattern: ^[0-9]+(h|d|w|y)?$
+                    pattern: ^[0-9]+(h|d|w|y|M)?$
                     type: string
                   host_aliases:
                     description: |-
@@ -93706,7 +93716,7 @@ spec:
                     description: |-
                       RetentionPeriod for the stored traces
                       https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
-                    pattern: ^[0-9]+(h|d|w|y)?$
+                    pattern: ^[0-9]+(h|d|w|y|M)?$
                     type: string
                   revisionHistoryLimitCount:
                     description: |-
@@ -94569,7 +94579,7 @@ spec:
                   FutureRetention for the stored traces
                   Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion;
                   see https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
-                pattern: ^[0-9]+(h|d|y)?$
+                pattern: ^[0-9]+(h|d|y|M)?$
                 type: string
               grpcSpec:
                 description: GRPCSpec defines OTLP gRPC ingestion listener configuration
@@ -95372,7 +95382,7 @@ spec:
                 description: |-
                   RetentionPeriod for the stored traces
                   https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
-                pattern: ^[0-9]+(h|d|w|y)?$
+                pattern: ^[0-9]+(h|d|w|y|M)?$
                 type: string
               revisionHistoryLimitCount:
                 description: |-

@@ -450,6 +450,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			for i := range targetRefs {
 				targetRef := &targetRefs[i]
 				targetRef.RetryStatusCodes = []int{500, 502, 503}
+				targetRef.RequestHeaders = []string{"Authorization:"}
 			}
 			var got vmv1beta1.VMAuth
 			nsn := types.NamespacedName{
@@ -627,6 +628,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			for i := range targetRefs {
 				targetRef := &targetRefs[i]
 				targetRef.RetryStatusCodes = []int{500, 502, 503}
+				targetRef.RequestHeaders = []string{"Authorization:"}
 			}
 			var got vmv1beta1.VMAuth
 			nsn := types.NamespacedName{
@@ -700,6 +702,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			}
 			for i := range expectedTargetRefs {
 				expectedTargetRefs[i].RetryStatusCodes = []int{500, 502, 503}
+				expectedTargetRefs[i].RequestHeaders = []string{"Authorization:"}
 				expectedTargetRefs[i].Static = &vmv1beta1.StaticRef{URL: defaultStubAddr}
 			}
 			assert.Equal(t, expectedTargetRefs, got.Spec.DefaultTargetRefs)

@@ -57,6 +57,11 @@ func vmAuthTargetRef(name, policy, kind string, paths []string, objects []metav1
 		URLMapCommon: vmv1beta1.URLMapCommon{
 			LoadBalancingPolicy: ptr.To(policy),
 			RetryStatusCodes:    []int{500, 502, 503},
+			// Backends are reached without credentials, so do not leak client auth headers to them.
+			// A chained vmauth with unauthorized_user would otherwise treat the forwarded header as
+			// an invalid token.
+			// See https://github.com/VictoriaMetrics/VictoriaMetrics/issues/11774#issuecomment-6233356205.
+			RequestHeaders: []string{"Authorization:"},
 		},
 		Paths: paths,
 	}

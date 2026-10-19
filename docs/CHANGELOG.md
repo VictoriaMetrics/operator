@@ -15,7 +15,7 @@ aliases:
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.154.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.154.0).
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.12.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.12.0).
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default version for VMAnomaly to [v1.31.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1310).
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default version for VMAnomaly to [v1.31.1](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1311).
 
 * FEATURE: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/), [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): allow `VTAgent` in `targetRef.crd.kind`, so `vmauth` can route to a `VTAgent` by name instead of a static URL. The CRDs must be updated to use it. See [#2687](https://github.com/VictoriaMetrics/operator/issues/2687).
 * FEATURE: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/), [vmanomalyconfig](https://docs.victoriametrics.com/operator/resources/vmanomalyconfig/): support the experimental `peer_outlier` model and its peer-group parameters in managed configuration, available since vmanomaly [v1.31.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1310). See [#2714](https://github.com/VictoriaMetrics/operator/pull/2714).

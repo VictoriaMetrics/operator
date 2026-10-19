@@ -113,8 +113,8 @@ The tool maps the majority of critical parameters, including Replicas, Images, R
 - A notifier URL is set: `server.notifier.url` becomes `spec.notifier`, or one `spec.notifiers` entry per URL when it is a list, and `server.notifiers` becomes `spec.notifiers`.
 - No notifier URL and no alerting rules: no notifier is generated, since the chart configures none either.
 - No notifier URL, but `server.config.alerts.groups` contains alerting rules: the conversion fails. The operator ignores alerting rules of a `VMAlert` without notifiers, while the chart's vmalert refuses to start. Set `server.notifier.url` or `server.notifiers`, or add `notifier.blackhole` to `server.extraArgs`.
-- `alertmanager.enabled: true` without `server.notifier.url`: the conversion fails, unless `server.extraArgs` sets `notifier.url`. The chart then points vmalert at its bundled Alertmanager, in addition to any `server.notifiers`, and that Alertmanager is not converted. Create a `VMAlertmanager` CR and a notifier pointing at it manually.
-
+- `alertmanager.enabled: true`, with neither `server.notifier.url` nor `server.extraArgs.notifier.url` set: the conversion fails. Here the chart sends alerts to its bundled Alertmanager, besides any `server.notifiers`, and that Alertmanager cannot be converted, since the converter generates only a `VMAlert` from this chart, not a `VMAlertmanager`. To fix it, point `server.notifier.url` at an Alertmanager, such as a separately created `VMAlertmanager`, or set `alertmanager.enabled: false`.
+- `alertmanager.enabled: true`, with `server.extraArgs.notifier.url` set: the chart sends alerts to that URL, not to its bundled Alertmanager. The conversion succeeds and keeps the flag in `spec.extraArgs`.
 ### victoria-metrics-auth
 
 **Users.** The chart's `config` value, vmauth's own native config file, is parsed too:

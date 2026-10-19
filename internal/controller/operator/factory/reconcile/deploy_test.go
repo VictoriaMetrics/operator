@@ -2,16 +2,21 @@ package reconcile
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
@@ -214,4 +219,67 @@ func TestDeployReconcile(t *testing.T) {
 			assert.Equal(t, ptr.To[int32](4), d.Spec.Replicas)
 		},
 	})
+}
+
+func TestDeployReconcile_NewObjNotStaleAcrossRetries(t *testing.T) {
+	ctx := context.Background()
+	nn := types.NamespacedName{Name: "test-hpa-stale", Namespace: "default"}
+
+	liveDeploy := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: ptr.To[int32](5),
+			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"label": "value"}},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"label": "value"}},
+				Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "app", Image: "old-image:tag"}}},
+			},
+		},
+	}
+
+	newObj := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"label": "value"}},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"label": "value"}},
+				Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "app", Image: "new-image:tag"}}},
+			},
+		},
+	}
+
+	var updateAttempts int
+	fclient := k8stools.GetTestClientWithObjectsAndInterceptors([]runtime.Object{liveDeploy}, interceptor.Funcs{
+		Update: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
+			if _, ok := obj.(*appsv1.Deployment); !ok {
+				return cl.Update(ctx, obj, opts...)
+			}
+			updateAttempts++
+			if updateAttempts == 1 {
+				// simulate HPA scaling the live object between retries
+				var live appsv1.Deployment
+				if err := cl.Get(ctx, nn, &live); err != nil {
+					return err
+				}
+				live.Spec.Replicas = ptr.To[int32](9)
+				if err := cl.Update(ctx, &live); err != nil {
+					return err
+				}
+				return k8serrors.NewConflict(schema.GroupResource{Resource: "deployments"}, nn.Name, fmt.Errorf("conflict"))
+			}
+			return cl.Update(ctx, obj, opts...)
+		},
+	})
+
+	synctest.Test(t, func(t *testing.T) {
+		err := Deployment(ctx, fclient, newObj, nil, nil, &DeploymentOpts{
+			PatchSpec: func(existingSpec, newSpec *appsv1.DeploymentSpec) {},
+		})
+		assert.ErrorContains(t, err, fmt.Sprintf("cannot wait for Deployment=%s to become ready", nn.String()))
+	})
+
+	var got appsv1.Deployment
+	assert.NoError(t, fclient.Get(ctx, nn, &got))
+	assert.Equal(t, 2, updateAttempts)
+	assert.Equal(t, ptr.To[int32](9), got.Spec.Replicas, "must use the live replicas as of the successful retry, not a stale value from the conflicting attempt")
 }

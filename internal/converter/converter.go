@@ -357,8 +357,15 @@ func resolveVMAlertLegacyValues(raw map[string]any) error {
 	} else if url, _ := notifier["url"].(string); url != "" {
 		server["notifier"] = notifier
 	} else if am, _ := raw["alertmanager"].(map[string]any); am["enabled"] == true {
-		// the chart falls back to its bundled alertmanager here, which has no CR equivalent.
-		return fmt.Errorf("server.notifier.url is empty and alertmanager.enabled is true: the bundled alertmanager is not converted, set server.notifier.url or create a VMAlertmanager and spec.notifier manually")
+		// without server.notifier.url, the chart points vmalert at its bundled alertmanager, in
+		// addition to any server.notifiers. That alertmanager is not converted, so the VMAlert
+		// would silently lose this notifier. server.extraArgs."notifier.url" is the exception:
+		// the chart lets it override the generated -notifier.url flag, so the bundled
+		// alertmanager is never used, and the operator honors it from spec.extraArgs.
+		extraArgs, _ := server["extraArgs"].(map[string]any)
+		if _, ok := extraArgs["notifier.url"]; !ok {
+			return fmt.Errorf("the chart's bundled alertmanager (alertmanager.enabled: true) cannot be converted: set server.notifier.url to the URL of an Alertmanager, e.g. a VMAlertmanager created separately, or set alertmanager.enabled to false. See https://docs.victoriametrics.com/operator/helm-converter/#victoria-metrics-alert")
+		}
 	}
 	if notifiers != nil {
 		server["notifiers"] = notifiers
@@ -400,7 +407,8 @@ func fromLegacyArgs(block map[string]any) map[string]any {
 	return result
 }
 
-// mergeOverwrite deep-merges src into dst like sprig's mergeOverwrite: non-empty src values win.
+// mergeOverwrite deep-merges src into dst like sprig's mergeOverwrite, except that empty strings,
+// lists and maps in src keep the dst value, where sprig would override it.
 func mergeOverwrite(dst, src map[string]any) map[string]any {
 	if dst == nil {
 		dst = map[string]any{}
@@ -2082,6 +2090,11 @@ func ConvertVMAlert(name, namespace string, values *VMAlertHelmValues) (*vmv1bet
 		return nil, nil, err
 	}
 	alert.Spec = *spec
+	if values.Server.Config != nil && hasAlertingRules(values.Server.Config.Alerts.Groups) && !alert.HasNotifiersConfigured() {
+		// the operator drops alerting rules of a VMAlert without notifiers, while the chart's
+		// vmalert refuses to start, so fail instead of silently losing the alerts.
+		return nil, nil, fmt.Errorf("server.config.alerts.groups contains alerting rules, but no notifier is configured: set server.notifier.url or server.notifiers, or add notifier.blackhole to server.extraArgs")
+	}
 	if values.Server.Config != nil && len(values.Server.Config.Alerts.Groups) > 0 {
 		// Default ruleSelector/ruleNamespaceSelector (both nil) select nothing, so the
 		// generated VMRule would never actually get loaded without this.
@@ -2098,6 +2111,18 @@ func vmAlertRuleSelectorLabels(vmalertName string) map[string]string {
 		"app.kubernetes.io/managed-by": "helm-converter",
 		"app.kubernetes.io/instance":   vmalertName,
 	}
+}
+
+// hasAlertingRules reports whether any group contains an alerting rule.
+func hasAlertingRules(groups []vmv1beta1.RuleGroup) bool {
+	for _, g := range groups {
+		for _, r := range g.Rules {
+			if r.Alert != "" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // ConvertVMAlertRules converts a victoria-metrics-alert chart's server.config.alerts.groups

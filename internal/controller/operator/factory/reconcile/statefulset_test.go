@@ -955,6 +955,42 @@ func TestStatefulsetReconcile(t *testing.T) {
 		},
 	})
 
+	// scale up from 0 replicas, PVCs are not created yet
+	f(opts{
+		new: getSts(func(s *appsv1.StatefulSet) {
+			s.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{{
+				ObjectMeta: metav1.ObjectMeta{Name: "vmselect-cachedir"},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("10Gi")},
+					},
+				},
+			}}
+		}),
+		predefinedObjects: []runtime.Object{
+			getSts(func(s *appsv1.StatefulSet) {
+				s.Spec.Replicas = ptr.To[int32](0)
+				s.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{{
+					ObjectMeta: metav1.ObjectMeta{Name: "vmselect-cachedir"},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						Resources: corev1.VolumeResourceRequirements{
+							Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("10Gi")},
+						},
+					},
+				}}
+				s.Status = appsv1.StatefulSetStatus{}
+			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Update", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+		},
+		validate: func(s *appsv1.StatefulSet) {
+			assert.Equal(t, ptr.To[int32](4), s.Spec.Replicas)
+		},
+	})
+
 	// no update on status change
 	f(opts{
 		new:  getSts(),

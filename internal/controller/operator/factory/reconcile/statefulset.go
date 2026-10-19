@@ -103,6 +103,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *ap
 	err := retryOnConflict(func() error {
 		newObj.Spec = *desiredSpec.DeepCopy()
 		existingObj = appsv1.StatefulSet{}
+		hpaManaged = false
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
 				logger.WithContext(ctx).Info(fmt.Sprintf("creating new StatefulSet=%s", nsn.String()))

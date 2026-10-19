@@ -106,6 +106,8 @@ func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Statef
 		return pvcs.Items[i].Name < pvcs.Items[j].Name
 	})
 	if len(pvcs.Items) == 0 {
+		// no pods exist yet, e.g. right after scaling up from 0 replicas,
+		// so the statefulset controller may not have created PVCs yet.
 		if liveReplicas == 0 {
 			return nil
 		}

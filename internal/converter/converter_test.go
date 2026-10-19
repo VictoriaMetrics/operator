@@ -847,6 +847,7 @@ func TestConvertVMAlertRules(t *testing.T) {
 	// rather than mounting a rule file directly. See issue #2398.
 	values = &VMAlertHelmValues{
 		Server: VMAlertServerValues{
+			Notifier: &VMAlertNotifierValues{URL: "http://vmalertmanager:9093"},
 			Config: &VMAlertConfigValues{
 				Alerts: struct {
 					Groups []vmv1beta1.RuleGroup `yaml:"groups,omitempty" json:"groups,omitempty"`
@@ -1946,6 +1947,41 @@ func TestUnmarshalValuesVMAlertNotifierShapes(t *testing.T) {
 	require.ErrorContains(t, err, "alertmanager.enabled")
 	_, err = convert("server:\n  notifier:\n    url: []\nalertmanager:\n  enabled: true\n")
 	require.ErrorContains(t, err, "alertmanager.enabled")
+	// the chart adds its bundled alertmanager to server.notifiers too.
+	_, err = convert("server:\n  notifiers:\n    - url: http://am-0:9093\nalertmanager:\n  enabled: true\n")
+	require.ErrorContains(t, err, "alertmanager.enabled")
+	// server.extraArgs overrides the chart's -notifier.url, so the bundled alertmanager is not used.
+	alert, err = convert("server:\n  extraArgs:\n    notifier.url: http://am-0:9093\nalertmanager:\n  enabled: true\n")
+	require.NoError(t, err)
+	assert.Nil(t, alert.Spec.Notifier)
+	assert.Equal(t, "http://am-0:9093", alert.Spec.ExtraArgs["notifier.url"])
+}
+
+// Alerting rules without a notifier must fail the conversion: the operator would silently drop
+// them, while the chart's vmalert refuses to start.
+func TestConvertVMAlertAlertingRulesNeedNotifier(t *testing.T) {
+	f := func(input string, wantErr bool) {
+		t.Helper()
+		values, err := UnmarshalValues([]byte(input), "victoria-metrics-alert")
+		require.NoError(t, err)
+		_, _, err = ConvertVMAlert("test-name", "test-ns", values.(*VMAlertHelmValues))
+		if wantErr {
+			require.ErrorContains(t, err, "alerting rules, but no notifier is configured", input)
+			return
+		}
+		require.NoError(t, err, input)
+	}
+	const alertingRules = "  config:\n    alerts:\n      groups:\n        - name: g\n          rules:\n            - alert: Up\n              expr: up == 0\n"
+	const recordingRules = "  config:\n    alerts:\n      groups:\n        - name: g\n          rules:\n            - record: up:sum\n              expr: sum(up)\n"
+
+	f("server:\n"+alertingRules, true)
+	f("server:\n  notifier:\n    url: \"\"\n"+alertingRules, true)
+	f("server:\n"+recordingRules, false)
+	f("server:\n  notifier:\n    url: http://am:9093\n"+alertingRules, false)
+	f("server:\n  notifiers:\n    - url: http://am:9093\n"+alertingRules, false)
+	f("server:\n  extraArgs:\n    notifier.url: http://am:9093\n"+alertingRules, false)
+	f("server:\n  extraArgs:\n    notifier.blackhole: \"true\"\n"+alertingRules, false)
+	f("server:\n  extraArgs:\n    notifier.config: /etc/notifier.yaml\n"+alertingRules, false)
 }
 
 // The chart's flat remoteWrite auth keys must produce a Secret reference like the other blocks.

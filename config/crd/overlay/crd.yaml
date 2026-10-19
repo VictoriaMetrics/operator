@@ -1,8 +1,6 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vlagents.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -451,6 +449,7 @@ spec:
                                       reason is a brief CamelCase machine-parseable reason.
                                       Together with status it forms the unique identity of a condition entry.
                                       Maximum permitted length of a reason is 256 bytes.
+                                    minLength: 1
                                     type: string
                                   status:
                                     description: |-
@@ -463,11 +462,13 @@ spec:
                                     - DataLoss
                                     - Degraded
                                     - Inaccessible
+                                    minLength: 1
                                     type: string
                                 required:
                                 - reason
                                 - status
                                 type: object
+                              maxItems: 16
                               type: array
                               x-kubernetes-list-map-keys:
                               - status
@@ -2415,6 +2416,7 @@ spec:
                                         reason is a brief CamelCase machine-parseable reason.
                                         Together with status it forms the unique identity of a condition entry.
                                         Maximum permitted length of a reason is 256 bytes.
+                                      minLength: 1
                                       type: string
                                     status:
                                       description: |-
@@ -2427,11 +2429,13 @@ spec:
                                       - DataLoss
                                       - Degraded
                                       - Inaccessible
+                                      minLength: 1
                                       type: string
                                   required:
                                   - reason
                                   - status
                                   type: object
+                                maxItems: 16
                                 type: array
                                 x-kubernetes-list-map-keys:
                                 - status
@@ -3156,8 +3160,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vlclusters.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -6479,7 +6481,7 @@ spec:
                     description: |-
                       FutureRetention for the stored logs
                       Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#retention
-                    pattern: ^[0-9]+(h|d|w|y)?$
+                    pattern: ^[0-9]+(h|d|w|y|M)?$
                     type: string
                   host_aliases:
                     description: |-
@@ -7866,7 +7868,7 @@ spec:
                     description: |-
                       RetentionPeriod for the stored logs
                       https://docs.victoriametrics.com/victorialogs/#retention
-                    pattern: ^[0-9]+(h|d|w|y)?$
+                    pattern: ^[0-9]+(h|d|w|y|M)?$
                     type: string
                   revisionHistoryLimitCount:
                     description: |-
@@ -8523,8 +8525,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vldistributed.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -12813,6 +12813,7 @@ spec:
                                                   reason is a brief CamelCase machine-parseable reason.
                                                   Together with status it forms the unique identity of a condition entry.
                                                   Maximum permitted length of a reason is 256 bytes.
+                                                minLength: 1
                                                 type: string
                                               status:
                                                 description: |-
@@ -12825,11 +12826,13 @@ spec:
                                                 - DataLoss
                                                 - Degraded
                                                 - Inaccessible
+                                                minLength: 1
                                                 type: string
                                             required:
                                             - reason
                                             - status
                                             type: object
+                                          maxItems: 16
                                           type: array
                                           x-kubernetes-list-map-keys:
                                           - status
@@ -13982,6 +13985,7 @@ spec:
                                                     reason is a brief CamelCase machine-parseable reason.
                                                     Together with status it forms the unique identity of a condition entry.
                                                     Maximum permitted length of a reason is 256 bytes.
+                                                  minLength: 1
                                                   type: string
                                                 status:
                                                   description: |-
@@ -13994,11 +13998,13 @@ spec:
                                                   - DataLoss
                                                   - Degraded
                                                   - Inaccessible
+                                                  minLength: 1
                                                   type: string
                                               required:
                                               - reason
                                               - status
                                               type: object
+                                            maxItems: 16
                                             type: array
                                             x-kubernetes-list-map-keys:
                                             - status
@@ -14945,6 +14951,7 @@ spec:
                                                     reason is a brief CamelCase machine-parseable reason.
                                                     Together with status it forms the unique identity of a condition entry.
                                                     Maximum permitted length of a reason is 256 bytes.
+                                                  minLength: 1
                                                   type: string
                                                 status:
                                                   description: |-
@@ -14957,11 +14964,13 @@ spec:
                                                   - DataLoss
                                                   - Degraded
                                                   - Inaccessible
+                                                  minLength: 1
                                                   type: string
                                               required:
                                               - reason
                                               - status
                                               type: object
+                                            maxItems: 16
                                             type: array
                                             x-kubernetes-list-map-keys:
                                             - status
@@ -16125,6 +16134,7 @@ spec:
                                                       reason is a brief CamelCase machine-parseable reason.
                                                       Together with status it forms the unique identity of a condition entry.
                                                       Maximum permitted length of a reason is 256 bytes.
+                                                    minLength: 1
                                                     type: string
                                                   status:
                                                     description: |-
@@ -16137,11 +16147,13 @@ spec:
                                                     - DataLoss
                                                     - Degraded
                                                     - Inaccessible
+                                                    minLength: 1
                                                     type: string
                                                 required:
                                                 - reason
                                                 - status
                                                 type: object
+                                              maxItems: 16
                                               type: array
                                               x-kubernetes-list-map-keys:
                                               - status
@@ -16733,8 +16745,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vlogs.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -16875,8 +16885,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vlsingles.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -17069,7 +17077,7 @@ spec:
                 description: |-
                   FutureRetention for the stored logs
                   Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#retention
-                pattern: ^[0-9]+(h|d|y)?$
+                pattern: ^[0-9]+(h|d|y|M)?$
                 type: string
               host_aliases:
                 description: |-
@@ -17821,7 +17829,7 @@ spec:
                 description: |-
                   RetentionPeriod for the stored logs
                   https://docs.victoriametrics.com/victorialogs/#retention
-                pattern: ^[0-9]+(h|d|w|y)?$
+                pattern: ^[0-9]+(h|d|w|y|M)?$
                 type: string
               revisionHistoryLimitCount:
                 description: |-
@@ -18815,8 +18823,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmagents.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -19581,6 +19587,7 @@ spec:
                                       reason is a brief CamelCase machine-parseable reason.
                                       Together with status it forms the unique identity of a condition entry.
                                       Maximum permitted length of a reason is 256 bytes.
+                                    minLength: 1
                                     type: string
                                   status:
                                     description: |-
@@ -19593,11 +19600,13 @@ spec:
                                     - DataLoss
                                     - Degraded
                                     - Inaccessible
+                                    minLength: 1
                                     type: string
                                 required:
                                 - reason
                                 - status
                                 type: object
+                              maxItems: 16
                               type: array
                               x-kubernetes-list-map-keys:
                               - status
@@ -24755,6 +24764,7 @@ spec:
                                         reason is a brief CamelCase machine-parseable reason.
                                         Together with status it forms the unique identity of a condition entry.
                                         Maximum permitted length of a reason is 256 bytes.
+                                      minLength: 1
                                       type: string
                                     status:
                                       description: |-
@@ -24767,11 +24777,13 @@ spec:
                                       - DataLoss
                                       - Degraded
                                       - Inaccessible
+                                      minLength: 1
                                       type: string
                                   required:
                                   - reason
                                   - status
                                   type: object
+                                maxItems: 16
                                 type: array
                                 x-kubernetes-list-map-keys:
                                 - status
@@ -25865,8 +25877,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmalertmanagerconfigs.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -31023,8 +31033,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmalertmanagers.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -31491,6 +31499,7 @@ spec:
                                       reason is a brief CamelCase machine-parseable reason.
                                       Together with status it forms the unique identity of a condition entry.
                                       Maximum permitted length of a reason is 256 bytes.
+                                    minLength: 1
                                     type: string
                                   status:
                                     description: |-
@@ -31503,11 +31512,13 @@ spec:
                                     - DataLoss
                                     - Degraded
                                     - Inaccessible
+                                    minLength: 1
                                     type: string
                                 required:
                                 - reason
                                 - status
                                 type: object
+                              maxItems: 16
                               type: array
                               x-kubernetes-list-map-keys:
                               - status
@@ -33543,6 +33554,7 @@ spec:
                                         reason is a brief CamelCase machine-parseable reason.
                                         Together with status it forms the unique identity of a condition entry.
                                         Maximum permitted length of a reason is 256 bytes.
+                                      minLength: 1
                                       type: string
                                     status:
                                       description: |-
@@ -33555,11 +33567,13 @@ spec:
                                       - DataLoss
                                       - Degraded
                                       - Inaccessible
+                                      minLength: 1
                                       type: string
                                   required:
                                   - reason
                                   - status
                                   type: object
+                                maxItems: 16
                                 type: array
                                 x-kubernetes-list-map-keys:
                                 - status
@@ -34451,8 +34465,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmalerts.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -37100,8 +37112,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmanomalies.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -37549,6 +37559,7 @@ spec:
                                       reason is a brief CamelCase machine-parseable reason.
                                       Together with status it forms the unique identity of a condition entry.
                                       Maximum permitted length of a reason is 256 bytes.
+                                    minLength: 1
                                     type: string
                                   status:
                                     description: |-
@@ -37561,11 +37572,13 @@ spec:
                                     - DataLoss
                                     - Degraded
                                     - Inaccessible
+                                    minLength: 1
                                     type: string
                                 required:
                                 - reason
                                 - status
                                 type: object
+                              maxItems: 16
                               type: array
                               x-kubernetes-list-map-keys:
                               - status
@@ -39852,6 +39865,7 @@ spec:
                                         reason is a brief CamelCase machine-parseable reason.
                                         Together with status it forms the unique identity of a condition entry.
                                         Maximum permitted length of a reason is 256 bytes.
+                                      minLength: 1
                                       type: string
                                     status:
                                       description: |-
@@ -39864,11 +39878,13 @@ spec:
                                       - DataLoss
                                       - Degraded
                                       - Inaccessible
+                                      minLength: 1
                                       type: string
                                   required:
                                   - reason
                                   - status
                                   type: object
+                                maxItems: 16
                                 type: array
                                 x-kubernetes-list-map-keys:
                                 - status
@@ -40746,8 +40762,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmanomalyconfigs.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -40879,8 +40893,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmauths.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -44697,8 +44709,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmclusters.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -44969,11 +44979,11 @@ spec:
                 type: object
               retentionPeriod:
                 description: |-
-                  RetentionPeriod defines how long to retain stored metrics, specified as a duration (e.g., "1d", "1w", "1m").
+                  RetentionPeriod defines how long to retain stored metrics, specified as a duration (e.g., "1d", "1w", "1M").
                   Data with timestamps outside the RetentionPeriod is automatically deleted. The minimum allowed value is 1d, or 24h.
                   The default value is 1 (one month).
                   See [retention](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention) docs for details.
-                pattern: ^[0-9]+(h|d|w|y)?$
+                pattern: ^[0-9]+(h|d|w|y|M)?$
                 type: string
               serviceAccountName:
                 description: |-
@@ -47952,6 +47962,7 @@ spec:
                                             reason is a brief CamelCase machine-parseable reason.
                                             Together with status it forms the unique identity of a condition entry.
                                             Maximum permitted length of a reason is 256 bytes.
+                                          minLength: 1
                                           type: string
                                         status:
                                           description: |-
@@ -47964,11 +47975,13 @@ spec:
                                           - DataLoss
                                           - Degraded
                                           - Inaccessible
+                                          minLength: 1
                                           type: string
                                       required:
                                       - reason
                                       - status
                                       type: object
+                                    maxItems: 16
                                     type: array
                                     x-kubernetes-list-map-keys:
                                     - status
@@ -51111,8 +51124,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmdistributed.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -55401,6 +55412,7 @@ spec:
                                                   reason is a brief CamelCase machine-parseable reason.
                                                   Together with status it forms the unique identity of a condition entry.
                                                   Maximum permitted length of a reason is 256 bytes.
+                                                minLength: 1
                                                 type: string
                                               status:
                                                 description: |-
@@ -55413,11 +55425,13 @@ spec:
                                                 - DataLoss
                                                 - Degraded
                                                 - Inaccessible
+                                                minLength: 1
                                                 type: string
                                             required:
                                             - reason
                                             - status
                                             type: object
+                                          maxItems: 16
                                           type: array
                                           x-kubernetes-list-map-keys:
                                           - status
@@ -57279,6 +57293,7 @@ spec:
                                                     reason is a brief CamelCase machine-parseable reason.
                                                     Together with status it forms the unique identity of a condition entry.
                                                     Maximum permitted length of a reason is 256 bytes.
+                                                  minLength: 1
                                                   type: string
                                                 status:
                                                   description: |-
@@ -57291,11 +57306,13 @@ spec:
                                                   - DataLoss
                                                   - Degraded
                                                   - Inaccessible
+                                                  minLength: 1
                                                   type: string
                                               required:
                                               - reason
                                               - status
                                               type: object
+                                            maxItems: 16
                                             type: array
                                             x-kubernetes-list-map-keys:
                                             - status
@@ -58006,6 +58023,7 @@ spec:
                                                     reason is a brief CamelCase machine-parseable reason.
                                                     Together with status it forms the unique identity of a condition entry.
                                                     Maximum permitted length of a reason is 256 bytes.
+                                                  minLength: 1
                                                   type: string
                                                 status:
                                                   description: |-
@@ -58018,11 +58036,13 @@ spec:
                                                   - DataLoss
                                                   - Degraded
                                                   - Inaccessible
+                                                  minLength: 1
                                                   type: string
                                               required:
                                               - reason
                                               - status
                                               type: object
+                                            maxItems: 16
                                             type: array
                                             x-kubernetes-list-map-keys:
                                             - status
@@ -59901,6 +59921,7 @@ spec:
                                                       reason is a brief CamelCase machine-parseable reason.
                                                       Together with status it forms the unique identity of a condition entry.
                                                       Maximum permitted length of a reason is 256 bytes.
+                                                    minLength: 1
                                                     type: string
                                                   status:
                                                     description: |-
@@ -59913,11 +59934,13 @@ spec:
                                                     - DataLoss
                                                     - Degraded
                                                     - Inaccessible
+                                                    minLength: 1
                                                     type: string
                                                 required:
                                                 - reason
                                                 - status
                                                 type: object
+                                              maxItems: 16
                                               type: array
                                               x-kubernetes-list-map-keys:
                                               - status
@@ -60268,8 +60291,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmnodescrapes.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -61359,8 +61380,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmpodscrapes.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -62548,8 +62567,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmprobes.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -64043,8 +64060,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmrules.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -64223,8 +64238,11 @@ spec:
                       type: string
                     type:
                       description: |-
-                        Type defines datasource type for enterprise version of vmalert
-                        possible values - prometheus,graphite,vlogs
+                        Type defines datasource type for vmalert
+                        possible values:
+                        - prometheus
+                        - graphite
+                        - vlogs
                       type: string
                   required:
                   - name
@@ -64333,8 +64351,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmscrapeconfigs.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -76856,8 +76872,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmservicescrapes.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -78054,8 +78068,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmsingles.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -80351,11 +80363,11 @@ spec:
                 type: array
               retentionPeriod:
                 description: |-
-                  RetentionPeriod defines how long to retain stored metrics, specified as a duration (e.g., "1d", "1w", "1m").
+                  RetentionPeriod defines how long to retain stored metrics, specified as a duration (e.g., "1d", "1w", "1M").
                   Data with timestamps outside the RetentionPeriod is automatically deleted. The minimum allowed value is 1d, or 24h.
                   The default value is 1 (one month).
                   See [retention](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#retention) docs for details.
-                pattern: ^[0-9]+(h|d|w|y)?$
+                pattern: ^[0-9]+(h|d|w|y|M)?$
                 type: string
               revisionHistoryLimitCount:
                 description: |-
@@ -83154,8 +83166,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmstaticscrapes.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -84231,8 +84241,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmusers.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -84371,8 +84379,10 @@ spec:
                       a token that only needs to pass matchClaims/oidc verification without vm_access.
                     properties:
                       logsAccountID:
-                        description: LogsAccountID defines accountID to use for logs
-                          requests templating
+                        description: |-
+                          LogsAccountID defines accountID to use for logs requests templating
+                          Pointer is used to distinguish an unset value from an explicit zero value,
+                          since zero is a valid accountID and selects the default tenant.
                         format: int32
                         type: integer
                       logsExtraFilters:
@@ -84388,13 +84398,16 @@ spec:
                           type: string
                         type: array
                       logsProjectID:
-                        description: LogsProjectID defines projectID to use for logs
-                          requests templating
+                        description: |-
+                          LogsProjectID defines projectID to use for logs requests templating
+                          Pointer is used to distinguish an unset value from an explicit zero value,
+                          since zero is a valid projectID and selects the default tenant.
                         format: int32
                         type: integer
                       metricsAccountID:
-                        description: MetricsAccountID defines accountID to use for
-                          metrics requests templating
+                        description: |-
+                          MetricsAccountID defines accountID to use for metrics requests templating
+                          Set it to 0 to select the default tenant; omit the field to leave it unset, so an explicit zero is preserved instead of being dropped.
                         format: int32
                         type: integer
                       metricsExtraFilters:
@@ -84410,8 +84423,10 @@ spec:
                           type: string
                         type: array
                       metricsProjectID:
-                        description: MetricsProjectID defines projectID to use for
-                          metrics requests templating
+                        description: |-
+                          MetricsProjectID defines projectID to use for metrics requests templating
+                          Pointer is used to distinguish an unset value from an explicit zero value,
+                          since zero is a valid projectID and selects the default tenant.
                         format: int32
                         type: integer
                     type: object
@@ -85096,8 +85111,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vtagents.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -85546,6 +85559,7 @@ spec:
                                       reason is a brief CamelCase machine-parseable reason.
                                       Together with status it forms the unique identity of a condition entry.
                                       Maximum permitted length of a reason is 256 bytes.
+                                    minLength: 1
                                     type: string
                                   status:
                                     description: |-
@@ -85558,11 +85572,13 @@ spec:
                                     - DataLoss
                                     - Degraded
                                     - Inaccessible
+                                    minLength: 1
                                     type: string
                                 required:
                                 - reason
                                 - status
                                 type: object
+                              maxItems: 16
                               type: array
                               x-kubernetes-list-map-keys:
                               - status
@@ -88547,6 +88563,7 @@ spec:
                                         reason is a brief CamelCase machine-parseable reason.
                                         Together with status it forms the unique identity of a condition entry.
                                         Maximum permitted length of a reason is 256 bytes.
+                                      minLength: 1
                                       type: string
                                     status:
                                       description: |-
@@ -88559,11 +88576,13 @@ spec:
                                       - DataLoss
                                       - Degraded
                                       - Inaccessible
+                                      minLength: 1
                                       type: string
                                   required:
                                   - reason
                                   - status
                                   type: object
+                                maxItems: 16
                                 type: array
                                 x-kubernetes-list-map-keys:
                                 - status
@@ -89117,8 +89136,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vtclusters.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -92311,7 +92328,7 @@ spec:
                       FutureRetention for the stored traces
                       Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion
                       see https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
-                    pattern: ^[0-9]+(h|d|w|y)?$
+                    pattern: ^[0-9]+(h|d|w|y|M)?$
                     type: string
                   host_aliases:
                     description: |-
@@ -93699,7 +93716,7 @@ spec:
                     description: |-
                       RetentionPeriod for the stored traces
                       https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
-                    pattern: ^[0-9]+(h|d|w|y)?$
+                    pattern: ^[0-9]+(h|d|w|y|M)?$
                     type: string
                   revisionHistoryLimitCount:
                     description: |-
@@ -94369,8 +94386,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vtsingles.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -94564,7 +94579,7 @@ spec:
                   FutureRetention for the stored traces
                   Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion;
                   see https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
-                pattern: ^[0-9]+(h|d|y)?$
+                pattern: ^[0-9]+(h|d|y|M)?$
                 type: string
               grpcSpec:
                 description: GRPCSpec defines OTLP gRPC ingestion listener configuration
@@ -95367,7 +95382,7 @@ spec:
                 description: |-
                   RetentionPeriod for the stored traces
                   https://docs.victoriametrics.com/victoriatraces/#configure-victoriatraces
-                pattern: ^[0-9]+(h|d|w|y)?$
+                pattern: ^[0-9]+(h|d|w|y|M)?$
                 type: string
               revisionHistoryLimitCount:
                 description: |-

@@ -1,8 +1,6 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vlagents.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -201,17 +199,20 @@ spec:
                                   message:
                                     type: string
                                   reason:
+                                    minLength: 1
                                     type: string
                                   status:
                                     enum:
                                     - DataLoss
                                     - Degraded
                                     - Inaccessible
+                                    minLength: 1
                                     type: string
                                 required:
                                 - reason
                                 - status
                                 type: object
+                              maxItems: 16
                               type: array
                               x-kubernetes-list-map-keys:
                               - status
@@ -1152,17 +1153,20 @@ spec:
                                     message:
                                       type: string
                                     reason:
+                                      minLength: 1
                                       type: string
                                     status:
                                       enum:
                                       - DataLoss
                                       - Degraded
                                       - Inaccessible
+                                      minLength: 1
                                       type: string
                                   required:
                                   - reason
                                   - status
                                   type: object
+                                maxItems: 16
                                 type: array
                                 x-kubernetes-list-map-keys:
                                 - status
@@ -1554,8 +1558,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vlclusters.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -3230,7 +3232,7 @@ spec:
                       type: object
                     type: array
                   futureRetention:
-                    pattern: ^[0-9]+(h|d|w|y)?$
+                    pattern: ^[0-9]+(h|d|w|y|M)?$
                     type: string
                   host_aliases:
                     items:
@@ -3955,7 +3957,7 @@ spec:
                   retentionMaxDiskSpaceUsageBytes:
                     type: string
                   retentionPeriod:
-                    pattern: ^[0-9]+(h|d|w|y)?$
+                    pattern: ^[0-9]+(h|d|w|y|M)?$
                     type: string
                   revisionHistoryLimitCount:
                     format: int32
@@ -4301,8 +4303,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vldistributed.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -6416,17 +6416,20 @@ spec:
                                               message:
                                                 type: string
                                               reason:
+                                                minLength: 1
                                                 type: string
                                               status:
                                                 enum:
                                                 - DataLoss
                                                 - Degraded
                                                 - Inaccessible
+                                                minLength: 1
                                                 type: string
                                             required:
                                             - reason
                                             - status
                                             type: object
+                                          maxItems: 16
                                           type: array
                                           x-kubernetes-list-map-keys:
                                           - status
@@ -6947,17 +6950,20 @@ spec:
                                                 message:
                                                   type: string
                                                 reason:
+                                                  minLength: 1
                                                   type: string
                                                 status:
                                                   enum:
                                                   - DataLoss
                                                   - Degraded
                                                   - Inaccessible
+                                                  minLength: 1
                                                   type: string
                                               required:
                                               - reason
                                               - status
                                               type: object
+                                            maxItems: 16
                                             type: array
                                             x-kubernetes-list-map-keys:
                                             - status
@@ -7389,17 +7395,20 @@ spec:
                                                 message:
                                                   type: string
                                                 reason:
+                                                  minLength: 1
                                                   type: string
                                                 status:
                                                   enum:
                                                   - DataLoss
                                                   - Degraded
                                                   - Inaccessible
+                                                  minLength: 1
                                                   type: string
                                               required:
                                               - reason
                                               - status
                                               type: object
+                                            maxItems: 16
                                             type: array
                                             x-kubernetes-list-map-keys:
                                             - status
@@ -7920,17 +7929,20 @@ spec:
                                                   message:
                                                     type: string
                                                   reason:
+                                                    minLength: 1
                                                     type: string
                                                   status:
                                                     enum:
                                                     - DataLoss
                                                     - Degraded
                                                     - Inaccessible
+                                                    minLength: 1
                                                     type: string
                                                 required:
                                                 - reason
                                                 - status
                                                 type: object
+                                              maxItems: 16
                                               type: array
                                               x-kubernetes-list-map-keys:
                                               - status
@@ -8247,8 +8259,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vlogs.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -8343,8 +8353,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vlsingles.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -8444,7 +8452,7 @@ spec:
                   type: object
                 type: array
               futureRetention:
-                pattern: ^[0-9]+(h|d|y)?$
+                pattern: ^[0-9]+(h|d|y|M)?$
                 type: string
               host_aliases:
                 items:
@@ -8821,7 +8829,7 @@ spec:
               retentionMaxDiskSpaceUsageBytes:
                 type: string
               retentionPeriod:
-                pattern: ^[0-9]+(h|d|w|y)?$
+                pattern: ^[0-9]+(h|d|w|y|M)?$
                 type: string
               revisionHistoryLimitCount:
                 format: int32
@@ -9330,8 +9338,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmagents.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -9698,17 +9704,20 @@ spec:
                                   message:
                                     type: string
                                   reason:
+                                    minLength: 1
                                     type: string
                                   status:
                                     enum:
                                     - DataLoss
                                     - Degraded
                                     - Inaccessible
+                                    minLength: 1
                                     type: string
                                 required:
                                 - reason
                                 - status
                                 type: object
+                              maxItems: 16
                               type: array
                               x-kubernetes-list-map-keys:
                               - status
@@ -12241,17 +12250,20 @@ spec:
                                     message:
                                       type: string
                                     reason:
+                                      minLength: 1
                                       type: string
                                     status:
                                       enum:
                                       - DataLoss
                                       - Degraded
                                       - Inaccessible
+                                      minLength: 1
                                       type: string
                                   required:
                                   - reason
                                   - status
                                   type: object
+                                maxItems: 16
                                 type: array
                                 x-kubernetes-list-map-keys:
                                 - status
@@ -12808,8 +12820,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmalertmanagerconfigs.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -15649,8 +15659,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmalertmanagers.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -15860,17 +15868,20 @@ spec:
                                   message:
                                     type: string
                                   reason:
+                                    minLength: 1
                                     type: string
                                   status:
                                     enum:
                                     - DataLoss
                                     - Degraded
                                     - Inaccessible
+                                    minLength: 1
                                     type: string
                                 required:
                                 - reason
                                 - status
                                 type: object
+                              maxItems: 16
                               type: array
                               x-kubernetes-list-map-keys:
                               - status
@@ -16837,17 +16848,20 @@ spec:
                                     message:
                                       type: string
                                     reason:
+                                      minLength: 1
                                       type: string
                                     status:
                                       enum:
                                       - DataLoss
                                       - Degraded
                                       - Inaccessible
+                                      minLength: 1
                                       type: string
                                   required:
                                   - reason
                                   - status
                                   type: object
+                                maxItems: 16
                                 type: array
                                 x-kubernetes-list-map-keys:
                                 - status
@@ -17327,8 +17341,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmalerts.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -18708,8 +18720,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmanomalies.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -18908,17 +18918,20 @@ spec:
                                   message:
                                     type: string
                                   reason:
+                                    minLength: 1
                                     type: string
                                   status:
                                     enum:
                                     - DataLoss
                                     - Degraded
                                     - Inaccessible
+                                    minLength: 1
                                     type: string
                                 required:
                                 - reason
                                 - status
                                 type: object
+                              maxItems: 16
                               type: array
                               x-kubernetes-list-map-keys:
                               - status
@@ -20039,17 +20052,20 @@ spec:
                                     message:
                                       type: string
                                     reason:
+                                      minLength: 1
                                       type: string
                                     status:
                                       enum:
                                       - DataLoss
                                       - Degraded
                                       - Inaccessible
+                                      minLength: 1
                                       type: string
                                   required:
                                   - reason
                                   - status
                                   type: object
+                                maxItems: 16
                                 type: array
                                 x-kubernetes-list-map-keys:
                                 - status
@@ -20527,8 +20543,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmanomalyconfigs.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -20613,8 +20627,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmauths.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -22574,8 +22586,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmclusters.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -22720,7 +22730,7 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
               retentionPeriod:
-                pattern: ^[0-9]+(h|d|w|y)?$
+                pattern: ^[0-9]+(h|d|w|y|M)?$
                 type: string
               serviceAccountName:
                 type: string
@@ -24153,17 +24163,20 @@ spec:
                                         message:
                                           type: string
                                         reason:
+                                          minLength: 1
                                           type: string
                                         status:
                                           enum:
                                           - DataLoss
                                           - Degraded
                                           - Inaccessible
+                                          minLength: 1
                                           type: string
                                       required:
                                       - reason
                                       - status
                                       type: object
+                                    maxItems: 16
                                     type: array
                                     x-kubernetes-list-map-keys:
                                     - status
@@ -25790,8 +25803,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmdistributed.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -27905,17 +27916,20 @@ spec:
                                               message:
                                                 type: string
                                               reason:
+                                                minLength: 1
                                                 type: string
                                               status:
                                                 enum:
                                                 - DataLoss
                                                 - Degraded
                                                 - Inaccessible
+                                                minLength: 1
                                                 type: string
                                             required:
                                             - reason
                                             - status
                                             type: object
+                                          maxItems: 16
                                           type: array
                                           x-kubernetes-list-map-keys:
                                           - status
@@ -28810,17 +28824,20 @@ spec:
                                                 message:
                                                   type: string
                                                 reason:
+                                                  minLength: 1
                                                   type: string
                                                 status:
                                                   enum:
                                                   - DataLoss
                                                   - Degraded
                                                   - Inaccessible
+                                                  minLength: 1
                                                   type: string
                                               required:
                                               - reason
                                               - status
                                               type: object
+                                            maxItems: 16
                                             type: array
                                             x-kubernetes-list-map-keys:
                                             - status
@@ -29116,17 +29133,20 @@ spec:
                                                 message:
                                                   type: string
                                                 reason:
+                                                  minLength: 1
                                                   type: string
                                                 status:
                                                   enum:
                                                   - DataLoss
                                                   - Degraded
                                                   - Inaccessible
+                                                  minLength: 1
                                                   type: string
                                               required:
                                               - reason
                                               - status
                                               type: object
+                                            maxItems: 16
                                             type: array
                                             x-kubernetes-list-map-keys:
                                             - status
@@ -30021,17 +30041,20 @@ spec:
                                                   message:
                                                     type: string
                                                   reason:
+                                                    minLength: 1
                                                     type: string
                                                   status:
                                                     enum:
                                                     - DataLoss
                                                     - Degraded
                                                     - Inaccessible
+                                                    minLength: 1
                                                     type: string
                                                 required:
                                                 - reason
                                                 - status
                                                 type: object
+                                              maxItems: 16
                                               type: array
                                               x-kubernetes-list-map-keys:
                                               - status
@@ -30210,8 +30233,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmnodescrapes.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -30819,8 +30840,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmpodscrapes.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -31474,8 +31493,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmprobes.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -32300,8 +32317,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmrules.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -32472,8 +32487,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmscrapeconfigs.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -39324,8 +39337,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmservicescrapes.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -39985,8 +39996,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmsingles.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -41130,7 +41139,7 @@ spec:
                   type: object
                 type: array
               retentionPeriod:
-                pattern: ^[0-9]+(h|d|w|y)?$
+                pattern: ^[0-9]+(h|d|w|y|M)?$
                 type: string
               revisionHistoryLimitCount:
                 format: int32
@@ -42533,8 +42542,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmstaticscrapes.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -43132,8 +43139,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vmusers.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -43634,8 +43639,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vtagents.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -43834,17 +43837,20 @@ spec:
                                   message:
                                     type: string
                                   reason:
+                                    minLength: 1
                                     type: string
                                   status:
                                     enum:
                                     - DataLoss
                                     - Degraded
                                     - Inaccessible
+                                    minLength: 1
                                     type: string
                                 required:
                                 - reason
                                 - status
                                 type: object
+                              maxItems: 16
                               type: array
                               x-kubernetes-list-map-keys:
                               - status
@@ -45342,17 +45348,20 @@ spec:
                                     message:
                                       type: string
                                     reason:
+                                      minLength: 1
                                       type: string
                                     status:
                                       enum:
                                       - DataLoss
                                       - Degraded
                                       - Inaccessible
+                                      minLength: 1
                                       type: string
                                   required:
                                   - reason
                                   - status
                                   type: object
+                                maxItems: 16
                                 type: array
                                 x-kubernetes-list-map-keys:
                                 - status
@@ -45653,8 +45662,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vtclusters.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -47266,7 +47273,7 @@ spec:
                       type: object
                     type: array
                   futureRetention:
-                    pattern: ^[0-9]+(h|d|w|y)?$
+                    pattern: ^[0-9]+(h|d|w|y|M)?$
                     type: string
                   host_aliases:
                     items:
@@ -47991,7 +47998,7 @@ spec:
                   retentionMaxDiskSpaceUsageBytes:
                     type: string
                   retentionPeriod:
-                    pattern: ^[0-9]+(h|d|w|y)?$
+                    pattern: ^[0-9]+(h|d|w|y|M)?$
                     type: string
                   revisionHistoryLimitCount:
                     format: int32
@@ -48341,8 +48348,6 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.22.0
   name: vtsingles.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -48442,7 +48447,7 @@ spec:
                   type: object
                 type: array
               futureRetention:
-                pattern: ^[0-9]+(h|d|y)?$
+                pattern: ^[0-9]+(h|d|y|M)?$
                 type: string
               grpcSpec:
                 properties:
@@ -48849,7 +48854,7 @@ spec:
               retentionMaxDiskSpaceUsageBytes:
                 type: string
               retentionPeriod:
-                pattern: ^[0-9]+(h|d|w|y)?$
+                pattern: ^[0-9]+(h|d|w|y|M)?$
                 type: string
               revisionHistoryLimitCount:
                 format: int32

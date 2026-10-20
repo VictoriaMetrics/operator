@@ -13,6 +13,7 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/), [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth/): add `access_log.headers` for listing request headers to print in access log entries. Previously the field was silently dropped. It requires [vmauth v1.153.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.153.0) or newer. See [docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#access-log).
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.154.1](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.154.1).
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.12.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.12.0).
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default version for VMAnomaly to [v1.31.1](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1311).

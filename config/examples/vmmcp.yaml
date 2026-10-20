@@ -7,9 +7,6 @@ spec:
   entrypoint: http://vmselect-example:8481
   instanceType: cluster
   defaultTenantID: "0"
-  replicaCount: 2
-  podDisruptionBudget:
-    maxUnavailable: 1
   disabledTools:
     - export
     - flags

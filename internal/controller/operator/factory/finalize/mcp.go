@@ -15,20 +15,8 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 )
 
-// mcpCR is implemented by CRDs of MCP servers
-type mcpCR interface {
-	client.Object
-	crObject
-	PrefixedName() string
-	GetServiceAccountName() string
-}
-
 // OnVMMCPDelete deletes all VMMCP related resources
 func OnVMMCPDelete(ctx context.Context, rclient client.Client, cr *vmv1.VMMCP) error {
-	return onMCPDelete(ctx, rclient, cr, &cr.Spec.CommonMCPSpec)
-}
-
-func onMCPDelete(ctx context.Context, rclient client.Client, cr mcpCR, spec *vmv1.CommonMCPSpec) error {
 	ns := cr.GetNamespace()
 	objMeta := metav1.ObjectMeta{
 		Namespace: ns,
@@ -44,9 +32,9 @@ func onMCPDelete(ctx context.Context, rclient client.Client, cr mcpCR, spec *vmv
 			Namespace: ns,
 		}},
 	}
-	if spec.ServiceSpec != nil {
+	if cr.Spec.ServiceSpec != nil {
 		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
-			Name:      spec.ServiceSpec.NameOrDefault(cr.PrefixedName()),
+			Name:      cr.Spec.ServiceSpec.NameOrDefault(cr.PrefixedName()),
 			Namespace: ns,
 		}})
 	}

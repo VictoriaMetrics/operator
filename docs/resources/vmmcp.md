@@ -247,9 +247,6 @@ metadata:
 spec:
   entrypoint: http://vmselect-example.default.svc:8481
   instanceType: cluster
-  replicaCount: 2
-  podDisruptionBudget:
-    maxUnavailable: 1
   disabledTools:
     - export
     - flags

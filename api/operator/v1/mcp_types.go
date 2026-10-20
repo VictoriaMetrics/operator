@@ -131,7 +131,7 @@ func (s *CommonMCPSpec) validate(prefixedName string) error {
 	return s.Validate()
 }
 
-// validateMCPListItems checks items of the list, which is passed to the MCP server as a comma-separated env var value
+// validateMCPListItems checks items of the list - headers or tools, which is passed to the MCP server as a comma-separated env var value
 func validateMCPListItems(field string, items []string) error {
 	for i, item := range items {
 		if strings.TrimSpace(item) == "" {

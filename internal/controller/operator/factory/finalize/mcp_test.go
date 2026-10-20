@@ -19,51 +19,50 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
-func TestOnMCPDelete(t *testing.T) {
+func TestOnVMMCPDelete(t *testing.T) {
 	ctx := context.TODO()
-	f := func(cr client.Object, prefixedName string, onDelete func(client.Client) error) {
-		t.Helper()
-		objMeta := func(name string) metav1.ObjectMeta {
-			return metav1.ObjectMeta{
-				Name:       name,
-				Namespace:  "default",
-				Finalizers: []string{vmv1beta1.FinalizerName},
-			}
-		}
-		children := []client.Object{
-			&appsv1.Deployment{ObjectMeta: objMeta(prefixedName)},
-			&corev1.Service{ObjectMeta: objMeta(prefixedName)},
-			&corev1.Service{ObjectMeta: objMeta("custom-service")},
-			&corev1.ServiceAccount{ObjectMeta: objMeta(prefixedName)},
-			&policyv1.PodDisruptionBudget{ObjectMeta: objMeta(prefixedName)},
-		}
-		predefined := []runtime.Object{cr}
-		for _, o := range children {
-			predefined = append(predefined, o)
-		}
-		cl := k8stools.GetTestClientWithObjects(predefined)
-		require.NoError(t, onDelete(cl))
-
-		for _, o := range append(children, cr) {
-			require.NoError(t, cl.Get(ctx, types.NamespacedName{Namespace: o.GetNamespace(), Name: o.GetName()}, o))
-			assert.Empty(t, o.GetFinalizers(), "finalizers of %T %s must be removed", o, o.GetName())
-		}
+	cr := &vmv1.VMMCP{
+		TypeMeta: metav1.TypeMeta{APIVersion: "operator.victoriametrics.com/v1", Kind: "VMMCP"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "test",
+			Namespace:  "default",
+			Finalizers: []string{vmv1beta1.FinalizerName},
+			OwnerReferences: []metav1.OwnerReference{
+				{APIVersion: "v1", Kind: "ConfigMap", Name: "owner", UID: "owner-uid"},
+			},
+		},
 	}
-	serviceSpec := &vmv1beta1.AdditionalServiceSpec{
+	cr.Spec.ServiceSpec = &vmv1beta1.AdditionalServiceSpec{
 		EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "custom-service"},
 	}
-	crMeta := metav1.ObjectMeta{
-		Name:       "test",
-		Namespace:  "default",
-		Finalizers: []string{vmv1beta1.FinalizerName},
+	objMeta := func(name string) metav1.ObjectMeta {
+		return metav1.ObjectMeta{
+			Name:            name,
+			Namespace:       "default",
+			Finalizers:      []string{vmv1beta1.FinalizerName},
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
+		}
 	}
+	objs := []client.Object{
+		&appsv1.Deployment{ObjectMeta: objMeta("vmmcp-test")},
+		&corev1.Service{ObjectMeta: objMeta("vmmcp-test")},
+		&corev1.Service{ObjectMeta: objMeta("custom-service")},
+		&corev1.ServiceAccount{ObjectMeta: objMeta("vmmcp-test")},
+		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta("vmmcp-test")},
+		cr,
+	}
+	predefined := make([]runtime.Object, 0, len(objs))
+	ownerRefs := make([][]metav1.OwnerReference, 0, len(objs))
+	for _, o := range objs {
+		predefined = append(predefined, o.DeepCopyObject())
+		ownerRefs = append(ownerRefs, o.GetOwnerReferences())
+	}
+	cl := k8stools.GetTestClientWithObjects(predefined)
+	require.NoError(t, OnVMMCPDelete(ctx, cl, cr))
 
-	vm := &vmv1.VMMCP{
-		TypeMeta:   metav1.TypeMeta{APIVersion: "operator.victoriametrics.com/v1", Kind: "VMMCP"},
-		ObjectMeta: crMeta,
+	for i, o := range objs {
+		require.NoError(t, cl.Get(ctx, types.NamespacedName{Namespace: o.GetNamespace(), Name: o.GetName()}, o))
+		assert.Empty(t, o.GetFinalizers(), "finalizers of %T %s must be removed", o, o.GetName())
+		assert.Equal(t, ownerRefs[i], o.GetOwnerReferences(), "owner references of %T %s must be retained", o, o.GetName())
 	}
-	vm.Spec.ServiceSpec = serviceSpec
-	f(vm, "vmmcp-test", func(cl client.Client) error {
-		return OnVMMCPDelete(ctx, cl, vm)
-	})
 }

@@ -25,11 +25,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
-func quantityBytes(s string) int64 {
-	q := resource.MustParse(s)
-	return q.Value()
-}
-
 func secretKey(name, key string) *corev1.SecretKeySelector {
 	return &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{Name: name},
@@ -114,8 +109,9 @@ func TestCreateOrUpdateVMMCP(t *testing.T) {
 	assert.Equal(t, int32(60), c.StartupProbe.FailureThreshold)
 
 	// default resources account for the documentation index
-	assert.Equal(t, quantityBytes("1024Mi"), c.Resources.Limits.Memory().Value())
-	assert.Equal(t, quantityBytes("768Mi"), c.Resources.Requests.Memory().Value())
+	memLimit, memRequest := c.Resources.Limits[corev1.ResourceMemory], c.Resources.Requests[corev1.ResourceMemory]
+	assert.True(t, resource.MustParse("1024Mi").Equal(memLimit), "memory limit: %s", memLimit.String())
+	assert.True(t, resource.MustParse("768Mi").Equal(memRequest), "memory request: %s", memRequest.String())
 
 	var svc corev1.Service
 	require.NoError(t, rclient.Get(ctx, nsn, &svc))

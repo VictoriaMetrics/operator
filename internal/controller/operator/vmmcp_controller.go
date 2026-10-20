@@ -60,7 +60,7 @@ func (r *VMMCPReconciler) Init(name string, rclient client.Client, l logr.Logger
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmmcps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmmcps/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmmcps/finalizers,verbs=update
-// +kubebuilder:rbac:groups="networking.k8s.io",resources=networkpolicies,verbs=*
+// +kubebuilder:rbac:groups="networking.k8s.io",resources=networkpolicies,verbs=get;create;update;patch;delete
 
 func (r *VMMCPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)

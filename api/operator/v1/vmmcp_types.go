@@ -19,6 +19,7 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -285,6 +286,16 @@ func (cr *VMMCP) Validate() error {
 		return fmt.Errorf("either spec.entrypoint or spec.cloudAPIKey must be set")
 	case spec.Entrypoint != "" && spec.CloudAPIKey != nil:
 		return fmt.Errorf("spec.entrypoint and spec.cloudAPIKey cannot be set at the same time")
+	}
+	if spec.Entrypoint != "" {
+		// the CRD pattern checks only the scheme
+		u, err := url.Parse(spec.Entrypoint)
+		if err != nil {
+			return fmt.Errorf("incorrect spec.entrypoint syntax: %q: %w", spec.Entrypoint, err)
+		}
+		if u.Hostname() == "" {
+			return fmt.Errorf("spec.entrypoint=%q must have a host", spec.Entrypoint)
+		}
 	}
 	if err := validateMCPHeaders(spec.Headers); err != nil {
 		return err

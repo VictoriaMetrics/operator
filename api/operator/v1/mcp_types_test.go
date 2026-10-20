@@ -39,6 +39,10 @@ func TestVMMCP_Validate(t *testing.T) {
 	// neither entrypoint nor cloud API key
 	f(VMMCPSpec{}, "either spec.entrypoint or spec.cloudAPIKey must be set")
 
+	// entrypoint without a host
+	f(VMMCPSpec{Entrypoint: "http://?"}, `spec.entrypoint="http://?" must have a host`)
+	f(VMMCPSpec{Entrypoint: "http://:8428"}, `spec.entrypoint="http://:8428" must have a host`)
+
 	// both entrypoint and cloud API key
 	f(VMMCPSpec{
 		Entrypoint:  "http://vmsingle-example:8428",

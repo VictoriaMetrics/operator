@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -287,6 +288,8 @@ func TestCreateOrUpdate_RemoveOptionalObjects(t *testing.T) {
 	var svc corev1.Service
 	require.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: "vmmcp-optional-additional-service"}, &svc))
 	assert.Equal(t, corev1.ServiceTypeNodePort, svc.Spec.Type)
+	var np networkingv1.NetworkPolicy
+	require.NoError(t, rclient.Get(ctx, nsn, &np))
 
 	// remove optional objects from spec
 	cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
@@ -297,6 +300,7 @@ func TestCreateOrUpdate_RemoveOptionalObjects(t *testing.T) {
 	assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn, &pdb)), "pdb must be removed")
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: "vmmcp-optional-additional-service"}, &svc)
 	assert.True(t, k8serrors.IsNotFound(err), "additional service must be removed")
+	assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn, &np)), "network policy must be removed")
 }
 
 func TestCreateOrUpdate_Errors(t *testing.T) {

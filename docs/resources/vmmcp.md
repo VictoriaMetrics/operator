@@ -20,6 +20,8 @@ and search in VictoriaMetrics documentation.
 
 For each `VMMCP` resource, the Operator deploys a `Deployment` with the MCP server in the same namespace
 and adds `Service`, `ServiceAccount` and `VMServiceScrape` prefixed with `vmmcp-` and the name from `VMMCP.metadata.name`.
+With `spec.serviceAccountName` the MCP server uses an existing `ServiceAccount` instead,
+and `spec.disableSelfServiceScrape: true` disables the `VMServiceScrape`.
 
 ## Specification
 
@@ -118,13 +120,24 @@ The MCP server doesn't authenticate its clients, so anyone with network access t
 with credentials of the MCP server. Don't expose the MCP server outside of the cluster as is.
 Put [VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth/) with
 [VMUser](https://docs.victoriametrics.com/operator/resources/vmuser/) in front of it
-and restrict access to its pods with `spec.networkPolicy`:
+and restrict access to its pods with `spec.networkPolicy`, as in the [VMMCP for VMCluster](#vmmcp-for-vmcluster) example:
 
 ```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAuth
+metadata:
+  name: mcp
+spec:
+  userSelector:
+    matchLabels:
+      app: mcp
+---
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMUser
 metadata:
   name: mcp
+  labels:
+    app: mcp
 spec:
   username: mcp
   passwordRef:
@@ -158,7 +171,23 @@ and spread them across nodes with `spec.topologySpreadConstraints`, `spec.affini
 
 In `http` server mode, tool calls of a session can be served by any replica.
 In `sse` server mode, MCP client messages must be served by the replica, which holds the client SSE connection,
-so run a single replica or set `sessionAffinity: ClientIP` for the service with `spec.serviceSpec`.
+so run a single replica or set `sessionAffinity: ClientIP` for the `vmmcp-<name>` service.
+`spec.serviceSpec` changes this service only with `useAsDefault: true`, otherwise it adds another service:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VMMCP
+metadata:
+  name: example
+spec:
+  entrypoint: http://vmsingle-example.default.svc:8428
+  serverMode: sse
+  replicaCount: 2
+  serviceSpec:
+    useAsDefault: true
+    spec:
+      sessionAffinity: ClientIP
+```
 
 ## Version management
 

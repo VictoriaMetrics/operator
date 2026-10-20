@@ -64,7 +64,8 @@ func callMCPTool(ctx context.Context, svcURL, tool string, args map[string]any) 
 		if err != nil {
 			return nil, nil, err
 		}
-		if resp.StatusCode != http.StatusOK {
+		// notifications are accepted with 202 and no body
+		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
 			return nil, nil, fmt.Errorf("unexpected status code for %s request: %d, body: %s", msg["method"], resp.StatusCode, body)
 		}
 		return resp.Header, body, nil
@@ -86,6 +87,13 @@ func callMCPTool(ctx context.Context, svcURL, tool string, args map[string]any) 
 	sessionID := headers.Get("Mcp-Session-Id")
 	if sessionID == "" {
 		return "", fmt.Errorf("MCP server didn't return session id")
+	}
+	// the client must confirm the initialization before sending other requests
+	if _, _, err := post(sessionID, map[string]any{
+		"jsonrpc": "2.0",
+		"method":  "notifications/initialized",
+	}); err != nil {
+		return "", err
 	}
 	_, body, err := post(sessionID, map[string]any{
 		"jsonrpc": "2.0",
@@ -128,7 +136,13 @@ func callMCPTool(ctx context.Context, svcURL, tool string, args map[string]any) 
 func expectMCPChildObjectsDeleted(ctx context.Context, nsn types.NamespacedName) {
 	GinkgoHelper()
 	Eventually(func() error {
-		for _, obj := range []client.Object{&appsv1.Deployment{}, &corev1.Service{}} {
+		for _, obj := range []client.Object{
+			&appsv1.Deployment{},
+			&corev1.Service{},
+			&corev1.ServiceAccount{},
+			&vmv1beta1.VMServiceScrape{},
+			&policyv1.PodDisruptionBudget{},
+		} {
 			if err := k8sClient.Get(ctx, nsn, obj); !k8serrors.IsNotFound(err) {
 				return fmt.Errorf("%T %s must be deleted, got err: %v", obj, nsn, err)
 			}

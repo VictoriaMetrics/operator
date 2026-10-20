@@ -384,11 +384,11 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 	}
 
 	build.AddStrictSecuritySettingsToContainers(initContainers, &cr.Spec.CommonAppsParams)
-	build.AddStrictSecuritySettingsToContainers(vmalertContainers, &cr.Spec.CommonAppsParams)	
+	build.AddStrictSecuritySettingsToContainers(vmalertContainers, &cr.Spec.CommonAppsParams)
 	initContainers, err := k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)
-    if err != nil {
-    	return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
-    }
+	if err != nil {
+		return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
+	}
 	containers, err := k8stools.MergePatchContainers(vmalertContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err

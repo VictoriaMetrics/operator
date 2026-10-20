@@ -45,22 +45,26 @@ In addition to the above selectors, the filtering of objects in a cluster is aff
 
 Following rules are applied:
 
-- If `userNamespaceSelector` and `userSelector` both undefined, then by default select nothing. With option set - `spec.selectAllByDefault: true`, select all vmusers.
-- If `userNamespaceSelector` defined, `userSelector` undefined, then all vmusers are matching at namespaces for given `userNamespaceSelector`.
-- If `userNamespaceSelector` undefined, `userSelector` defined, then all vmusers at `VMAgent`'s namespaces are matching for given `userSelector`.
-- If `userNamespaceSelector` and `userSelector` both defined, then only vmusers at namespaces matched `userNamespaceSelector` for given `userSelector` are matching.
+- If `userNamespaceSelector` and `userSelector` are both undefined, nothing is selected. Setting `spec.selectAllByDefault: true` selects all VMUsers.
+- If `userNamespaceSelector` is defined and `userSelector` is undefined, all VMUsers in the namespaces matched by `userNamespaceSelector` are selected.
+- If `userNamespaceSelector` is undefined and `userSelector` is defined, VMUsers matching `userSelector` in the `VMAuth` namespace are selected.
+- If `userNamespaceSelector` and `userSelector` are both defined, VMUsers matching `userSelector` in the namespaces matched by `userNamespaceSelector` are selected.
+- `selectAllByDefault` has an effect only when both `userNamespaceSelector` and `userSelector` are undefined.
+- An empty `userNamespaceSelector` (`{}`) matches all namespaces. If `userNamespaceSelector` matches no namespaces, nothing is selected.
+- If the operator's `WATCH_NAMESPACE` is set, `userNamespaceSelector` is ignored and VMUsers are selected from all watched namespaces, not only from the `VMAuth` namespace. This also applies when only `userSelector` is defined.
 
-Here's a more visual and more detailed view:
+Below is a more visual and detailed view:
 
-| `userNamespaceSelector` | `userSelector` | `selectAllByDefault` | `WATCH_NAMESPACE` | Selected rules                                                                                       |
-|-------------------------|----------------|----------------------|-------------------|------------------------------------------------------------------------------------------------------|
-| undefined               | undefined      | false                | undefined         | nothing                                                                                              |
-| undefined               | undefined      | **true**             | undefined         | all vmusers in the cluster                                                                           |
-| **defined**             | undefined      | *any*                | undefined         | all vmusers are matching at namespaces for given `userNamespaceSelector`                             |
-| undefined               | **defined**    | *any*                | undefined         | all vmusers only at `VMAuth`'s namespace are matching for given `userSelector`                       |
-| **defined**             | **defined**    | *any*                | undefined         | all vmusers only at namespaces matched `userNamespaceSelector` for given `userSelector` are matching |
-| *any*                   | undefined      | *any*                | **defined**       | all vmusers only at `VMAuth`'s namespace                                                             |
-| *any*                   | **defined**    | *any*                | **defined**       | all vmusers only at `VMAuth`'s namespace for given `userSelector` are matching                       |
+| `userNamespaceSelector` | `userSelector` | `selectAllByDefault` | `WATCH_NAMESPACE` | Selected objects                                                                     |
+|-------------------------|----------------|----------------------|-------------------|--------------------------------------------------------------------------------------|
+| undefined               | undefined      | false                | *any*             | nothing                                                                              |
+| undefined               | undefined      | **true**             | undefined         | all VMUsers in the cluster                                                           |
+| **defined**             | undefined      | *any*                | undefined         | all VMUsers in the namespaces matched by `userNamespaceSelector`                     |
+| undefined               | **defined**    | *any*                | undefined         | VMUsers matching `userSelector` in the `VMAuth` namespace                            |
+| **defined**             | **defined**    | *any*                | undefined         | VMUsers matching `userSelector` in the namespaces matched by `userNamespaceSelector` |
+| undefined               | undefined      | **true**             | **defined**       | all VMUsers in the watched namespaces                                                |
+| **defined**             | undefined      | *any*                | **defined**       | all VMUsers in the watched namespaces                                                |
+| *any*                   | **defined**    | *any*                | **defined**       | VMUsers matching `userSelector` in the watched namespaces                            |
 
 More details about `WATCH_NAMESPACE` variable you can read in [this doc](https://docs.victoriametrics.com/operator/configuration/#namespaced-mode).
 

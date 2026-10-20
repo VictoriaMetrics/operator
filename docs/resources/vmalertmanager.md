@@ -136,22 +136,26 @@ of `VMAlertmanager` spec and environment variable `WATCH_NAMESPACE` for operator
 
 Following rules are applied:
 
-- If `configNamespaceSelector` and `configSelector` both undefined, then by default select nothing. With option set - `spec.selectAllByDefault: true`, select all vmalertmanagerconfigs.
-- If `configNamespaceSelector` defined, `configSelector` undefined, then all vmalertmanagerconfigs are matching at namespaces for given `configNamespaceSelector`.
-- If `configNamespaceSelector` undefined, `configSelector` defined, then all vmalertmanagerconfigs at `VMAlertmanager`'s namespaces are matching for given `configSelector`.
-- If `configNamespaceSelector` and `configSelector` both defined, then only vmalertmanagerconfigs at namespaces matched `configNamespaceSelector` for given `configSelector` are matching.
+- If `configNamespaceSelector` and `configSelector` are both undefined, nothing is selected. Setting `spec.selectAllByDefault: true` selects all VMAlertmanagerConfigs.
+- If `configNamespaceSelector` is defined and `configSelector` is undefined, all VMAlertmanagerConfigs in the namespaces matched by `configNamespaceSelector` are selected.
+- If `configNamespaceSelector` is undefined and `configSelector` is defined, VMAlertmanagerConfigs matching `configSelector` in the `VMAlertmanager` namespace are selected.
+- If `configNamespaceSelector` and `configSelector` are both defined, VMAlertmanagerConfigs matching `configSelector` in the namespaces matched by `configNamespaceSelector` are selected.
+- `selectAllByDefault` has an effect only when both `configNamespaceSelector` and `configSelector` are undefined.
+- An empty `configNamespaceSelector` (`{}`) matches all namespaces. If `configNamespaceSelector` matches no namespaces, nothing is selected.
+- If the operator's `WATCH_NAMESPACE` is set, `configNamespaceSelector` is ignored and VMAlertmanagerConfigs are selected from all watched namespaces, not only from the `VMAlertmanager` namespace. This also applies when only `configSelector` is defined.
 
-Here's a more visual and more detailed view:
+Below is a more visual and detailed view:
 
-| `configNamespaceSelector` | `configSelector` | `selectAllByDefault` | `WATCH_NAMESPACE` | Selected rules                                                                                                         |
-| ------------------------- | ---------------- | -------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| undefined                 | undefined        | false                | undefined         | nothing                                                                                                                |
-| undefined                 | undefined        | **true**             | undefined         | all vmalertmanagerconfigs in the cluster                                                                               |
-| **defined**               | undefined        | *any*                | undefined         | all vmalertmanagerconfigs are matching at namespaces for given `configNamespaceSelector`                               |
-| undefined                 | **defined**      | *any*                | undefined         | all vmalertmanagerconfigs only at `VMAlertmanager`'s namespace are matching for given `ruleSelector`                   |
-| **defined**               | **defined**      | *any*                | undefined         | all vmalertmanagerconfigs only at namespaces matched `configNamespaceSelector` for given `configSelector` are matching |
-| *any*                     | undefined        | *any*                | **defined**       | all vmalertmanagerconfigs only at `VMAlertmanager`'s namespace                                                         |
-| *any*                     | **defined**      | *any*                | **defined**       | all vmalertmanagerconfigs only at `VMAlertmanager`'s namespace for given `configSelector` are matching                 |
+| `configNamespaceSelector` | `configSelector` | `selectAllByDefault` | `WATCH_NAMESPACE` | Selected objects                                                                                       |
+|---------------------------|------------------|----------------------|-------------------|--------------------------------------------------------------------------------------------------------|
+| undefined                 | undefined        | false                | *any*             | nothing                                                                                                |
+| undefined                 | undefined        | **true**             | undefined         | all VMAlertmanagerConfigs in the cluster                                                               |
+| **defined**               | undefined        | *any*                | undefined         | all VMAlertmanagerConfigs in the namespaces matched by `configNamespaceSelector`                       |
+| undefined                 | **defined**      | *any*                | undefined         | VMAlertmanagerConfigs matching `configSelector` in the `VMAlertmanager` namespace                      |
+| **defined**               | **defined**      | *any*                | undefined         | VMAlertmanagerConfigs matching `configSelector` in the namespaces matched by `configNamespaceSelector` |
+| undefined                 | undefined        | **true**             | **defined**       | all VMAlertmanagerConfigs in the watched namespaces                                                    |
+| **defined**               | undefined        | *any*                | **defined**       | all VMAlertmanagerConfigs in the watched namespaces                                                    |
+| *any*                     | **defined**      | *any*                | **defined**       | VMAlertmanagerConfigs matching `configSelector` in the watched namespaces                              |
 
 More details about `WATCH_NAMESPACE` variable you can read in [this doc](https://docs.victoriametrics.com/operator/configuration/#namespaced-mode).
 

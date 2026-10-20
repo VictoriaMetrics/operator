@@ -85,9 +85,9 @@ help: ## Display this help.
 
 .PHONY: manifests
 manifests: controller-gen kustomize ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) rbac:roleName=operator crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases output:rbac:artifacts:config=config/rbac
+	$(CONTROLLER_GEN) rbac:roleName=operator crd:omitToolVersion=true webhook paths="./..." output:crd:artifacts:config=config/crd/bases output:rbac:artifacts:config=config/rbac
 	$(KUSTOMIZE) build config/crd > config/crd/overlay/crd.yaml
-	$(CONTROLLER_GEN) rbac:roleName=operator crd:maxDescLen=0 webhook paths="./..." output:crd:artifacts:config=config/crd/bases output:rbac:artifacts:config=config/rbac
+	$(CONTROLLER_GEN) rbac:roleName=operator crd:maxDescLen=0,omitToolVersion=true webhook paths="./..." output:crd:artifacts:config=config/crd/bases output:rbac:artifacts:config=config/rbac
 	$(KUSTOMIZE) build config/crd > config/crd/overlay/crd.descriptionless.yaml
 	$(KUSTOMIZE) build config/crd-specless > config/crd/overlay/crd.specless.yaml
 
@@ -362,11 +362,11 @@ COSIGN_BIN ?= $(LOCALBIN)/cosign-$(COSIGN_VERSION)
 # renovate: datasource=go depName=sigs.k8s.io/kustomize/kustomize/v5
 KUSTOMIZE_VERSION ?= v5.8.3
 # renovate: datasource=go depName=sigs.k8s.io/controller-tools
-CONTROLLER_TOOLS_VERSION ?= v0.22.0
+CONTROLLER_TOOLS_VERSION ?= v0.23.0
 # renovate: datasource=go depName=sigs.k8s.io/controller-runtime extractVersion=^v(?<version>\d+\.\d+).*$
 ENVTEST_VERSION ?= release-0.23
 # renovate: datasource=go depName=github.com/golangci/golangci-lint/v2
-GOLANGCI_LINT_VERSION ?= v2.14.0
+GOLANGCI_LINT_VERSION ?= v2.15.0
 # renovate: datasource=go depName=k8s.io/code-generator
 CODEGENERATOR_VERSION ?= v0.37.1
 # renovate: datasource=github-releases depName=operator-framework/operator-lifecycle-manager extractVersion=^v(?<version>.*)$

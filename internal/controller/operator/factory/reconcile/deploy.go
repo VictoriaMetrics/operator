@@ -32,6 +32,7 @@ func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *app
 	}
 
 	rclient.Scheme().Default(newObj)
+	desiredSpec := newObj.Spec.DeepCopy()
 	nsn := types.NamespacedName{Name: newObj.Name, Namespace: newObj.Namespace}
 	removeFinalizer := true
 	if o == nil {
@@ -39,6 +40,8 @@ func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *app
 	}
 	var hpaManaged bool
 	err := retryOnConflict(func() error {
+		newObj.Spec = *desiredSpec.DeepCopy()
+		hpaManaged = false
 		var existingObj appsv1.Deployment
 		if err := rclient.Get(ctx, nsn, &existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {

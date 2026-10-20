@@ -407,6 +407,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMAlertSpec{
+				SelectAllByDefault: true,
 				NotifierConfigRef: &corev1.SecretKeySelector{
 					Key: "cfg.yaml",
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -427,6 +428,15 @@ func TestCreateOrUpdate(t *testing.T) {
 				Data: map[string][]byte{"cfg.yaml": []byte("static: []")},
 			},
 			k8stools.NewReadyDeployment("vmalert-basic-vmalert", "default"),
+		},
+		cmNames: []string{"vm-basic-vmalert-rulefiles-0"},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) {
+			var d appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &d))
+			k8stools.AssertConfigReloaderWatchTargetDirs(t, d.Spec.Template.Spec.Containers, map[string]string{
+				"/etc/vm/notifier_config":  "",
+				"/etc/vmalert/rules-src-0": "/etc/vmalert/rules-out/rules-src-0",
+			})
 		},
 	})
 

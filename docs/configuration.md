@@ -400,12 +400,17 @@ If you want to override this behavior, specify the namespace:
 
 The operator supports comma separated namespace names for this setting.
 
-If namespaced mode is enabled, operator uses a limited set of features:
-- it cannot make any cluster wide API calls.
-- it cannot assign rbac permissions for managed resource. It must be done manually via serviceAccount.
-- it ignores namespaceSelector fields at CRD objects and uses `WATCH_NAMESPACE` value for object matching.
+In namespaced mode, the operator has the following limitations:
+- it cannot make any cluster wide API calls and cannot create cluster-scoped objects such as `ClusterRole` and `ClusterRoleBinding`.
+  `VMAgent` and `VMSingle` that use the operator-managed ServiceAccount get a `Role` and `RoleBinding` at each watched namespace.
+  Other components that need cluster-wide access, such as `VLAgent`, must be granted permissions manually via a custom `serviceAccountName`.
+- it ignores `...NamespaceSelector` fields at `VMAgent`, `VMSingle`, `VMAlert`, `VMAlertmanager`, `VMAuth` and `VMAnomaly`, and uses `WATCH_NAMESPACE` value for object matching.
+- if `VMAgent` or `VMSingle` uses the operator-managed ServiceAccount, it ignores `namespaceSelector` of scrape objects and discovers targets only at the scrape object's namespace, and it doesn't select `VMNodeScrape` objects.
+  Set a custom `serviceAccountName` with the required permissions to remove these limits.
+- it cannot detect if a `StorageClass` allows volume expansion, so PVCs are not expanded automatically.
+  Resize PVCs manually or add the `operator.victoriametrics.com/pvc-allow-volume-expansion: "true"` annotation to them.
 
-At each namespace operator must have a set of required permissions, an example can be found at [this file](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/operator_rbac_for_single_namespace.yaml).
+At each watched namespace operator must have a set of required permissions, an example for a single namespace can be found at [this file](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/operator_rbac_for_single_namespace.yaml).
 
 ## IPv6 mode
 

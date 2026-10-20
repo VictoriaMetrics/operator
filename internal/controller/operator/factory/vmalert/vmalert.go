@@ -257,10 +257,13 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 				},
 			},
 		})
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+		vm := corev1.VolumeMount{
 			Name:      "vmalert-notifier-config",
+			ReadOnly:  true,
 			MountPath: notifierConfigMountPath,
-		})
+		}
+		volumeMounts = append(volumeMounts, vm)
+		crMounts = append(crMounts, vm)
 	}
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{

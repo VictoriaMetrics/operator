@@ -355,25 +355,28 @@ See [this doc](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.
 
 In addition to the above selectors, object filtering in a cluster is affected by the field `selectAllByDefault` of `VMAnomaly` spec and the `WATCH_NAMESPACE` environment variable for the operator.
 
-The following rules are applied:
+Following rules are applied:
 
-- If `configNamespaceSelector` and `configSelector` are both undefined, then by default select nothing. With option set `spec.selectAllByDefault: true`, select all objects of the given type.
-- If `configNamespaceSelector` defined, `configSelector` is undefined, then all objects are matching at the namespaces for the given `configNamespaceSelector`.
-- If `configNamespaceSelector` undefined, `configSelector` is defined, then all objects in `VMAnomaly`'s namespaces are matched for the given `configSelector`.
-- If `configNamespaceSelector` and `configSelector` are both defined, then only objects in namespaces matched by  `configNamespaceSelector` for the given `configSelector` are matching.
+- If `configNamespaceSelector` and `configSelector` are both undefined, nothing is selected. Setting `spec.selectAllByDefault: true` selects all VMAnomalyConfigs.
+- If `configNamespaceSelector` is defined and `configSelector` is undefined, all VMAnomalyConfigs in the namespaces matched by `configNamespaceSelector` are selected.
+- If `configNamespaceSelector` is undefined and `configSelector` is defined, VMAnomalyConfigs matching `configSelector` in the `VMAnomaly` namespace are selected.
+- If `configNamespaceSelector` and `configSelector` are both defined, VMAnomalyConfigs matching `configSelector` in the namespaces matched by `configNamespaceSelector` are selected.
+- `selectAllByDefault` has an effect only when both `configNamespaceSelector` and `configSelector` are undefined.
+- An empty `configNamespaceSelector` (`{}`) matches all namespaces. If `configNamespaceSelector` matches no namespaces, nothing is selected.
+- If the operator's `WATCH_NAMESPACE` is set, `configNamespaceSelector` is ignored and VMAnomalyConfigs are selected from all watched namespaces, not only from the `VMAnomaly` namespace. This also applies when only `configSelector` is defined.
 
+Below is a more visual and detailed view:
 
-Here's a more visual and more detailed view:
-
-| `configNamespaceSelector`    | `configSelector` | `selectAllByDefault` | `WATCH_NAMESPACE` | Selected objects                                                                                            |
-|------------------------|------------------|----------------------|-------------------|-------------------------------------------------------------------------------------------------------------|
-| undefined              | undefined        | false                | undefined         | nothing                                                                                                     |
-| undefined              | undefined        | **true**             | undefined         | all objects of given type (`...`) in the cluster                                                            |
-| **defined**            | undefined        | *any*                | undefined         | all objects of given type (`...`) at namespaces for given `configNamespaceSelector`                               |
-| undefined              | **defined**      | *any*                | undefined         | all objects of given type (`...`) only at `VMAnomaly`'s namespace are matching for given `configSelector`   |
-| **defined**            | **defined**      | *any*                | undefined         | all objects of given type (`...`) only at namespaces matched `configNamespaceSelector` for given `configSelector` |
-| *any*                  | undefined        | *any*                | **defined**       | all objects of given type (`...`) only at `VMAnomaly`'s namespace                                           |
-| *any*                  | **defined**      | *any*                | **defined**       | all objects of given type (`...`) only at `VMAnomaly`'s namespace for given `configSelector`                |
+| `configNamespaceSelector` | `configSelector` | `selectAllByDefault` | `WATCH_NAMESPACE` | Selected objects                                                                                  |
+|---------------------------|------------------|----------------------|-------------------|---------------------------------------------------------------------------------------------------|
+| undefined                 | undefined        | false                | *any*             | nothing                                                                                           |
+| undefined                 | undefined        | **true**             | undefined         | all VMAnomalyConfigs in the cluster                                                               |
+| **defined**               | undefined        | *any*                | undefined         | all VMAnomalyConfigs in the namespaces matched by `configNamespaceSelector`                       |
+| undefined                 | **defined**      | *any*                | undefined         | VMAnomalyConfigs matching `configSelector` in the `VMAnomaly` namespace                           |
+| **defined**               | **defined**      | *any*                | undefined         | VMAnomalyConfigs matching `configSelector` in the namespaces matched by `configNamespaceSelector` |
+| undefined                 | undefined        | **true**             | **defined**       | all VMAnomalyConfigs in the watched namespaces                                                    |
+| **defined**               | undefined        | *any*                | **defined**       | all VMAnomalyConfigs in the watched namespaces                                                    |
+| *any*                     | **defined**      | *any*                | **defined**       | VMAnomalyConfigs matching `configSelector` in the watched namespaces                              |
 
 See [this doc](https://docs.victoriametrics.com/operator/configuration/#namespaced-mode) for more details about the `WATCH_NAMESPACE` variable.
 

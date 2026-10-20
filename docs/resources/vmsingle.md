@@ -64,22 +64,27 @@ In addition to these selectors, object filtering in a cluster can be done by the
 
 Following rules are applied:
 
-- If both `...NamespaceSelector` and `...Selector` are undefined, no objects are selected by default. Setting `spec.selectAllByDefault: true` selects all objects of the given type.
-- If `...NamespaceSelector` is defined and `...Selector` is undefined, all objects in the namespaces matched by ...NamespaceSelector are selected.
-- If `...NamespaceSelector` is undefined and `...Selector` is defined, all objects in VMSingle’s namespaces matching ...Selector are selected.
-- If `...NamespaceSelector` and `...Selector` both are defined, then only objects in the namespaces matched by...NamespaceSelector for the given ...Selector are matching.
+- If `...NamespaceSelector` and `...Selector` are both undefined, nothing is selected. Setting `spec.selectAllByDefault: true` selects all objects of the given type.
+- If `...NamespaceSelector` is defined and `...Selector` is undefined, all objects of the given type in the namespaces matched by `...NamespaceSelector` are selected.
+- If `...NamespaceSelector` is undefined and `...Selector` is defined, objects of the given type matching `...Selector` in the `VMSingle` namespace are selected.
+- If `...NamespaceSelector` and `...Selector` are both defined, objects of the given type matching `...Selector` in the namespaces matched by `...NamespaceSelector` are selected.
+- `selectAllByDefault` has an effect only when both `...NamespaceSelector` and `...Selector` are undefined.
+- An empty `...NamespaceSelector` (`{}`) matches all namespaces. If `...NamespaceSelector` matches no namespaces, nothing is selected.
+- If the operator's `WATCH_NAMESPACE` is set, `...NamespaceSelector` is ignored and objects of the given type are selected from all watched namespaces, not only from the `VMSingle` namespace. This also applies when only `...Selector` is defined.
+- If the operator's `WATCH_NAMESPACE` is set and `VMSingle` uses the operator-managed ServiceAccount, VMNodeScrape objects are not selected, because node discovery requires cluster-wide access.
 
 Below is a more visual and detailed view:
 
-| `...NamespaceSelector` | `...Selector` | `selectAllByDefault` | `WATCH_NAMESPACE` | Selected objects                                                                                            |
-|------------------------|---------------|----------------------|-------------------|-------------------------------------------------------------------------------------------------------------|
-| undefined              | undefined     | false                | undefined         | nothing                                                                                                     |
-| undefined              | undefined     | **true**             | undefined         | all objects of given type (`...`) in the cluster                                                            |
-| **defined**            | undefined     | *any*                | undefined         | all objects of given type (`...`) at namespaces for given `...NamespaceSelector`                            |
-| undefined              | **defined**   | *any*                | undefined         | all objects of given type (`...`) only at `VMSingle`'s namespace are matching for given `Selector`          |
-| **defined**            | **defined**   | *any*                | undefined         | all objects of given type (`...`) only at namespaces matched `...NamespaceSelector` for given `...Selector` |
-| *any*                  | undefined     | *any*                | **defined**       | all objects of given type (`...`) only at `VMSingle`'s namespace                                            |
-| *any*                  | **defined**   | *any*                | **defined**       | all objects of given type (`...`) only at `VMSingle`'s namespace for given `...Selector`                    |
+| `...NamespaceSelector` | `...Selector` | `selectAllByDefault` | `WATCH_NAMESPACE` | Selected objects                                                                                     |
+|------------------------|---------------|----------------------|-------------------|------------------------------------------------------------------------------------------------------|
+| undefined              | undefined     | false                | *any*             | nothing                                                                                              |
+| undefined              | undefined     | **true**             | undefined         | all objects of the given type in the cluster                                                         |
+| **defined**            | undefined     | *any*                | undefined         | all objects of the given type in the namespaces matched by `...NamespaceSelector`                    |
+| undefined              | **defined**   | *any*                | undefined         | objects of the given type matching `...Selector` in the `VMSingle` namespace                         |
+| **defined**            | **defined**   | *any*                | undefined         | objects of the given type matching `...Selector` in the namespaces matched by `...NamespaceSelector` |
+| undefined              | undefined     | **true**             | **defined**       | all objects of the given type in the watched namespaces                                              |
+| **defined**            | undefined     | *any*                | **defined**       | all objects of the given type in the watched namespaces                                              |
+| *any*                  | **defined**   | *any*                | **defined**       | objects of the given type matching `...Selector` in the watched namespaces                           |
 
 For more details about the `WATCH_NAMESPACE` variable, see [this doc](https://docs.victoriametrics.com/operator/configuration/#namespaced-mode).
 

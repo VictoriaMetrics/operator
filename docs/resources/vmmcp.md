@@ -120,7 +120,7 @@ The MCP server doesn't authenticate its clients, so anyone with network access t
 with credentials of the MCP server. Don't expose the MCP server outside of the cluster as is.
 Put [VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth/) with
 [VMUser](https://docs.victoriametrics.com/operator/resources/vmuser/) in front of it
-and restrict access to its pods with `spec.networkPolicy`, as in the [VMMCP for VMCluster](#vmmcp-for-vmcluster) example:
+and restrict access to its pods with `spec.networkPolicy`, as in the [VMMCP for VMCluster](https://docs.victoriametrics.com/operator/resources/vmmcp/#vmmcp-for-vmcluster) example:
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1

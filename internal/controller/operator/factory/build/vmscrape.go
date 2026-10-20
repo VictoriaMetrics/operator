@@ -3,93 +3,88 @@ package build
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-type scrapeBuilder interface {
+// ScrapeBuilder is implemented by primary CRs and by sidecars (vmbackupmanager, config-reloader, ...).
+type ScrapeBuilder interface {
 	GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec
-	GetExtraArgs() map[string]string
 	GetMetricsPath() string
-	UseTLS() bool
+	Params(vmv1beta1.ParamsKind) *vmv1beta1.StandardAppsParams
 }
 
 type podScrapeBuilder interface {
-	scrapeBuilder
+	ScrapeBuilder
 	GetNamespace() string
 	PrefixedName() string
 	SelectorLabels() map[string]string
 	AsOwner() metav1.OwnerReference
 }
 
-// VMServiceScrape creates corresponding object with `http` port endpoint obtained from given service
-// add additionalPortNames to the monitoring if needed
-func VMServiceScrape(service *corev1.Service, b scrapeBuilder, additionalPortNames ...string) *vmv1beta1.VMServiceScrape {
-	var endpoints []vmv1beta1.Endpoint
-
-	extraArgs := b.GetExtraArgs()
-	authKey := extraArgs["metricsAuthKey"]
-
-	const defaultPortName = "http"
-	for _, servicePort := range service.Spec.Ports {
-		// fast path - filter all unmatched ports
-		if servicePort.Name != defaultPortName && len(additionalPortNames) == 0 {
-			continue
-		}
-
-		var extraRelabelingRules vmv1beta1.EndpointRelabelings
-		path := b.GetMetricsPath()
-		if servicePort.Name != defaultPortName {
-			// check service for extra ports
-			var nameMatched bool
-			for _, filter := range additionalPortNames {
-				if servicePort.Name == filter {
-					nameMatched = true
-					// sidecars (config-reloader, vmbackupmanager) always expose metrics at the
-					// literal path below, regardless of the app's own http.pathPrefix
-					path = "/metrics"
-					// add a relabeling rule to avoid job collision
-					extraRelabelingRules.RelabelConfigs = []*vmv1beta1.RelabelConfig{
-						{
-							SourceLabels: []string{"job"},
-							TargetLabel:  "job",
-							Regex:        vmv1beta1.StringOrArray{"(.+)"},
-							Replacement:  ptr.To("${1}-" + filter),
-						},
-					}
-					break
-				}
-			}
-			if !nameMatched {
-				continue
-			}
-		}
-
-		endpoint := vmv1beta1.Endpoint{
-			Port:                servicePort.Name,
-			EndpointRelabelings: extraRelabelingRules,
-			EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-				Path: path,
+// sidecarRelabelings builds the job-suffixing relabeling rule for a sidecar endpoint.
+func sidecarRelabelings(portName string) vmv1beta1.EndpointRelabelings {
+	return vmv1beta1.EndpointRelabelings{
+		RelabelConfigs: []*vmv1beta1.RelabelConfig{
+			{
+				SourceLabels: []string{"job"},
+				TargetLabel:  "job",
+				Regex:        vmv1beta1.StringOrArray{"(.+)"},
+				Replacement:  ptr.To("${1}-" + portName),
 			},
-		}
-		if b.UseTLS() {
-			endpoint.Scheme = "https"
-			// add insecure by default
-			// if needed user will override it with direct config
-			endpoint.TLSConfig = &vmv1beta1.TLSConfig{
-				InsecureSkipVerify: true,
+		},
+	}
+}
+
+// scrapeEndpointTLS returns the Scheme/TLSConfig/Params fields for a scrape endpoint.
+func scrapeEndpointTLS(useTLS bool, authKey string) (scheme string, tlsConfig *vmv1beta1.TLSConfig, params map[string][]string) {
+	if useTLS {
+		scheme = "https"
+		tlsConfig = &vmv1beta1.TLSConfig{InsecureSkipVerify: true}
+	}
+	if len(authKey) > 0 {
+		params = map[string][]string{"authKey": {authKey}}
+	}
+	return
+}
+
+// VMServiceScrape builds a VMServiceScrape for service, scraping primary's own listeners plus
+// every sidecar's listeners, addressed by TargetPort.
+func VMServiceScrape(service *corev1.Service, primary ScrapeBuilder, sidecars ...ScrapeBuilder) *vmv1beta1.VMServiceScrape {
+	params := primary.Params(vmv1beta1.ScrapeParamsKind)
+	scrapeListeners := params.GetScrapeListeners()
+
+	authKey := params.ExtraArgs[vmv1beta1.MetricsAuthKeyFlag]
+	scrapeListenerTLS := func(name string) (bool, bool) {
+		for _, l := range scrapeListeners {
+			if l.Name == name {
+				return ptr.Deref(l.TLS, false), true
 			}
 		}
-		if len(authKey) > 0 {
-			endpoint.Params = map[string][]string{
-				"authKey": {authKey},
-			}
-		}
-		endpoints = append(endpoints, endpoint)
+		return false, false
 	}
 
-	serviceScrapeSpec := b.GetServiceScrape()
+	var endpoints []vmv1beta1.Endpoint
+	for _, servicePort := range service.Spec.Ports {
+		useTLS, ok := scrapeListenerTLS(servicePort.Name)
+		if !ok {
+			continue
+		}
+		scheme, tlsConfig, epParams := scrapeEndpointTLS(useTLS, authKey)
+		endpoints = append(endpoints, vmv1beta1.Endpoint{
+			Port: servicePort.Name,
+			EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+				Path:         primary.GetMetricsPath(),
+				Scheme:       scheme,
+				Params:       epParams,
+				EndpointAuth: vmv1beta1.EndpointAuth{TLSConfig: tlsConfig},
+			},
+		})
+	}
+
+	serviceScrapeSpec := primary.GetServiceScrape()
 	if serviceScrapeSpec == nil {
 		serviceScrapeSpec = &vmv1beta1.VMServiceScrapeSpec{}
 	}
@@ -103,8 +98,6 @@ func VMServiceScrape(service *corev1.Service, b scrapeBuilder, additionalPortNam
 		},
 		Spec: *serviceScrapeSpec,
 	}
-	// merge generated endpoints into user defined values by Port name
-	// assume, that it must be unique.
 	for _, e := range endpoints {
 		var found bool
 		for idx := range scrape.Spec.Endpoints {
@@ -120,9 +113,6 @@ func VMServiceScrape(service *corev1.Service, b scrapeBuilder, additionalPortNam
 			scrape.Spec.Endpoints = append(scrape.Spec.Endpoints, e)
 		}
 	}
-	// allow to manually define selectors
-	// in some cases it may be useful
-	// for instance when additional service created with extra pod ports
 	if scrape.Spec.Selector.MatchLabels == nil && scrape.Spec.Selector.MatchExpressions == nil {
 		scrape.Spec.Selector = metav1.LabelSelector{
 			MatchLabels: service.Labels,
@@ -131,6 +121,28 @@ func VMServiceScrape(service *corev1.Service, b scrapeBuilder, additionalPortNam
 			},
 		}
 	}
+
+	for _, sidecar := range sidecars {
+		sidecarParams := sidecar.Params(vmv1beta1.ScrapeParamsKind)
+		sidecarAuthKey := sidecarParams.ExtraArgs[vmv1beta1.MetricsAuthKeyFlag]
+		for _, l := range sidecarParams.GetScrapeListeners() {
+			scheme, tlsConfig, epParams := scrapeEndpointTLS(ptr.Deref(l.TLS, false), sidecarAuthKey)
+			scrape.Spec.Endpoints = append(scrape.Spec.Endpoints, vmv1beta1.Endpoint{
+				TargetPort:          ptr.To(intstr.Parse(l.AddrPort())),
+				EndpointRelabelings: sidecarRelabelings(l.Name),
+				EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+					Path:         sidecar.GetMetricsPath(),
+					Scheme:       scheme,
+					Params:       epParams,
+					EndpointAuth: vmv1beta1.EndpointAuth{TLSConfig: tlsConfig},
+				},
+			})
+		}
+	}
+
+	if len(scrape.Spec.Endpoints) == 0 {
+		return nil
+	}
 	for i := range scrape.Spec.Endpoints {
 		addVictoriaMetricsAppRelabelConfig(&scrape.Spec.Endpoints[i].EndpointRelabelings)
 	}
@@ -138,54 +150,25 @@ func VMServiceScrape(service *corev1.Service, b scrapeBuilder, additionalPortNam
 	return scrape
 }
 
-// VMPodScrape builds a VMPodScrape for given podScrapeBuilder, with portName as the primary
-// endpoint and any additionalPortNames (e.g. sidecar metrics ports) appended alongside it.
-func VMPodScrape(b podScrapeBuilder, portName string, additionalPortNames ...string) *vmv1beta1.VMPodScrape {
-	extraArgs := b.GetExtraArgs()
-	authKey := extraArgs["metricsAuthKey"]
+// VMPodScrape builds a VMPodScrape for b, scraping its own listeners plus every sidecar's
+// listeners, addressed by PortNumber.
+func VMPodScrape(b podScrapeBuilder, sidecars ...ScrapeBuilder) *vmv1beta1.VMPodScrape {
+	params := b.Params(vmv1beta1.ScrapeParamsKind)
+	scrapeListeners := params.GetScrapeListeners()
 
-	buildEndpoint := func(name string, isPrimary bool) vmv1beta1.PodMetricsEndpoint {
-		path := b.GetMetricsPath()
-		var relabelings vmv1beta1.EndpointRelabelings
-		if !isPrimary {
-			// sidecars (e.g. config-reloader) always expose metrics at the literal path
-			// below, regardless of the app's own http.pathPrefix
-			path = "/metrics"
-			relabelings.RelabelConfigs = []*vmv1beta1.RelabelConfig{
-				{
-					SourceLabels: []string{"job"},
-					TargetLabel:  "job",
-					Regex:        vmv1beta1.StringOrArray{"(.+)"},
-					Replacement:  ptr.To("${1}-" + name),
-				},
-			}
-		}
-		ep := vmv1beta1.PodMetricsEndpoint{
-			Port:                ptr.To(name),
-			EndpointRelabelings: relabelings,
+	authKey := params.ExtraArgs[vmv1beta1.MetricsAuthKeyFlag]
+	var endpoints []vmv1beta1.PodMetricsEndpoint
+	for _, l := range scrapeListeners {
+		scheme, tlsConfig, epParams := scrapeEndpointTLS(ptr.Deref(l.TLS, false), authKey)
+		endpoints = append(endpoints, vmv1beta1.PodMetricsEndpoint{
+			Port: ptr.To(l.Name),
 			EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-				Path: path,
+				Path:         b.GetMetricsPath(),
+				Scheme:       scheme,
+				Params:       epParams,
+				EndpointAuth: vmv1beta1.EndpointAuth{TLSConfig: tlsConfig},
 			},
-		}
-		if b.UseTLS() {
-			ep.Scheme = "https"
-			// add insecure by default
-			// if needed user will override it with direct config
-			ep.TLSConfig = &vmv1beta1.TLSConfig{
-				InsecureSkipVerify: true,
-			}
-		}
-		if len(authKey) > 0 {
-			ep.Params = map[string][]string{
-				"authKey": {authKey},
-			}
-		}
-		return ep
-	}
-
-	endpoints := []vmv1beta1.PodMetricsEndpoint{buildEndpoint(portName, true)}
-	for _, name := range additionalPortNames {
-		endpoints = append(endpoints, buildEndpoint(name, false))
+		})
 	}
 
 	selectorLabels := b.SelectorLabels()
@@ -226,6 +209,28 @@ func VMPodScrape(b podScrapeBuilder, portName string, additionalPortNames ...str
 		scrape.Spec.SampleLimit = serviceScrapeSpec.SampleLimit
 		scrape.Spec.SeriesLimit = serviceScrapeSpec.SeriesLimit
 		scrape.Spec.AttachMetadata = serviceScrapeSpec.AttachMetadata
+	}
+
+	for _, sidecar := range sidecars {
+		sidecarParams := sidecar.Params(vmv1beta1.ScrapeParamsKind)
+		sidecarAuthKey := sidecarParams.ExtraArgs[vmv1beta1.MetricsAuthKeyFlag]
+		for _, l := range sidecarParams.GetScrapeListeners() {
+			scheme, tlsConfig, epParams := scrapeEndpointTLS(ptr.Deref(l.TLS, false), sidecarAuthKey)
+			scrape.Spec.PodMetricsEndpoints = append(scrape.Spec.PodMetricsEndpoints, vmv1beta1.PodMetricsEndpoint{
+				PortNumber:          ptr.To(intstr.Parse(l.AddrPort()).IntVal),
+				EndpointRelabelings: sidecarRelabelings(l.Name),
+				EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+					Path:         sidecar.GetMetricsPath(),
+					Scheme:       scheme,
+					Params:       epParams,
+					EndpointAuth: vmv1beta1.EndpointAuth{TLSConfig: tlsConfig},
+				},
+			})
+		}
+	}
+
+	if len(scrape.Spec.PodMetricsEndpoints) == 0 {
+		return nil
 	}
 	for i := range scrape.Spec.PodMetricsEndpoints {
 		addVictoriaMetricsAppRelabelConfig(&scrape.Spec.PodMetricsEndpoints[i].EndpointRelabelings)

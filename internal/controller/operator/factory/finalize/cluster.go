@@ -15,10 +15,9 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
-func OnClusterDelete(ctx context.Context, rclient client.Client, cr build.ParentOpts) error {
+func OnClusterDelete(ctx context.Context, rclient client.Client, cr vmv1beta1.ParentOpts) error {
 	if err := OnClusterLoadBalancerDelete(ctx, rclient, cr, false); err != nil {
 		return fmt.Errorf("cannot delete cluster loadbalancer components: %w", err)
 	}
@@ -32,7 +31,7 @@ func OnClusterDelete(ctx context.Context, rclient client.Client, cr build.Parent
 	if err := OnStorageDelete(ctx, rclient, cr, false); err != nil {
 		return fmt.Errorf("cannot remove storage component objects: %w", err)
 	}
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
 	ls := b.SelectorLabels()
 	delete(ls, "app.kubernetes.io/name")
 	b.SetSelectorLabels(ls)
@@ -51,8 +50,8 @@ func OnClusterDelete(ctx context.Context, rclient client.Client, cr build.Parent
 }
 
 // OnInsertDelete removes all objects related to insert component
-func OnInsertDelete(ctx context.Context, rclient client.Client, cr build.ParentOpts, shouldRemove bool) error {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
+func OnInsertDelete(ctx context.Context, rclient client.Client, cr vmv1beta1.ParentOpts, shouldRemove bool) error {
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	if err := RemoveOrphanedVMServiceScrapes(ctx, rclient, b, nil, shouldRemove); err != nil {
 		return fmt.Errorf("cannot remove orphaned serviceScrapes: %w", err)
 	}
@@ -79,8 +78,8 @@ func OnInsertDelete(ctx context.Context, rclient client.Client, cr build.ParentO
 }
 
 // OnSelectDelete removes all objects related to select component
-func OnSelectDelete(ctx context.Context, rclient client.Client, cr build.ParentOpts, shouldRemove bool) error {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
+func OnSelectDelete(ctx context.Context, rclient client.Client, cr vmv1beta1.ParentOpts, shouldRemove bool) error {
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
 	if err := RemoveOrphanedVMServiceScrapes(ctx, rclient, b, nil, shouldRemove); err != nil {
 		return fmt.Errorf("cannot remove orphaned serviceScrapes: %w", err)
 	}
@@ -108,8 +107,8 @@ func OnSelectDelete(ctx context.Context, rclient client.Client, cr build.ParentO
 }
 
 // OnStorageDelete removes all objects related to storage component
-func OnStorageDelete(ctx context.Context, rclient client.Client, cr build.ParentOpts, shouldRemove bool) error {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+func OnStorageDelete(ctx context.Context, rclient client.Client, cr vmv1beta1.ParentOpts, shouldRemove bool) error {
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
 	if err := RemoveOrphanedVMServiceScrapes(ctx, rclient, b, nil, shouldRemove); err != nil {
 		return fmt.Errorf("cannot remove orphaned serviceScrapes: %w", err)
 	}
@@ -136,8 +135,8 @@ func OnStorageDelete(ctx context.Context, rclient client.Client, cr build.Parent
 }
 
 // OnClusterLoadBalancerDelete removes vmauth loadbalancer components for cluster
-func OnClusterLoadBalancerDelete(ctx context.Context, rclient client.Client, cr build.ParentOpts, shouldRemove bool) error {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
+func OnClusterLoadBalancerDelete(ctx context.Context, rclient client.Client, cr vmv1beta1.ParentOpts, shouldRemove bool) error {
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentBalancer)
 	if err := RemoveOrphanedVMServiceScrapes(ctx, rclient, b, nil, shouldRemove); err != nil {
 		return fmt.Errorf("cannot remove orphaned serviceScrapes: %w", err)
 	}
@@ -213,8 +212,8 @@ func (cc *ChildCleaner) KeepScrape(v string) {
 }
 
 // RemoveOrphaned removes cr dependent resources excluding ones, which are defined in cleaner's maps
-func (cc *ChildCleaner) RemoveOrphaned(ctx context.Context, rclient client.Client, cr build.ParentOpts) error {
-	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentCommon)
+func (cc *ChildCleaner) RemoveOrphaned(ctx context.Context, rclient client.Client, cr vmv1beta1.ParentOpts) error {
+	b := vmv1beta1.NewChildBuilder(cr, vmv1beta1.ClusterComponentCommon)
 	if err := RemoveOrphanedPDBs(ctx, rclient, b, cc.pdbs, true); err != nil {
 		return fmt.Errorf("cannot remove orphaned PDBs: %w", err)
 	}

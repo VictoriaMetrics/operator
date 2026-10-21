@@ -66,7 +66,10 @@ func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newObj 
 			return true, nil
 		}
 		if ignoreNotReadyPodOrdinals.Len() == 0 {
-			return *targetReplicas == existingObj.Status.UpdatedReplicas && *targetReplicas == existingObj.Status.ReadyReplicas, nil
+			if *targetReplicas != existingObj.Status.UpdatedReplicas {
+				return false, nil
+			}
+			return *targetReplicas == existingObj.Status.ReadyReplicas, nil
 		}
 		// status.updatedReplicas doesn't count terminating pods, e.g. a pod stuck terminating on a shut down node,
 		// so check each pod, which is not excluded by ignoreNotReadyPodOrdinals, individually

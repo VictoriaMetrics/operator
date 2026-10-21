@@ -408,44 +408,6 @@ spec:
 The timeout for each node to become ready is controlled by the Operator environment variable
 `VM_PODWAITREADYTIMEOUT` (default `80s`). The poll interval is `VM_PODWAITREADYINTERVALCHECK` (default `5s`).
 
-### Storage node maintenance mode
-
-`vmstorage.maintenanceInsertNodeIDs` and `vmstorage.maintenanceSelectNodeIDs` exclude the listed pod ordinals
-from `vminsert`/`vmselect` routing, for example while the underlying Kubernetes node is cordoned or drained
-for maintenance and the `vmstorage` pod is expected to stay `Pending`/`NotReady` for an extended period.
-
-A pod ordinal listed in **both** fields (excluded from insert and select routing at the same time) is also
-skipped by the Operator's readiness wait during reconciliation. Previously, such a pod being not ready blocked
-every reconcile of the cluster — including unrelated changes to `vminsert` or `vmselect` — until it recovered,
-even though it was already excluded from all routing.
-
-```yaml
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMCluster
-metadata:
-  name: example
-spec:
-  vmstorage:
-    replicaCount: 3
-    maintenanceInsertNodeIDs: [2]
-    maintenanceSelectNodeIDs: [2]   # pod-2 excluded from routing and from the readiness wait
-```
-
-**Limitations:**
-
-- A pod ordinal must appear in *both* `maintenanceInsertNodeIDs` and `maintenanceSelectNodeIDs` to be exempted
-  from the readiness wait. An ordinal excluded from only one of the two still blocks reconcile until it becomes
-  ready.
-- The skip only reliably prevents reconcile from blocking under the default `rollingUpdateStrategy: OnDelete`.
-  With `rollingUpdateStrategy: RollingUpdate`, the StatefulSet uses Kubernetes' native `OrderedReady` pod
-  management, which itself refuses to create or update any pod at a higher ordinal until a lower-ordinal pod
-  is ready. In that mode a maintenance pod can still stall the rollout — this is enforced by Kubernetes itself,
-  not the Operator, and cannot be bypassed from the Operator side.
-- These fields cannot be combined with [automatic vmstorage discovery](#automatic-vmstorage-discovery), since
-  node selection is delegated to the `filter` regexp there.
-- The skip only affects the Operator's own readiness wait; it does not change the pod's actual status or
-  affect routing, which is already controlled by the same two fields.
-
 ### vminsert
 
 `vminsert` nodes can be configured with standard Deployment update parameters:
@@ -463,6 +425,59 @@ spec:
       maxUnavailable: 1
       maxSurge: 1
 ```
+
+## Storage node maintenance mode
+
+`vmstorage.maintenanceInsertNodeIDs` and `vmstorage.maintenanceSelectNodeIDs` exclude the listed `vmstorage` pods from `vminsert` and `vmselect` routing.
+Each ID is a pod ordinal, the numeric suffix of the pod name, e.g. `2` for the pod ending with `-2`.
+Use them when a `vmstorage` pod is expected to be unavailable for a while,
+for example when its Kubernetes node is under maintenance and the pod can't move, since its volume is bound to that node.
+
+Excluding a pod from routing affects the cluster:
+
+- with the pod in `maintenanceSelectNodeIDs`, data stored only on this pod is missing from query responses,
+  and `vmselect` doesn't mark them as partial, since it doesn't know about the pod.
+  Use [replicationFactor](#high-availability) > 1 to keep such data available;
+- with the pod in `maintenanceInsertNodeIDs`, `vminsert` spreads incoming series across the remaining pods,
+  so they take over the excluded pod's share of writes, and some series move to other pods, which increases churn there.
+
+These fields cannot be combined with [automatic vmstorage discovery](#automatic-vmstorage-discovery).
+
+### Pods excluded from all routing
+
+Starting from [v0.75.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.1),
+the Operator leaves a pod listed in **both** fields alone during reconciliation, since it receives no reads and no writes:
+
+- it doesn't wait for the pod to become ready, so a pod stuck `Pending` or `Terminating` no longer blocks
+  reconciliation of `vminsert` and `vmselect`;
+- it doesn't apply `vmstorage` spec changes to the pod or its volumes, e.g. a new image or a bigger volume size.
+
+A pod listed in only one of the two fields still receives the other kind of traffic, so the Operator handles it as usual.
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example
+spec:
+  vmstorage:
+    replicaCount: 3
+    maintenanceInsertNodeIDs: [2]
+    maintenanceSelectNodeIDs: [2]   # the pod with ordinal 2 gets no traffic and is left alone by the Operator
+```
+
+When the node is back, remove the ID from both fields before making other changes.
+The Operator then applies the `vmstorage` changes deferred during maintenance to the pod,
+and waits for it to become ready before adding it back to `vminsert` and `vmselect`, so an unhealthy pod never receives traffic.
+
+**Limitations:**
+
+- Spec changes are deferred only with the default `rollingUpdateStrategy: OnDelete`, where the Operator updates `vmstorage` pods itself.
+  With `RollingUpdate`, Kubernetes rolls out all pods, including the pod under maintenance, using `OrderedReady` pod management,
+  which is also used when `minReadySeconds` is set. In this mode, while the pod under maintenance isn't ready, Kubernetes doesn't roll out updates,
+  scale the StatefulSet or recreate pods with a higher ordinal, so reconciliation that changes `vmstorage` pods can block until the pod is ready again.
+- With `vmstorage.podDisruptionBudget.maxUnavailable: 1`, the pod under maintenance already uses the disruption budget,
+  so any `vmstorage` change that requires pod restarts fails until the pod is ready again.
 
 ## Resource management
 

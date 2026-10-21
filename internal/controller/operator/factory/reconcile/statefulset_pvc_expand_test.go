@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -160,6 +161,7 @@ func Test_updateSTSPVC(t *testing.T) {
 		actions         []k8stools.ClientAction
 		k8sMinorVersion uint64
 		liveReplicas    *int32
+		ignoreOrdinals  sets.Set[int32]
 	}
 	f := func(o opts) {
 		t.Helper()
@@ -181,7 +183,7 @@ func Test_updateSTSPVC(t *testing.T) {
 			cl.Actions = nil
 		}
 		synctest.Test(t, func(t *testing.T) {
-			err := updateSTSPVC(ctx, cl, o.sts, o.prevVCTs, liveReplicas)
+			err := updateSTSPVC(ctx, cl, o.sts, o.prevVCTs, liveReplicas, o.ignoreOrdinals)
 			if o.wantErrText != "" {
 				assert.ErrorContains(t, err, o.wantErrText)
 			} else {
@@ -1735,6 +1737,103 @@ func Test_updateSTSPVC(t *testing.T) {
 						"test": "after",
 					},
 					ResourceVersion: "4",
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("10Gi"),
+						},
+					},
+				},
+				Status: corev1.PersistentVolumeClaimStatus{
+					Capacity: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("10Gi"),
+					},
+				},
+			},
+		},
+	})
+
+	// PVC of a pod excluded by maintenance node IDs is not updated and not waited for
+	maintenancePVCNSN := types.NamespacedName{Name: "vmselect-cachedir-vmselect-1", Namespace: "default"}
+	f(opts{
+		sts: buildSTS(func(sts *appsv1.StatefulSet) {
+			sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "vmselect-cachedir",
+						Labels: map[string]string{"app": "vmselect"},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						Resources: corev1.VolumeResourceRequirements{
+							Requests: map[corev1.ResourceName]resource.Quantity{
+								corev1.ResourceStorage: resource.MustParse("15Gi"),
+							},
+						},
+					},
+				},
+			}
+		}),
+		ignoreOrdinals: sets.New[int32](1),
+		preRun: func(c client.Client) {
+			for _, nsn := range []types.NamespacedName{pvc1NSN, maintenancePVCNSN} {
+				assert.NoError(t, c.Create(context.TODO(), &corev1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      nsn.Name,
+						Namespace: nsn.Namespace,
+						Labels:    map[string]string{"app": "vmselect"},
+						Annotations: map[string]string{
+							"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						Resources: corev1.VolumeResourceRequirements{
+							Requests: map[corev1.ResourceName]resource.Quantity{
+								corev1.ResourceStorage: resource.MustParse("10Gi"),
+							},
+						},
+					},
+				}))
+			}
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
+			{Verb: "Update", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
+			{Verb: "Get", Kind: "PersistentVolumeClaim", Resource: pvc1NSN},
+		},
+		expected: []corev1.PersistentVolumeClaim{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      pvc1NSN.Name,
+					Namespace: pvc1NSN.Namespace,
+					Labels:    map[string]string{"app": "vmselect"},
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
+					},
+					ResourceVersion: "4",
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: resource.MustParse("15Gi"),
+						},
+					},
+				},
+				Status: corev1.PersistentVolumeClaimStatus{
+					Capacity: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("15Gi"),
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      maintenancePVCNSN.Name,
+					Namespace: maintenancePVCNSN.Namespace,
+					Labels:    map[string]string{"app": "vmselect"},
+					Annotations: map[string]string{
+						"operator.victoriametrics.com/pvc-allow-volume-expansion": "true",
+					},
+					ResourceVersion: "2",
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					Resources: corev1.VolumeResourceRequirements{

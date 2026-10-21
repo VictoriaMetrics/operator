@@ -65,12 +65,11 @@ func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newObj 
 		if targetReplicas == nil {
 			return true, nil
 		}
-		if *targetReplicas != existingObj.Status.UpdatedReplicas {
-			return false, nil
-		}
 		if ignoreNotReadyPodOrdinals.Len() == 0 {
-			return *targetReplicas == existingObj.Status.ReadyReplicas, nil
+			return *targetReplicas == existingObj.Status.UpdatedReplicas && *targetReplicas == existingObj.Status.ReadyReplicas, nil
 		}
+		// status.updatedReplicas doesn't count terminating pods, e.g. a pod stuck terminating on a shut down node,
+		// so check each pod, which is not excluded by ignoreNotReadyPodOrdinals, individually
 		var podList corev1.PodList
 		if err := rclient.List(ctx, &podList, &client.ListOptions{
 			Namespace:     newObj.Namespace,
@@ -80,6 +79,11 @@ func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newObj 
 		}
 		readyOrdinals := sets.New[int32]()
 		for _, pod := range podList.Items {
+			// a pod counts only if it isn't terminating and already runs the latest revision,
+			// so a pod that is ready but not yet updated keeps the wait going until k8s replaces it
+			if !pod.DeletionTimestamp.IsZero() || pod.Labels[podRevisionLabel] != existingObj.Status.UpdateRevision {
+				continue
+			}
 			if PodIsReady(&pod, newObj.Spec.MinReadySeconds) {
 				if ordinal, err := podOrdinal(pod.Name); err == nil {
 					readyOrdinals.Insert(ordinal)
@@ -195,7 +199,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *ap
 
 	// check if pvcs need to resize
 	if len(newObj.Spec.VolumeClaimTemplates) > 0 {
-		if err := updateSTSPVC(ctx, rclient, newObj, prevVCTs, existingObj.Status.Replicas); err != nil {
+		if err := updateSTSPVC(ctx, rclient, newObj, prevVCTs, existingObj.Status.Replicas, o.IgnoreNotReadyPodOrdinals); err != nil {
 			return err
 		}
 	}

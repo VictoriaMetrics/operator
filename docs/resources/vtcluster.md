@@ -192,42 +192,6 @@ at the cost of temporary unavailability.
 The timeout for each node to become ready is controlled by the Operator environment variable
 `VM_PODWAITREADYTIMEOUT` (default `80s`). The poll interval is `VM_PODWAITREADYINTERVALCHECK` (default `5s`).
 
-### Storage node maintenance mode
-
-`storage.maintenanceInsertNodeIDs` and `storage.maintenanceSelectNodeIDs` exclude the listed pod ordinals
-from `insert`/`select` routing, for example while the underlying Kubernetes node is cordoned or drained for
-maintenance and the `storage` pod is expected to stay `Pending`/`NotReady` for an extended period.
-
-A pod ordinal listed in **both** fields (excluded from insert and select routing at the same time) is also
-skipped by the Operator's readiness wait during reconciliation. Previously, such a pod being not ready blocked
-every reconcile of the cluster — including unrelated changes to `insert` or `select` — until it recovered,
-even though it was already excluded from all routing.
-
-```yaml
-apiVersion: operator.victoriametrics.com/v1
-kind: VTCluster
-metadata:
-  name: example
-spec:
-  storage:
-    replicaCount: 3
-    maintenanceInsertNodeIDs: [2]
-    maintenanceSelectNodeIDs: [2]   # pod-2 excluded from routing and from the readiness wait
-```
-
-**Limitations:**
-
-- A pod ordinal must appear in *both* `maintenanceInsertNodeIDs` and `maintenanceSelectNodeIDs` to be exempted
-  from the readiness wait. An ordinal excluded from only one of the two still blocks reconcile until it becomes
-  ready.
-- The skip only reliably prevents reconcile from blocking under the default `rollingUpdateStrategy: OnDelete`.
-  With `rollingUpdateStrategy: RollingUpdate`, the StatefulSet uses Kubernetes' native `OrderedReady` pod
-  management, which itself refuses to create or update any pod at a higher ordinal until a lower-ordinal pod
-  is ready. In that mode a maintenance pod can still stall the rollout — this is enforced by Kubernetes itself,
-  not the Operator, and cannot be bypassed from the Operator side.
-- The skip only affects the Operator's own readiness wait; it does not change the pod's actual status or
-  affect routing, which is already controlled by the same two fields.
-
 ### insert and select
 
 `insert` and `select` nodes support standard Deployment update parameters:
@@ -251,6 +215,56 @@ spec:
       maxUnavailable: 1
       maxSurge: 1
 ```
+
+## Storage node maintenance mode
+
+`storage.maintenanceInsertNodeIDs` and `storage.maintenanceSelectNodeIDs` exclude the listed `storage` pods from `insert` and `select` routing.
+Each ID is a pod ordinal, the numeric suffix of the pod name, e.g. `2` for the pod ending with `-2`.
+Use them when a `storage` pod is expected to be unavailable for a while,
+for example when its Kubernetes node is under maintenance and the pod can't move, since its volume is bound to that node.
+
+Excluding a pod from routing affects the cluster:
+
+- with the pod in `maintenanceSelectNodeIDs`, traces stored on this pod are missing from query responses,
+  and `select` doesn't mark them as partial, since it doesn't know about the pod;
+- with the pod in `maintenanceInsertNodeIDs`, `insert` spreads incoming spans across the remaining pods,
+  so they take over the excluded pod's share of writes.
+
+### Pods excluded from all routing
+
+Starting from [v0.75.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.1),
+the Operator leaves a pod listed in **both** fields alone during reconciliation, since it receives no reads and no writes:
+
+- it doesn't wait for the pod to become ready, so a pod stuck `Pending` or `Terminating` no longer blocks
+  reconciliation of `insert` and `select`;
+- it doesn't apply `storage` spec changes to the pod or its volumes, e.g. a new image or a bigger volume size.
+
+A pod listed in only one of the two fields still receives the other kind of traffic, so the Operator handles it as usual.
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VTCluster
+metadata:
+  name: example
+spec:
+  storage:
+    replicaCount: 3
+    maintenanceInsertNodeIDs: [2]
+    maintenanceSelectNodeIDs: [2]   # the pod with ordinal 2 gets no traffic and is left alone by the Operator
+```
+
+When the node is back, remove the ID from both fields before making other changes.
+The Operator then applies the `storage` changes deferred during maintenance to the pod,
+and waits for it to become ready before adding it back to `insert` and `select`, so an unhealthy pod never receives traffic.
+
+**Limitations:**
+
+- Spec changes are deferred only with the default `rollingUpdateStrategy: OnDelete`, where the Operator updates `storage` pods itself.
+  With `RollingUpdate`, Kubernetes rolls out all pods, including the pod under maintenance, using `OrderedReady` pod management,
+  which is also used when `minReadySeconds` is set. In this mode, while the pod under maintenance isn't ready, Kubernetes doesn't roll out updates,
+  scale the StatefulSet or recreate pods with a higher ordinal, so reconciliation that changes `storage` pods can block until the pod is ready again.
+- With `storage.podDisruptionBudget.maxUnavailable: 1`, the pod under maintenance already uses the disruption budget,
+  so any `storage` change that requires pod restarts fails until the pod is ready again.
 
 ## Resource management
 

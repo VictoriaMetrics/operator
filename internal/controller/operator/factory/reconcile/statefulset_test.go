@@ -1501,12 +1501,12 @@ func TestStatefulsetReconcile(t *testing.T) {
 	})
 
 	// RollingUpdate strategy: excluded pod ordinal doesn't count against readiness
-	mkPod := func(idx int, ready bool) *corev1.Pod {
+	mkPod := func(idx int, ready bool, fns ...func(*corev1.Pod)) *corev1.Pod {
 		p := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("test-1-%d", idx),
 				Namespace: "default",
-				Labels:    map[string]string{"label": "value"},
+				Labels:    map[string]string{"label": "value", podRevisionLabel: "rev1"},
 			},
 		}
 		if ready {
@@ -1515,20 +1515,28 @@ func TestStatefulsetReconcile(t *testing.T) {
 				Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "True"}},
 			}
 		}
+		for _, fn := range fns {
+			fn(p)
+		}
 		return p
 	}
-	f(opts{
-		new: getSts(func(s *appsv1.StatefulSet) {
+	mkRollingSts := func(updatedReplicas, readyReplicas int32) *appsv1.StatefulSet {
+		return getSts(func(s *appsv1.StatefulSet) {
 			s.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
-		}),
+			s.Status.Replicas = 4
+			s.Status.ReadyReplicas = readyReplicas
+			s.Status.UpdatedReplicas = updatedReplicas
+			s.Status.UpdateRevision = "rev1"
+		})
+	}
+	newRollingSts := getSts(func(s *appsv1.StatefulSet) {
+		s.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
+	})
+	f(opts{
+		new:  newRollingSts,
 		prev: getSts(),
 		predefinedObjects: []runtime.Object{
-			getSts(func(s *appsv1.StatefulSet) {
-				s.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
-				s.Status.Replicas = 4
-				s.Status.ReadyReplicas = 3
-				s.Status.UpdatedReplicas = 4
-			}),
+			mkRollingSts(4, 3),
 			mkPod(0, true),
 			mkPod(1, true),
 			mkPod(2, true),
@@ -1543,21 +1551,57 @@ func TestStatefulsetReconcile(t *testing.T) {
 		},
 	})
 
-	// RollingUpdate strategy: an unready non-maintenance pod still blocks readiness
+	// RollingUpdate strategy: excluded pod stuck terminating, e.g. at a shut down node,
+	// isn't counted at status.updatedReplicas, but must not block readiness
 	f(opts{
-		new: getSts(func(s *appsv1.StatefulSet) {
-			s.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
-		}),
+		new:  newRollingSts,
 		prev: getSts(),
 		predefinedObjects: []runtime.Object{
-			getSts(func(s *appsv1.StatefulSet) {
-				s.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
-				s.Status.Replicas = 4
-				s.Status.ReadyReplicas = 3
-				s.Status.UpdatedReplicas = 4
+			mkRollingSts(3, 3),
+			mkPod(0, true),
+			mkPod(1, true),
+			mkPod(2, true),
+			mkPod(3, true, func(p *corev1.Pod) {
+				p.DeletionTimestamp = ptr.To(metav1.Now())
+				p.Finalizers = []string{"test"}
 			}),
+		},
+		actions: []k8stools.ClientAction{
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+			{Verb: "Get", Kind: "StatefulSet", Resource: nn},
+		},
+		o: &StatefulSetOpts{
+			IgnoreNotReadyPodOrdinals: sets.New[int32](3),
+		},
+	})
+
+	// RollingUpdate strategy: an unready non-maintenance pod still blocks readiness
+	f(opts{
+		new:  newRollingSts,
+		prev: getSts(),
+		predefinedObjects: []runtime.Object{
+			mkRollingSts(4, 3),
 			mkPod(0, true),
 			mkPod(1, false),
+			mkPod(2, true),
+			mkPod(3, true),
+		},
+		o: &StatefulSetOpts{
+			IgnoreNotReadyPodOrdinals: sets.New[int32](3),
+		},
+		wantErr: true,
+	})
+
+	// RollingUpdate strategy: a ready non-maintenance pod at the previous revision still blocks readiness
+	f(opts{
+		new:  newRollingSts,
+		prev: getSts(),
+		predefinedObjects: []runtime.Object{
+			mkRollingSts(3, 4),
+			mkPod(0, true, func(p *corev1.Pod) {
+				p.Labels[podRevisionLabel] = "rev0"
+			}),
+			mkPod(1, true),
 			mkPod(2, true),
 			mkPod(3, true),
 		},

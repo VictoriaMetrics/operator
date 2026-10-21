@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -83,7 +84,7 @@ func getPVCByName(vcts []corev1.PersistentVolumeClaim, name string) *corev1.Pers
 	return nil
 }
 
-func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.StatefulSet, prevVCTs []corev1.PersistentVolumeClaim, liveReplicas int32) error {
+func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.StatefulSet, prevVCTs []corev1.PersistentVolumeClaim, liveReplicas int32, ignorePodOrdinals sets.Set[int32]) error {
 	// fast path
 	if sts.Spec.Replicas != nil && *sts.Spec.Replicas == 0 {
 		return nil
@@ -127,6 +128,18 @@ func updateSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Statef
 		stsClaim, ok := targetClaimsByName[stsClaimName]
 		if !ok {
 			l.Info(fmt.Sprintf("possible BUG, cannot find target PVC=%s in new statefulset by claim name=%s", pvc.Name, stsClaimName))
+			continue
+		}
+		// defer changes for pvcs of pods excluded by maintenance node IDs, the same as their pod updates.
+		// a resize usually completes only after the kubelet grows the filesystem on the node where the volume is mounted,
+		// so it cannot complete while the pod is down, and waiting for it would fail the reconcile before pod updates.
+		//
+		// changes are applied once the pod is removed from maintenance, since each reconcile compares pvcs with the claim templates.
+		if ordinal, err := podOrdinal(pvc.Name); err == nil && ignorePodOrdinals.Has(ordinal) {
+			if pvc.Spec.Resources.Requests.Storage().Cmp(*stsClaim.Spec.Resources.Requests.Storage()) != 0 ||
+				ptr.Deref(pvc.Spec.VolumeAttributesClassName, "") != ptr.Deref(stsClaim.Spec.VolumeAttributesClassName, "") {
+				l.Info(fmt.Sprintf("deferring update for PVC=%s, excluded by maintenance node IDs", pvc.Name))
+			}
 			continue
 		}
 		prevVCT := getPVCByName(prevVCTs, stsClaimName)

@@ -893,6 +893,32 @@ password: pass
 `,
 	})
 
+	// access_log headers dropped for a pre-release of the first supporting version
+	f(opts{
+		imageTag: "v1.153.0-rc0",
+		user: &vmv1beta1.VMUser{
+			Spec: vmv1beta1.VMUserSpec{
+				Username: ptr.To("basic"),
+				Password: ptr.To("pass"),
+				VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
+					AccessLog: &vmv1beta1.VMUserAccessLog{Headers: []string{"X-Forwarded-Email"}},
+				},
+				TargetRefs: []vmv1beta1.TargetRef{
+					{
+						Static: &vmv1beta1.StaticRef{URL: "http://vmselect"},
+						Paths:  []string{"/.*"},
+					},
+				},
+			},
+		},
+		want: `url_prefix:
+- http://vmselect
+access_log: {}
+username: basic
+password: pass
+`,
+	})
+
 	// access_log headers dropped for vmauth older than v1.153.0
 	f(opts{
 		imageTag: "v1.152.0",

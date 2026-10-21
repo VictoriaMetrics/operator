@@ -1529,11 +1529,13 @@ func TestStatefulsetReconcile(t *testing.T) {
 			s.Status.UpdateRevision = "rev1"
 		})
 	}
-	newRollingSts := getSts(func(s *appsv1.StatefulSet) {
-		s.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
-	})
+	newRollingSts := func() *appsv1.StatefulSet {
+		return getSts(func(s *appsv1.StatefulSet) {
+			s.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
+		})
+	}
 	f(opts{
-		new:  newRollingSts,
+		new:  newRollingSts(),
 		prev: getSts(),
 		predefinedObjects: []runtime.Object{
 			mkRollingSts(4, 3),
@@ -1554,7 +1556,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 	// RollingUpdate strategy: excluded pod stuck terminating, e.g. at a shut down node,
 	// isn't counted at status.updatedReplicas, but must not block readiness
 	f(opts{
-		new:  newRollingSts,
+		new:  newRollingSts(),
 		prev: getSts(),
 		predefinedObjects: []runtime.Object{
 			mkRollingSts(3, 3),
@@ -1577,7 +1579,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 
 	// RollingUpdate strategy: an unready non-maintenance pod still blocks readiness
 	f(opts{
-		new:  newRollingSts,
+		new:  newRollingSts(),
 		prev: getSts(),
 		predefinedObjects: []runtime.Object{
 			mkRollingSts(4, 3),
@@ -1594,7 +1596,7 @@ func TestStatefulsetReconcile(t *testing.T) {
 
 	// RollingUpdate strategy: a ready non-maintenance pod at the previous revision still blocks readiness
 	f(opts{
-		new:  newRollingSts,
+		new:  newRollingSts(),
 		prev: getSts(),
 		predefinedObjects: []runtime.Object{
 			mkRollingSts(3, 4),

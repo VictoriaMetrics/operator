@@ -259,12 +259,12 @@ and waits for it to become ready before adding it back to `insert` and `select`,
 
 **Limitations:**
 
-- Spec changes are deferred only with the default `rollingUpdateStrategy: OnDelete`, where the Operator updates `storage` pods itself.
+- Pod spec changes are deferred only with the default `rollingUpdateStrategy: OnDelete`, where the Operator updates `storage` pods itself.
   With `RollingUpdate`, Kubernetes rolls out all pods, including the pod under maintenance, using `OrderedReady` pod management,
   which is also used when `minReadySeconds` is set. In this mode, while the pod under maintenance isn't ready, Kubernetes doesn't roll out updates,
   scale the StatefulSet or recreate pods with a higher ordinal, so reconciliation that changes `storage` pods can block until the pod is ready again.
-- With `storage.podDisruptionBudget.maxUnavailable: 1`, the pod under maintenance already uses the disruption budget,
-  so any `storage` change that requires pod restarts fails until the pod is ready again.
+- With `storage.podDisruptionBudget.maxUnavailable: 1`, a pod under maintenance that isn't ready uses up the disruption budget,
+  so the Operator can't evict other `storage` pods, and changes that require restarting them fail until the pod is ready again.
 
 ## Resource management
 

@@ -138,6 +138,9 @@ func (pos *parsedObjects) buildConfig(ctx context.Context, rclient client.Client
 	}
 
 	// generate yaml config for vmauth.
+	if !accessLogHeadersSupported(cr) && wantsAccessLogHeaders(cr, pos.users.All()) {
+		logger.WithContext(ctx).Info("skipping access_log.headers: vmauth image tag is older than v1.153.0; set VM_VMAUTH_FORCE_ACCESS_LOG_HEADERS=true for custom tags that support it", "vmauth", cr.Name, "tag", cr.Spec.Image.Tag)
+	}
 	cfg, err := pos.generateConfig(cr, objURLs, ac)
 	if err != nil {
 		return nil, err
@@ -631,10 +634,9 @@ func addUserConfigOptionToYaml(dst yaml.MapSlice, opt vmv1beta1.VMUserConfigOpti
 			})
 		}
 		if len(opt.AccessLog.Headers) > 0 {
+			// unsupported tags are reported once per VMAuth in buildConfig
 			if accessLogHeadersSupported(cr) {
 				accessLog = append(accessLog, yaml.MapItem{Key: "headers", Value: opt.AccessLog.Headers})
-			} else {
-				logger.WithContext(context.Background()).Info("skipping access_log.headers: vmauth image tag is older than v1.153.0; set VM_VMAUTH_FORCE_ACCESS_LOG_HEADERS=true for custom tags", "vmauth", cr.Name, "tag", cr.Spec.Image.Tag)
 			}
 		}
 		dst = append(dst, yaml.MapItem{Key: "access_log", Value: accessLog})
@@ -644,19 +646,50 @@ func addUserConfigOptionToYaml(dst yaml.MapSlice, opt vmv1beta1.VMUserConfigOpti
 
 var accessLogHeadersMinVersion = semver.MustParse("v1.153.0")
 
+// wantsAccessLogHeaders reports whether the VMAuth or any of its users asks for access_log.headers.
+func wantsAccessLogHeaders(cr *vmv1beta1.VMAuth, users []*vmv1beta1.VMUser) bool {
+	has := func(o *vmv1beta1.VMUserConfigOptions) bool {
+		return o.AccessLog != nil && len(o.AccessLog.Headers) > 0
+	}
+	if has(&cr.Spec.VMUserConfigOptions) {
+		return true
+	}
+	if cr.Spec.UnauthorizedUserAccessSpec != nil && has(&cr.Spec.UnauthorizedUserAccessSpec.VMUserConfigOptions) {
+		return true
+	}
+	for _, u := range users {
+		if has(&u.Spec.VMUserConfigOptions) {
+			return true
+		}
+	}
+	return false
+}
+
 // accessLogHeadersSupported reports whether vmauth at cr.Spec.Image.Tag accepts access_log.headers.
 // Unparseable tags are treated as unsupported unless VM_VMAUTH_FORCE_ACCESS_LOG_HEADERS is set.
 func accessLogHeadersSupported(cr *vmv1beta1.VMAuth) bool {
 	if config.MustGetBaseConfig().VMAuthForceAccessLogHeaders {
 		return true
 	}
-	v, err := semver.NewVersion(cr.Spec.Image.Tag)
+	v, err := semver.NewVersion(stripPackagingSuffix(cr.Spec.Image.Tag))
 	if err != nil {
 		return false
 	}
-	// compare on core version only, so that -enterprise and similar suffixes do not count as pre-releases
-	core, _ := v.SetPrerelease("")
-	return core.GreaterThanEqual(accessLogHeadersMinVersion)
+	return v.GreaterThanEqual(accessLogHeadersMinVersion)
+}
+
+// packagingSuffixes are the image flavours VictoriaMetrics publishes for one release.
+// They are not pre-releases, so they are removed before the semver comparison;
+// anything else after '-' (such as -rc0) keeps its pre-release ordering.
+var packagingSuffixes = []string{"-enterprise-cluster-scratch", "-enterprise-cluster", "-enterprise-scratch", "-cluster-scratch", "-enterprise", "-cluster", "-scratch"}
+
+func stripPackagingSuffix(tag string) string {
+	for _, s := range packagingSuffixes {
+		if strings.HasSuffix(tag, s) {
+			return strings.TrimSuffix(tag, s)
+		}
+	}
+	return tag
 }
 
 // AddToYaml conditionally adds ip filters to dst yaml

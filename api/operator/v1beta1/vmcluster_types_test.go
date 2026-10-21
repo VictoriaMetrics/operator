@@ -151,6 +151,44 @@ func TestVMCluster_StorageNodeIDsUnderMaintenance(t *testing.T) {
 		},
 	}, sets.New[int32]())
 
+	// global discovery enabled, maintenance node ids don't affect routing
+	f(&VMCluster{
+		Spec: VMClusterSpec{
+			Discovery: &VMClusterDiscovery{Enabled: true},
+			VMInsert:  &VMInsert{},
+			VMSelect:  &VMSelect{},
+			VMStorage: &VMStorage{
+				MaintenanceSelectNodeIDs: []int32{3},
+				MaintenanceInsertNodeIDs: []int32{3},
+			},
+		},
+	}, nil)
+
+	// vmselect discovery enabled only
+	f(&VMCluster{
+		Spec: VMClusterSpec{
+			VMInsert: &VMInsert{},
+			VMSelect: &VMSelect{Discovery: &VMClusterDiscovery{Enabled: true}},
+			VMStorage: &VMStorage{
+				MaintenanceSelectNodeIDs: []int32{3},
+				MaintenanceInsertNodeIDs: []int32{3},
+			},
+		},
+	}, nil)
+
+	// global discovery disabled by vminsert and vmselect overrides
+	f(&VMCluster{
+		Spec: VMClusterSpec{
+			Discovery: &VMClusterDiscovery{Enabled: true},
+			VMInsert:  &VMInsert{Discovery: &VMClusterDiscovery{Enabled: false}},
+			VMSelect:  &VMSelect{Discovery: &VMClusterDiscovery{Enabled: false}},
+			VMStorage: &VMStorage{
+				MaintenanceSelectNodeIDs: []int32{3},
+				MaintenanceInsertNodeIDs: []int32{3},
+			},
+		},
+	}, sets.New[int32](3))
+
 	// no VMStorage
 	f(&VMCluster{}, nil)
 }

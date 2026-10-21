@@ -947,6 +947,14 @@ func (cr *VMCluster) StorageNodeIDsUnderMaintenance() sets.Set[int32] {
 	if cr.Spec.VMStorage == nil {
 		return nil
 	}
+	// with discovery enabled vminsert or vmselect find all vmstorage pods via DNS SRV records and ignore maintenance node ids,
+	// so the listed pods still receive traffic. The webhook rejects such configuration, but it can be disabled.
+	if cr.Spec.VMInsert != nil && cr.Spec.VMInsert.Discovery.OrDefault(cr.Spec.Discovery).enabled() {
+		return nil
+	}
+	if cr.Spec.VMSelect != nil && cr.Spec.VMSelect.Discovery.OrDefault(cr.Spec.Discovery).enabled() {
+		return nil
+	}
 	insertNodes := sets.New(cr.Spec.VMStorage.MaintenanceInsertNodeIDs...)
 	selectNodes := sets.New(cr.Spec.VMStorage.MaintenanceSelectNodeIDs...)
 	return insertNodes.Intersection(selectNodes)

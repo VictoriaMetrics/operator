@@ -384,3 +384,23 @@ webhooks:
     resources:
     - vmanomalies
   sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-operator-victoriametrics-com-v1-vmmcp
+  failurePolicy: Fail
+  name: vvmmcp.kb.io
+  rules:
+  - apiGroups:
+    - operator.victoriametrics.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - vmmcps
+  sideEffects: None

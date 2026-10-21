@@ -246,6 +246,23 @@ var _ = Describe("test mcp Controllers", Label("mcp"), func() {
 		Expect(dep.Spec.Template.Spec.Containers[0].Env).To(ContainElement(corev1.EnvVar{Name: "MCP_LOG_LEVEL", Value: "debug"}))
 		Expect(k8sClient.Get(ctx, childNSN, &policyv1.PodDisruptionBudget{})).ToNot(HaveOccurred())
 
+		By("restoring a deleted child object")
+		// wait until the updated Deployment settles, since its status updates trigger reconciles too
+		var lastVersion string
+		Eventually(func() bool {
+			if err := k8sClient.Get(ctx, childNSN, &dep); err != nil {
+				return false
+			}
+			settled := dep.ResourceVersion == lastVersion
+			lastVersion = dep.ResourceVersion
+			return settled
+		}, eventualDeploymentAppReadyTimeout, 5*time.Second).Should(BeTrue())
+		// the controller watches its child objects, so it restores them before the periodic resync
+		Expect(k8sClient.Delete(ctx, &policyv1.PodDisruptionBudget{ObjectMeta: metav1.ObjectMeta{Namespace: childNSN.Namespace, Name: childNSN.Name}})).ToNot(HaveOccurred())
+		Eventually(func() error {
+			return k8sClient.Get(ctx, childNSN, &policyv1.PodDisruptionBudget{})
+		}, 20*time.Second).ShouldNot(HaveOccurred())
+
 		By("deleting VMMCP")
 		Expect(finalize.SafeDelete(ctx, k8sClient, cr)).ToNot(HaveOccurred())
 		waitResourceDeleted(ctx, nsn, &vmv1.VMMCPList{})

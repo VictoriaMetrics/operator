@@ -24,8 +24,11 @@ import (
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -60,7 +63,7 @@ func (r *VMMCPReconciler) Init(name string, rclient client.Client, l logr.Logger
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmmcps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmmcps/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmmcps/finalizers,verbs=update
-// +kubebuilder:rbac:groups="networking.k8s.io",resources=networkpolicies,verbs=get;create;update;patch;delete
+// +kubebuilder:rbac:groups="networking.k8s.io",resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
 
 func (r *VMMCPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues(r.name, req.Name, "namespace", req.Namespace)
@@ -107,12 +110,19 @@ func (r *VMMCPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resu
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *VMMCPReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	b := ctrl.NewControllerManagedBy(mgr).
 		For(&vmv1.VMMCP{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
-		WithOptions(getDefaultOptions()).
-		Complete(r)
+		Owns(&corev1.ServiceAccount{}).
+		Owns(&policyv1.PodDisruptionBudget{}).
+		Owns(&networkingv1.NetworkPolicy{}).
+		Owns(&vmv1beta1.VMServiceScrape{})
+	// the VPA CRD is installed only when VPA API support is enabled
+	if r.BaseConf.VPAAPIEnabled {
+		b = b.Owns(&vpav1.VerticalPodAutoscaler{})
+	}
+	return b.WithOptions(getDefaultOptions()).Complete(r)
 }
 
 // IsDisabled returns true if controller should be disabled

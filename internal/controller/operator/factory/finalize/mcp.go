@@ -27,10 +27,13 @@ func OnVMMCPDelete(ctx context.Context, rclient client.Client, cr *vmv1.VMMCP) e
 		&corev1.Service{ObjectMeta: objMeta},
 		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
 		&networkingv1.NetworkPolicy{ObjectMeta: objMeta},
-		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{
+	}
+	// a ServiceAccount set in spec.serviceAccountName isn't managed by the operator
+	if cr.IsOwnsServiceAccount() {
+		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.GetServiceAccountName(),
 			Namespace: ns,
-		}},
+		}})
 	}
 	if cr.Spec.ServiceSpec != nil {
 		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{

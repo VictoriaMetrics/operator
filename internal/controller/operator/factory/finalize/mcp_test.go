@@ -66,3 +66,27 @@ func TestOnVMMCPDelete(t *testing.T) {
 		assert.Equal(t, ownerRefs[i], o.GetOwnerReferences(), "owner references of %T %s must be retained", o, o.GetName())
 	}
 }
+
+func TestOnVMMCPDeleteExternalServiceAccount(t *testing.T) {
+	ctx := context.TODO()
+	cr := &vmv1.VMMCP{
+		TypeMeta: metav1.TypeMeta{APIVersion: "operator.victoriametrics.com/v1", Kind: "VMMCP"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "test",
+			Namespace:  "default",
+			Finalizers: []string{vmv1beta1.FinalizerName},
+		},
+	}
+	cr.Spec.ServiceAccountName = "external"
+	// the VMMCP doesn't own the ServiceAccount set in spec.serviceAccountName, e.g. one shared with another VMMCP
+	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{
+		Name:       "external",
+		Namespace:  "default",
+		Finalizers: []string{vmv1beta1.FinalizerName},
+	}}
+	cl := k8stools.GetTestClientWithObjects([]runtime.Object{cr.DeepCopy(), sa.DeepCopy()})
+	require.NoError(t, OnVMMCPDelete(ctx, cl, cr))
+
+	require.NoError(t, cl.Get(ctx, types.NamespacedName{Namespace: "default", Name: "external"}, sa))
+	assert.Equal(t, []string{vmv1beta1.FinalizerName}, sa.GetFinalizers(), "finalizers of a ServiceAccount, which the VMMCP doesn't own, must be kept")
+}

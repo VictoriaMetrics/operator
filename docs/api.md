@@ -5828,6 +5828,7 @@ Appears in: [VMAuthSpec (v1beta1)](#v1beta1-vmauthspec), [VMAuthUnauthorizedUser
 | Field | Description |
 | --- | --- |
 | filters<a href="#v1beta1-vmuseraccesslog-filters" id="v1beta1-vmuseraccesslog-filters">#</a><a id="vmuseraccesslog-filters"></a><br/>_[VMUserAccessLogFilters (v1beta1)](#v1beta1-vmuseraccesslogfilters)_ | _(Optional)_<br/>Filters defines optional filters that control which requests are logged. |
+| headers<a href="#v1beta1-vmuseraccesslog-headers" id="v1beta1-vmuseraccesslog-headers">#</a><a id="vmuseraccesslog-headers"></a><br/>_string array_ | _(Optional)_<br/>Headers lists request header names to include in access log entries.<br />Requires vmauth v1.153.0 or newer. |
 
 #### VMUserAccessLogFilters {#v1beta1-vmuseraccesslogfilters}
 <a id="vmuseraccesslogfilters"></a>

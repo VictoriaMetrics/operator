@@ -405,6 +405,10 @@ type VMUserAccessLog struct {
 	// Filters defines optional filters that control which requests are logged.
 	// +optional
 	Filters *VMUserAccessLogFilters `json:"filters,omitempty" yaml:"filters,omitempty"`
+	// Headers lists request header names to include in access log entries.
+	// Requires vmauth v1.153.0 or newer.
+	// +optional
+	Headers []string `json:"headers,omitempty" yaml:"headers,omitempty"`
 }
 
 // VMUserAccessLogFilters defines filters for vmauth per-user access log.

@@ -11295,6 +11295,13 @@ spec:
                                       type: integer
                                     type: array
                                 type: object
+                              headers:
+                                description: |-
+                                  Headers lists request header names to include in access log entries.
+                                  Requires vmauth v1.153.0 or newer.
+                                items:
+                                  type: string
+                                type: array
                             type: object
                           default_url:
                             description: |-
@@ -43558,6 +43565,13 @@ spec:
                               type: integer
                             type: array
                         type: object
+                      headers:
+                        description: |-
+                          Headers lists request header names to include in access log entries.
+                          Requires vmauth v1.153.0 or newer.
+                        items:
+                          type: string
+                        type: array
                     type: object
                   default_url:
                     description: |-
@@ -53894,6 +53908,13 @@ spec:
                                       type: integer
                                     type: array
                                 type: object
+                              headers:
+                                description: |-
+                                  Headers lists request header names to include in access log entries.
+                                  Requires vmauth v1.153.0 or newer.
+                                items:
+                                  type: string
+                                type: array
                             type: object
                           default_url:
                             description: |-
@@ -84307,6 +84328,13 @@ spec:
                           type: integer
                         type: array
                     type: object
+                  headers:
+                    description: |-
+                      Headers lists request header names to include in access log entries.
+                      Requires vmauth v1.153.0 or newer.
+                    items:
+                      type: string
+                    type: array
                 type: object
               bearerToken:
                 description: BearerToken Authorization header value for accessing

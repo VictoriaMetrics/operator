@@ -628,6 +628,9 @@ func addUserConfigOptionToYaml(dst yaml.MapSlice, opt vmv1beta1.VMUserConfigOpti
 				Value: yaml.MapSlice{{Key: "skip_status_codes", Value: opt.AccessLog.Filters.SkipStatusCodes}},
 			})
 		}
+		if len(opt.AccessLog.Headers) > 0 {
+			accessLog = append(accessLog, yaml.MapItem{Key: "headers", Value: opt.AccessLog.Headers})
+		}
 		dst = append(dst, yaml.MapItem{Key: "access_log", Value: accessLog})
 	}
 	return dst, nil

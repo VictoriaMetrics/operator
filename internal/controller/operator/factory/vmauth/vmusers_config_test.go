@@ -826,6 +826,42 @@ password: pass
 `,
 	})
 
+	// access_log with headers
+	f(opts{
+		user: &vmv1beta1.VMUser{
+			Spec: vmv1beta1.VMUserSpec{
+				Username: ptr.To("basic"),
+				Password: ptr.To("pass"),
+				VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
+					AccessLog: &vmv1beta1.VMUserAccessLog{
+						Filters: &vmv1beta1.VMUserAccessLogFilters{
+							SkipStatusCodes: []int{200},
+						},
+						Headers: []string{"X-Forwarded-Email", "AccountID"},
+					},
+				},
+				TargetRefs: []vmv1beta1.TargetRef{
+					{
+						Static: &vmv1beta1.StaticRef{URL: "http://vmselect"},
+						Paths:  []string{"/.*"},
+					},
+				},
+			},
+		},
+		want: `url_prefix:
+- http://vmselect
+access_log:
+  filters:
+    skip_status_codes:
+    - 200
+  headers:
+  - X-Forwarded-Email
+  - AccountID
+username: basic
+password: pass
+`,
+	})
+
 	// jwt with empty defaultVMAccessClaim opts in tokens without a vm_access claim
 	f(opts{
 		user: &vmv1beta1.VMUser{

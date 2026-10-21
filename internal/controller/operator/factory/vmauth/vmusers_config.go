@@ -139,7 +139,11 @@ func (pos *parsedObjects) buildConfig(ctx context.Context, rclient client.Client
 
 	// generate yaml config for vmauth.
 	if !accessLogHeadersSupported(cr) && wantsAccessLogHeaders(cr, pos.users.All()) {
-		logger.WithContext(ctx).Info("skipping access_log.headers: vmauth image tag is older than v1.153.0; set VM_VMAUTH_FORCE_ACCESS_LOG_HEADERS=true for custom tags that support it", "vmauth", cr.Name, "tag", cr.Spec.Image.Tag)
+		reason := "vmauth image tag is older than v1.153.0"
+		if _, err := semver.NewVersion(stripPackagingSuffix(cr.Spec.Image.Tag)); err != nil {
+			reason = "vmauth image tag is not a version (digest-only or custom tag), so support for the field cannot be inferred"
+		}
+		logger.WithContext(ctx).Info("skipping access_log.headers: "+reason+"; set VM_VMAUTH_FORCE_ACCESS_LOG_HEADERS=true if the image supports it", "vmauth", cr.Name, "tag", cr.Spec.Image.Tag)
 	}
 	cfg, err := pos.generateConfig(cr, objURLs, ac)
 	if err != nil {
@@ -667,7 +671,8 @@ func wantsAccessLogHeaders(cr *vmv1beta1.VMAuth, users []*vmv1beta1.VMUser) bool
 }
 
 // accessLogHeadersSupported reports whether vmauth at cr.Spec.Image.Tag accepts access_log.headers.
-// Unparseable tags are treated as unsupported unless VM_VMAUTH_FORCE_ACCESS_LOG_HEADERS is set.
+// Tags that are not a version (digest-only `sha256:...`, custom names) are treated as unsupported
+// unless VM_VMAUTH_FORCE_ACCESS_LOG_HEADERS is set.
 func accessLogHeadersSupported(cr *vmv1beta1.VMAuth) bool {
 	if config.MustGetBaseConfig().VMAuthForceAccessLogHeaders {
 		return true

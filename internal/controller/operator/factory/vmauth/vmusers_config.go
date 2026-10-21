@@ -11,6 +11,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -21,6 +22,7 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
@@ -629,11 +631,32 @@ func addUserConfigOptionToYaml(dst yaml.MapSlice, opt vmv1beta1.VMUserConfigOpti
 			})
 		}
 		if len(opt.AccessLog.Headers) > 0 {
-			accessLog = append(accessLog, yaml.MapItem{Key: "headers", Value: opt.AccessLog.Headers})
+			if accessLogHeadersSupported(cr) {
+				accessLog = append(accessLog, yaml.MapItem{Key: "headers", Value: opt.AccessLog.Headers})
+			} else {
+				logger.WithContext(context.Background()).Info("skipping access_log.headers: vmauth image tag is older than v1.153.0; set VM_VMAUTH_FORCE_ACCESS_LOG_HEADERS=true for custom tags", "vmauth", cr.Name, "tag", cr.Spec.Image.Tag)
+			}
 		}
 		dst = append(dst, yaml.MapItem{Key: "access_log", Value: accessLog})
 	}
 	return dst, nil
+}
+
+var accessLogHeadersMinVersion = semver.MustParse("v1.153.0")
+
+// accessLogHeadersSupported reports whether vmauth at cr.Spec.Image.Tag accepts access_log.headers.
+// Unparseable tags are treated as unsupported unless VM_VMAUTH_FORCE_ACCESS_LOG_HEADERS is set.
+func accessLogHeadersSupported(cr *vmv1beta1.VMAuth) bool {
+	if config.MustGetBaseConfig().VMAuthForceAccessLogHeaders {
+		return true
+	}
+	v, err := semver.NewVersion(cr.Spec.Image.Tag)
+	if err != nil {
+		return false
+	}
+	// compare on core version only, so that -enterprise and similar suffixes do not count as pre-releases
+	core, _ := v.SetPrerelease("")
+	return core.GreaterThanEqual(accessLogHeadersMinVersion)
 }
 
 // AddToYaml conditionally adds ip filters to dst yaml

@@ -651,7 +651,8 @@ func wantsAccessLogHeaders(cr *vmv1beta1.VMAuth, users []*vmv1beta1.VMUser) bool
 	has := func(o *vmv1beta1.VMUserConfigOptions) bool {
 		return o.AccessLog != nil && len(o.AccessLog.Headers) > 0
 	}
-	if has(&cr.Spec.VMUserConfigOptions) {
+	// cr.Spec.VMUserConfigOptions is only rendered on the deprecated unauthorizedAccessConfig path
+	if len(cr.Spec.UnauthorizedAccessConfig) > 0 && has(&cr.Spec.VMUserConfigOptions) { //nolint:staticcheck
 		return true
 	}
 	if cr.Spec.UnauthorizedUserAccessSpec != nil && has(&cr.Spec.UnauthorizedUserAccessSpec.VMUserConfigOptions) {
@@ -684,6 +685,10 @@ func accessLogHeadersSupported(cr *vmv1beta1.VMAuth) bool {
 var packagingSuffixes = []string{"-enterprise-cluster-scratch", "-enterprise-cluster", "-enterprise-scratch", "-cluster-scratch", "-enterprise", "-cluster", "-scratch"}
 
 func stripPackagingSuffix(tag string) string {
+	// digest-pinned tags: v1.154.0@sha256:...
+	if idx := strings.Index(tag, "@"); idx != -1 {
+		tag = tag[:idx]
+	}
 	for _, s := range packagingSuffixes {
 		if strings.HasSuffix(tag, s) {
 			return strings.TrimSuffix(tag, s)

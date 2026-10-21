@@ -893,6 +893,34 @@ password: pass
 `,
 	})
 
+	// access_log headers kept for a digest-pinned tag
+	f(opts{
+		imageTag: "v1.154.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+		user: &vmv1beta1.VMUser{
+			Spec: vmv1beta1.VMUserSpec{
+				Username: ptr.To("basic"),
+				Password: ptr.To("pass"),
+				VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
+					AccessLog: &vmv1beta1.VMUserAccessLog{Headers: []string{"X-Forwarded-Email"}},
+				},
+				TargetRefs: []vmv1beta1.TargetRef{
+					{
+						Static: &vmv1beta1.StaticRef{URL: "http://vmselect"},
+						Paths:  []string{"/.*"},
+					},
+				},
+			},
+		},
+		want: `url_prefix:
+- http://vmselect
+access_log:
+  headers:
+  - X-Forwarded-Email
+username: basic
+password: pass
+`,
+	})
+
 	// access_log headers dropped for a pre-release of the first supporting version
 	f(opts{
 		imageTag: "v1.153.0-rc0",

@@ -13,6 +13,9 @@ aliases:
 
 ## tip
 
+## [v0.75.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.1)
+**Release date:** 21 October 2026
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.154.1](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.154.1).
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.12.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.12.0).
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default version for VMAnomaly to [v1.31.1](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1311).

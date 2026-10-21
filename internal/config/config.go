@@ -52,7 +52,7 @@ var (
 		// renovate: datasource=github-releases depName=VictoriaMetrics/mcp-victoriametrics
 		"VM_MCP_METRICS_VERSION": "v1.20.2",
 		// renovate: datasource=github-releases depName=VictoriaMetrics/operator
-		"VM_OPERATOR_VERSION": getVersion("v0.75.0"),
+		"VM_OPERATOR_VERSION": getVersion("v0.75.1"),
 		// renovate: datasource=github-releases depName=prometheus/alertmanager
 		"VM_ALERTMANAGER_VERSION": "v0.34.1",
 	}

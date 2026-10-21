@@ -216,6 +216,56 @@ spec:
       maxSurge: 1
 ```
 
+## Storage node maintenance mode
+
+`storage.maintenanceInsertNodeIDs` and `storage.maintenanceSelectNodeIDs` exclude the listed `storage` pods from `insert` and `select` routing.
+Each ID is a pod ordinal, the numeric suffix of the pod name, e.g. `2` for the pod ending with `-2`.
+Use them when a `storage` pod is expected to be unavailable for a while,
+for example when its Kubernetes node is under maintenance and the pod can't move, since its volume is bound to that node.
+
+Excluding a pod from routing affects the cluster:
+
+- with the pod in `maintenanceSelectNodeIDs`, traces stored on this pod are missing from query responses,
+  and `select` doesn't mark them as partial, since it doesn't know about the pod;
+- with the pod in `maintenanceInsertNodeIDs`, `insert` spreads incoming spans across the remaining pods,
+  so they take over the excluded pod's share of writes.
+
+### Pods excluded from all routing
+
+Starting from [v0.75.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.1),
+the Operator leaves a pod listed in **both** fields alone during reconciliation, since it receives no reads and no writes:
+
+- it doesn't wait for the pod to become ready, so a pod stuck `Pending` or `Terminating` no longer blocks
+  reconciliation of `insert` and `select`;
+- it doesn't apply `storage` spec changes to the pod or its volumes, e.g. a new image or a bigger volume size.
+
+A pod listed in only one of the two fields still receives the other kind of traffic, so the Operator handles it as usual.
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VTCluster
+metadata:
+  name: example
+spec:
+  storage:
+    replicaCount: 3
+    maintenanceInsertNodeIDs: [2]
+    maintenanceSelectNodeIDs: [2]   # the pod with ordinal 2 gets no traffic and is left alone by the Operator
+```
+
+When the node is back, remove the ID from both fields before making other changes.
+The Operator then applies the `storage` changes deferred during maintenance to the pod,
+and waits for it to become ready before adding it back to `insert` and `select`, so an unhealthy pod never receives traffic.
+
+**Limitations:**
+
+- Pod spec changes are deferred only with the default `rollingUpdateStrategy: OnDelete`, where the Operator updates `storage` pods itself.
+  With `RollingUpdate`, Kubernetes rolls out all pods, including the pod under maintenance, using `OrderedReady` pod management,
+  which is also used when `minReadySeconds` is set. In this mode, while the pod under maintenance isn't ready, Kubernetes doesn't roll out updates,
+  scale the StatefulSet or recreate pods with a higher ordinal, so reconciliation that changes `storage` pods can block until the pod is ready again.
+- With `storage.podDisruptionBudget.maxUnavailable: 1`, a pod under maintenance that isn't ready uses up the disruption budget,
+  so the Operator can't evict other `storage` pods, and changes that require restarting them fail until the pod is ready again.
+
 ## Resource management
 
 You can specify resources for each `VTCluster` resource components in the `spec` section of the `VTCluster` CRD.

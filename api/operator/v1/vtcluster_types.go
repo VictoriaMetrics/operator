@@ -512,9 +512,21 @@ type VTStorage struct {
 	// MaintenanceInsertNodeIDs - excludes given node ids from insert requests routing, must contain pod suffixes - for pod-0, id will be 0 and etc.
 	// lets say, you have pod-0, pod-1, pod-2, pod-3. to exclude pod-0 and pod-3 from insert routing, define nodeIDs: [0,3].
 	// Useful at storage expanding, when you want to rebalance some data at cluster.
+	//
+	// A node id listed in both MaintenanceInsertNodeIDs and MaintenanceSelectNodeIDs receives no traffic.
+	// With the default OnDelete rollingUpdateStrategy, the operator doesn't wait for its pod to become ready
+	// and defers changes to the pod and its volumes until the id is removed from either list.
+	// With RollingUpdate, Kubernetes OrderedReady pod management can still block reconciliation while the pod is not ready.
+	// See https://docs.victoriametrics.com/operator/resources/vtcluster/#pods-excluded-from-all-routing
 	// +optional
 	MaintenanceInsertNodeIDs []int32 `json:"maintenanceInsertNodeIDs,omitempty"`
 	// MaintenanceSelectNodeIDs - excludes given node ids from select requests routing, must contain pod suffixes - for pod-0, id will be 0 and etc.
+	//
+	// A node id listed in both MaintenanceInsertNodeIDs and MaintenanceSelectNodeIDs receives no traffic.
+	// With the default OnDelete rollingUpdateStrategy, the operator doesn't wait for its pod to become ready
+	// and defers changes to the pod and its volumes until the id is removed from either list.
+	// With RollingUpdate, Kubernetes OrderedReady pod management can still block reconciliation while the pod is not ready.
+	// See https://docs.victoriametrics.com/operator/resources/vtcluster/#pods-excluded-from-all-routing
 	// +optional
 	MaintenanceSelectNodeIDs []int32 `json:"maintenanceSelectNodeIDs,omitempty"`
 
@@ -768,6 +780,17 @@ func (cr *VTCluster) AvailableStorageNodeIDs(kind vmv1beta1.ClusterComponent) []
 		result = append(result, i)
 	}
 	return result
+}
+
+// StorageNodeIDsUnderMaintenance returns the storage pod ordinals excluded from both
+// insert and select routing via MaintenanceInsertNodeIDs and MaintenanceSelectNodeIDs.
+func (cr *VTCluster) StorageNodeIDsUnderMaintenance() sets.Set[int32] {
+	if cr.Spec.Storage == nil {
+		return nil
+	}
+	insertNodes := sets.New(cr.Spec.Storage.MaintenanceInsertNodeIDs...)
+	selectNodes := sets.New(cr.Spec.Storage.MaintenanceSelectNodeIDs...)
+	return insertNodes.Intersection(selectNodes)
 }
 
 // LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated

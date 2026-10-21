@@ -9,23 +9,34 @@ menu:
 
 ## Pre-reqs
 
-1. Make sure you have singing key configured
+1. Make sure you have a signing key configured
 
 ## Release version and Docker images
 
-1. Make sure all the changes are documented in [CHANGELOG.md](https://github.com/VictoriaMetrics/operator/blob/master/docs/CHANGELOG.md).
-   Ideally, every change must be documented in the commit with the change. Alternatively, the change must be documented immediately after the commit, which adds the change. 
-   Note that along with user-visible changes we should also document API breaks.
-1. Make sure that the release branch has no security issues.
-1. Update config-reloader image in [config.go](https://github.com/VictoriaMetrics/operator/blob/a8dd788070d4c012753f7e8e32a3b13e0c50f9af/internal/config/config.go#L108) with the name of new tag.
-1. Run `make docs` in order to update variables documentation files.
-1. Run `make build-installer` to build Github tag artefacts. Everything inside `/dist` should be included to the release.
-1. Cut new version in [CHANGELOG.md](https://github.com/VictoriaMetrics/operator/blob/master/docs/CHANGELOG.md)
-1. Create release tag with `git tag <tag>` command and push it to the origin - `git push origin <tag>`, where `<tag>`:
-   * `vX.Y.Z` - for operator
-   * `api/vX.Y.Z` - for operator's api package
-1. Go to github [Releases Page](https://github.com/VictoriaMetrics/operator/releases) and `Draft new Release` with the name of pushed tag.
-1. Update the release description with the content of [CHANGELOG](https://github.com/VictoriaMetrics/operator/blob/master/docs/CHANGELOG.md) for this release.
+1. Make sure all changes since the previous release are listed under `## tip` in [CHANGELOG.md](https://github.com/VictoriaMetrics/operator/blob/master/docs/CHANGELOG.md).
+   Ideally, a change is documented in the same commit that makes it. If not, document it right after that commit.
+   Along with user-visible changes, document API breaks too.
+1. Make sure the release branch has no open security issues. Check the [Security tab](https://github.com/VictoriaMetrics/operator/security).
+1. Prepare the release commit:
+   1. Set the default `VM_OPERATOR_VERSION` in [internal/config/config.go](https://github.com/VictoriaMetrics/operator/blob/master/internal/config/config.go) to the new version, for example `getVersion("vX.Y.Z")`.
+      The operator uses this value to build the default config-reloader image tag (`config-reloader-vX.Y.Z`).
+   1. Run `make docs` to regenerate `docs/env.md` and `docs/api.md`.
+   1. Cut the new version in [CHANGELOG.md](https://github.com/VictoriaMetrics/operator/blob/master/docs/CHANGELOG.md). Add these lines right below `## tip`:
+      ```md
+      ## [vX.Y.Z](https://github.com/VictoriaMetrics/operator/releases/tag/vX.Y.Z)
+      **Release date:** DD Month YYYY
+      ```
+   1. Open a PR like `cut release vX.Y.Z` with these changes and merge it.
+1. Tag the merged commit and push both tags to the origin:
+   ```sh
+   git tag vX.Y.Z        # operator
+   git tag api/vX.Y.Z    # operator's api Go module (api/go.mod)
+   git push origin vX.Y.Z api/vX.Y.Z
+   ```
+1. Go to the GitHub [Releases page](https://github.com/VictoriaMetrics/operator/releases) and click `Draft a new release` for the `vX.Y.Z` tag.
+1. Paste this release's section from [CHANGELOG.md](https://github.com/VictoriaMetrics/operator/blob/master/docs/CHANGELOG.md) into the release description, then publish the release.
+   Publishing starts the [Release](https://github.com/VictoriaMetrics/operator/actions/workflows/release.yaml) workflow. It builds, pushes and signs the operator and config-reloader images, builds the OLM bundle,
+   and attaches `install-no-webhook.yaml`, `install-with-webhook.yaml`, `crd.yaml` and `olm-bundle.tar.gz` to the release.
 
 
 ## Release follow-up

@@ -143,7 +143,7 @@ func (pos *parsedObjects) buildConfig(ctx context.Context, rclient client.Client
 		if _, err := semver.NewVersion(stripPackagingSuffix(cr.Spec.Image.Tag)); err != nil {
 			reason = "vmauth image tag is not a version (digest-only or custom tag), so support for the field cannot be inferred"
 		}
-		logger.WithContext(ctx).Info("skipping access_log.headers: "+reason+"; set VM_VMAUTH_FORCE_ACCESS_LOG_HEADERS=true if the image supports it", "vmauth", cr.Name, "tag", cr.Spec.Image.Tag)
+		logger.WithContext(ctx).Info("skipping access_log.headers: "+reason+"; set VM_VMAUTH_ACCESS_LOG_HEADERS_SUPPORT=true if the image supports it", "vmauth", cr.Name, "tag", cr.Spec.Image.Tag)
 	}
 	cfg, err := pos.generateConfig(cr, objURLs, ac)
 	if err != nil {
@@ -672,9 +672,9 @@ func wantsAccessLogHeaders(cr *vmv1beta1.VMAuth, users []*vmv1beta1.VMUser) bool
 
 // accessLogHeadersSupported reports whether vmauth at cr.Spec.Image.Tag accepts access_log.headers.
 // Tags that are not a version (digest-only `sha256:...`, custom names) are treated as unsupported
-// unless VM_VMAUTH_FORCE_ACCESS_LOG_HEADERS is set.
+// unless VM_VMAUTH_ACCESS_LOG_HEADERS_SUPPORT is set.
 func accessLogHeadersSupported(cr *vmv1beta1.VMAuth) bool {
-	if config.MustGetBaseConfig().VMAuthForceAccessLogHeaders {
+	if config.MustGetBaseConfig().VMAuthAccessLogHeadersSupport {
 		return true
 	}
 	v, err := semver.NewVersion(stripPackagingSuffix(cr.Spec.Image.Tag))

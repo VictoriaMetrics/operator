@@ -110,7 +110,7 @@ jobs:
       matrix:
         include:
           - name: main
-            e2e_target: ./test/e2e/
+            e2e_target: ./test/e2e/ ./test/e2e/suite/ ./test/e2e/childobjects/ ./test/e2e/watchnamespace/ ./test/e2e/dryrun/
           - name: upgrade
             e2e_target: ./test/e2e/upgrade/...
     steps:

@@ -783,10 +783,10 @@ type BaseOperatorConf struct {
 	VMWaitReadyInterval time.Duration `default:"5s" env:"VM_WAIT_READY_INTERVAL"`
 	// configures force resync interval for VMAgent, VMAlert, VMAlertmanager and VMAuth.
 	ForceResyncInterval time.Duration `default:"60s" env:"VM_FORCERESYNCINTERVAL"`
-	// VMAuthForceAccessLogHeaders renders vmauth access_log.headers regardless of the image tag.
+	// VMAuthAccessLogHeadersSupport declares that the vmauth image supports access_log.headers regardless of its tag.
 	// By default the field is emitted only when the tag parses as a version >= v1.153.0, where vmauth added support;
 	// older vmauth rejects the unknown field. Set to true for digest-only or custom tags that are known to support it.
-	VMAuthForceAccessLogHeaders bool `default:"false" env:"VM_VMAUTH_FORCE_ACCESS_LOG_HEADERS"`
+	VMAuthAccessLogHeadersSupport bool `default:"false" env:"VM_VMAUTH_ACCESS_LOG_HEADERS_SUPPORT"`
 	// EnableStrictSecurity will add default `securityContext` to pods and containers created by operator
 	// Default PodSecurityContext include:
 	// 1. RunAsNonRoot: true

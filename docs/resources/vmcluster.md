@@ -445,14 +445,13 @@ These fields cannot be combined with [automatic vmstorage discovery](#automatic-
 
 ### Pods excluded from all routing
 
+A pod listed in both `vmstorage.maintenanceInsertNodeIDs` and `vmstorage.maintenanceSelectNodeIDs` fields receives no reads and no writes.
 Starting from [v0.75.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.1),
-the Operator leaves a pod listed in **both** fields alone during reconciliation, since it receives no reads and no writes:
+with the default `rollingUpdateStrategy: OnDelete`, where the Operator updates `vmstorage` pods itself, the Operator leaves such a pod alone during reconciliation:
 
 - it doesn't wait for the pod to become ready, so a pod stuck `Pending` or `Terminating` no longer blocks
   reconciliation of `vminsert` and `vmselect`;
 - it doesn't apply `vmstorage` spec changes to the pod or its volumes, e.g. a new image or a bigger volume size.
-
-A pod listed in only one of the two fields still receives the other kind of traffic, so the Operator handles it as usual.
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -466,16 +465,18 @@ spec:
     maintenanceSelectNodeIDs: [2]   # the pod with ordinal 2 gets no traffic and is left alone by the Operator
 ```
 
-When the node is back, remove the ID from both fields before making other changes.
+When the pod is ready to get back, remove the ID from both fields before making other changes.
 The Operator then applies the `vmstorage` changes deferred during maintenance to the pod,
 and waits for it to become ready before adding it back to `vminsert` and `vmselect`, so an unhealthy pod never receives traffic.
 
 **Limitations:**
 
-- Pod spec changes are deferred only with the default `rollingUpdateStrategy: OnDelete`, where the Operator updates `vmstorage` pods itself.
-  With `RollingUpdate`, Kubernetes rolls out all pods, including the pod under maintenance, using `OrderedReady` pod management,
-  which is also used when `minReadySeconds` is set. In this mode, while the pod under maintenance isn't ready, Kubernetes doesn't roll out updates,
-  scale the StatefulSet or recreate pods with a higher ordinal, so reconciliation that changes `vmstorage` pods can block until the pod is ready again.
+- The pod is left alone only with the default `rollingUpdateStrategy: OnDelete` and without `minReadySeconds`,
+  where the StatefulSet uses `Parallel` pod management.
+  Setting `rollingUpdateStrategy: RollingUpdate` or `minReadySeconds` switches the StatefulSet to `OrderedReady` pod management,
+  where Kubernetes handles pods one by one in ordinal order: while the pod under maintenance isn't ready,
+  it doesn't roll out updates, scale the StatefulSet or recreate pods with a higher ordinal.
+  So reconciliation that changes `vmstorage` pods can block until the pod is ready.
 - With `vmstorage.podDisruptionBudget.maxUnavailable: 1`, a pod under maintenance that isn't ready uses up the disruption budget,
   so the Operator can't evict other `vmstorage` pods, and changes that require restarting them fail until the pod is ready again.
 

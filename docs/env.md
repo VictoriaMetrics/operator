@@ -4,6 +4,7 @@
 | VM_LOGS_VERSION: `v1.53.0` <a href="#variables-vm-logs-version" id="variables-vm-logs-version">#</a><br>Defines default image version for VictoriaLogs components: VLogs, VLAgent, VLSingle, VLCluster (vlselect/vlinsert/vlstorage). Used as the image tag when no explicit version is set in the CR spec. |
 | VM_ANOMALY_VERSION: `v1.31.1` <a href="#variables-vm-anomaly-version" id="variables-vm-anomaly-version">#</a><br>Defines default image version for VMAnomaly. Used as the image tag when no explicit version is set in the CR spec. |
 | VM_TRACES_VERSION: `v0.12.0` <a href="#variables-vm-traces-version" id="variables-vm-traces-version">#</a><br>Defines default image version for VictoriaTraces components: VTSingle, VTCluster (vtselect/vtinsert/vtstorage). Used as the image tag when no explicit version is set in the CR spec. |
+| VM_MCP_METRICS_VERSION: `v1.20.2` <a href="#variables-vm-mcp-metrics-version" id="variables-vm-mcp-metrics-version">#</a><br>Defines default image version for VMMCP (MCP server for VictoriaMetrics). Used as the image tag when no explicit version is set in the CR spec. |
 | VM_OPERATOR_VERSION: `v0.75.1` <a href="#variables-vm-operator-version" id="variables-vm-operator-version">#</a><br>Defines the operator's own version. Used for config-reloader image tag interpolation. |
 | VM_GATEWAY_API_ENABLED: `false` <a href="#variables-vm-gateway-api-enabled" id="variables-vm-gateway-api-enabled">#</a><br>Enables support for Kubernetes Gateway API. When enabled, operator manages HTTPRoute resources for VMAuth ingress configuration. |
 | VM_VPA_API_ENABLED: `false` <a href="#variables-vm-vpa-api-enabled" id="variables-vm-vpa-api-enabled">#</a><br>Enables support for VerticalPodAutoscaler API. When enabled, operator can create and manage VPA objects for VM components. |
@@ -113,6 +114,17 @@
 | VM_VMANOMALYDEFAULT_RESOURCE_REQUEST_CPU: `50m` <a href="#variables-vm-vmanomalydefault-resource-request-cpu" id="variables-vm-vmanomalydefault-resource-request-cpu">#</a> |
 | VM_VMANOMALYDEFAULT_RESOURCE_REQUEST_EPHEMERAL_STORAGE: `unlimited` <a href="#variables-vm-vmanomalydefault-resource-request-ephemeral-storage" id="variables-vm-vmanomalydefault-resource-request-ephemeral-storage">#</a> |
 | VM_VMANOMALYDEFAULT_TERMINATION_GRACE_PERIOD_SECONDS: `30` <a href="#variables-vm-vmanomalydefault-termination-grace-period-seconds" id="variables-vm-vmanomalydefault-termination-grace-period-seconds">#</a> |
+| VM_VMMCPDEFAULT_IMAGE: `ghcr.io/victoriametrics/mcp-victoriametrics` <a href="#variables-vm-vmmcpdefault-image" id="variables-vm-vmmcpdefault-image">#</a><br>Default container image for VMMCP. |
+| VM_VMMCPDEFAULT_VERSION: `${VM_MCP_METRICS_VERSION}` <a href="#variables-vm-vmmcpdefault-version" id="variables-vm-vmmcpdefault-version">#</a><br>Default image version. Inherits VM_MCP_METRICS_VERSION if not set explicitly. |
+| VM_VMMCPDEFAULT_PORT: `8080` <a href="#variables-vm-vmmcpdefault-port" id="variables-vm-vmmcpdefault-port">#</a><br>Default HTTP listen port. |
+| VM_VMMCPDEFAULT_USEDEFAULTRESOURCES: `true` <a href="#variables-vm-vmmcpdefault-usedefaultresources" id="variables-vm-vmmcpdefault-usedefaultresources">#</a><br>Whether to apply default resource requests and limits. |
+| VM_VMMCPDEFAULT_RESOURCE_LIMIT_MEM: `1024Mi` <a href="#variables-vm-vmmcpdefault-resource-limit-mem" id="variables-vm-vmmcpdefault-resource-limit-mem">#</a> |
+| VM_VMMCPDEFAULT_RESOURCE_LIMIT_CPU: `500m` <a href="#variables-vm-vmmcpdefault-resource-limit-cpu" id="variables-vm-vmmcpdefault-resource-limit-cpu">#</a> |
+| VM_VMMCPDEFAULT_RESOURCE_LIMIT_EPHEMERAL_STORAGE: `unlimited` <a href="#variables-vm-vmmcpdefault-resource-limit-ephemeral-storage" id="variables-vm-vmmcpdefault-resource-limit-ephemeral-storage">#</a> |
+| VM_VMMCPDEFAULT_RESOURCE_REQUEST_MEM: `768Mi` <a href="#variables-vm-vmmcpdefault-resource-request-mem" id="variables-vm-vmmcpdefault-resource-request-mem">#</a> |
+| VM_VMMCPDEFAULT_RESOURCE_REQUEST_CPU: `100m` <a href="#variables-vm-vmmcpdefault-resource-request-cpu" id="variables-vm-vmmcpdefault-resource-request-cpu">#</a> |
+| VM_VMMCPDEFAULT_RESOURCE_REQUEST_EPHEMERAL_STORAGE: `unlimited` <a href="#variables-vm-vmmcpdefault-resource-request-ephemeral-storage" id="variables-vm-vmmcpdefault-resource-request-ephemeral-storage">#</a> |
+| VM_VMMCPDEFAULT_TERMINATION_GRACE_PERIOD_SECONDS: `30` <a href="#variables-vm-vmmcpdefault-termination-grace-period-seconds" id="variables-vm-vmmcpdefault-termination-grace-period-seconds">#</a> |
 | VM_VMSINGLEDEFAULT_IMAGE: `victoriametrics/victoria-metrics` <a href="#variables-vm-vmsingledefault-image" id="variables-vm-vmsingledefault-image">#</a><br>Default container image for VMSingle. |
 | VM_VMSINGLEDEFAULT_VERSION: `${VM_METRICS_VERSION}` <a href="#variables-vm-vmsingledefault-version" id="variables-vm-vmsingledefault-version">#</a><br>Default image version. Inherits VM_METRICS_VERSION if not set explicitly. |
 | VM_VMSINGLEDEFAULT_PORT: `8429` <a href="#variables-vm-vmsingledefault-port" id="variables-vm-vmsingledefault-port">#</a><br>Default HTTP listen port. |

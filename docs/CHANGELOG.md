@@ -13,6 +13,10 @@ aliases:
 
 ## tip
 
+**Update note 1**: [vmmcp](https://docs.victoriametrics.com/operator/resources/vmmcp/): the `VMMCP` CRD must be installed and the operator's `ClusterRole` must be updated to grant `get`, `list`, `watch`, `create`, `update`, `patch` and `delete` on `operator.victoriametrics.com/vmmcps`, along with `vmmcps/status` and `vmmcps/finalizers`. See [config/rbac/role.yaml](https://github.com/VictoriaMetrics/operator/blob/master/config/rbac/role.yaml) for an example of these rules. The `VMMCP` controller is enabled by default and watches `VMMCP` objects at the cluster scope, even when no `VMMCP` objects exist. With an older `ClusterRole`, the operator logs `cannot list resource "vmmcps"` errors and shuts down once `-controller.cacheSyncTimeout` expires. Set `-controller.disableReconcileFor=VMMCP` to keep running without these permissions. See [#2739](https://github.com/VictoriaMetrics/operator/issues/2739).
+
+* FEATURE: [vmmcp](https://docs.victoriametrics.com/operator/resources/vmmcp/): add `VMMCP` CRD for [MCP server for VictoriaMetrics](https://github.com/VictoriaMetrics/mcp-victoriametrics), which gives AI assistants access to VictoriaMetrics data and documentation over [Model Context Protocol](https://modelcontextprotocol.io/). The default version is [v1.20.2](https://github.com/VictoriaMetrics/mcp-victoriametrics/releases/tag/v1.20.2) and can be changed with `VM_MCP_METRICS_VERSION` env variable. See [#2739](https://github.com/VictoriaMetrics/operator/issues/2739).
+
 ## [v0.75.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.1)
 **Release date:** 21 October 2026
 

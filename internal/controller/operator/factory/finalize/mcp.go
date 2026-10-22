@@ -1,0 +1,50 @@
+package finalize
+
+import (
+	"context"
+
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	policyv1 "k8s.io/api/policy/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	"github.com/VictoriaMetrics/operator/internal/config"
+)
+
+// OnVMMCPDelete deletes all VMMCP related resources
+func OnVMMCPDelete(ctx context.Context, rclient client.Client, cr *vmv1.VMMCP) error {
+	ns := cr.GetNamespace()
+	objMeta := metav1.ObjectMeta{
+		Namespace: ns,
+		Name:      cr.PrefixedName(),
+	}
+	objsToRemove := []client.Object{
+		&appsv1.Deployment{ObjectMeta: objMeta},
+		&corev1.Service{ObjectMeta: objMeta},
+		&policyv1.PodDisruptionBudget{ObjectMeta: objMeta},
+		&networkingv1.NetworkPolicy{ObjectMeta: objMeta},
+	}
+	// a ServiceAccount set in spec.serviceAccountName isn't managed by the operator
+	if cr.IsOwnsServiceAccount() {
+		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.GetServiceAccountName(),
+			Namespace: ns,
+		}})
+	}
+	if cr.Spec.ServiceSpec != nil {
+		objsToRemove = append(objsToRemove, &corev1.Service{ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Spec.ServiceSpec.NameOrDefault(cr.PrefixedName()),
+			Namespace: ns,
+		}})
+	}
+	if config.MustGetBaseConfig().VPAAPIEnabled {
+		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
+	}
+	objsToRemove = append(objsToRemove, cr)
+	deleteOwnerReferences := make([]bool, len(objsToRemove))
+	return removeFinalizers(ctx, rclient, objsToRemove, deleteOwnerReferences, cr)
+}

@@ -28,6 +28,7 @@ resources:
 - bases/operator.victoriametrics.com_vmdistributed.yaml
 - bases/operator.victoriametrics.com_vldistributed.yaml
 - bases/operator.victoriametrics.com_vmanomalyconfigs.yaml
+- bases/operator.victoriametrics.com_vmmcps.yaml
 patches:
 - path: patches/common-array-fields-with-claimtemplates.yaml
   target:
@@ -36,7 +37,7 @@ patches:
 - path: patches/common-array-fields.yaml
   target:
     kind: CustomResourceDefinition
-    name: ^(vlsingles|vmauths|vmsingles|vtsingles|vmalerts)\.operator\.victoriametrics\.com$
+    name: ^(vlsingles|vmauths|vmsingles|vtsingles|vmalerts|vmmcps)\.operator\.victoriametrics\.com$
 - path: patches/operator.victoriametrics.com_vmalerts.yaml
   target:
     kind: CustomResourceDefinition

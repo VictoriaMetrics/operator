@@ -8,6 +8,7 @@ import (
 	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -22,7 +23,29 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
+
+func TestReleaseAppliedConditions(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1.VMAnomaly{ObjectMeta: metav1.ObjectMeta{Name: "anomaly1", Namespace: "ns"}}
+	ac := &vmv1.VMAnomalyConfig{ObjectMeta: metav1.ObjectMeta{Name: "ac1", Namespace: "ns"}}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{ac})
+
+	// simulate a prior reconcile that selected the config and wrote the Applied condition
+	parent := "anomaly1.ns.vmanomaly"
+	require.NoError(t, reconcile.StatusForChildObjects(ctx, fclient, parent, []*vmv1.VMAnomalyConfig{ac}))
+
+	var got vmv1.VMAnomalyConfig
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "ac1"}, &got))
+	require.NotEmpty(t, got.Status.Conditions, "precondition: vmanomaly must have written its condition")
+
+	// cr is being deleted: it no longer selects anything
+	require.NoError(t, ReleaseAppliedConditions(ctx, fclient, cr))
+
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "ac1"}, &got))
+	assert.Empty(t, got.Status.Conditions, "condition must be released once the vmanomaly is deleted")
+}
 
 func TestCreateOrUpdate(t *testing.T) {
 	type opts struct {

@@ -98,15 +98,25 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		return
 	}
 
+	RegisterObjectStat(&instance, r.name)
+	if !instance.DeletionTimestamp.IsZero() {
+		// Deletion is handled before the IsUnmanaged lock guard below, so the release does
+		// not depend on how IsUnmanaged treats a deleting object. The lock serializes the
+		// release with the controller that writes the same Applied condition.
+		agentSync.RLock()
+		releaseErr := vmagent.ReleaseAppliedConditions(ctx, r.Client, &instance)
+		agentSync.RUnlock()
+		if releaseErr != nil {
+			err = fmt.Errorf("cannot release status conditions for vmagent: %w", releaseErr)
+			return
+		}
+		err = finalize.OnVMAgentDelete(ctx, r.Client, &instance)
+		return
+	}
+
 	if !instance.IsUnmanaged(nil) {
 		agentSync.RLock()
 		defer agentSync.RUnlock()
-	}
-
-	RegisterObjectStat(&instance, r.name)
-	if !instance.DeletionTimestamp.IsZero() {
-		err = finalize.OnVMAgentDelete(ctx, r.Client, &instance)
-		return
 	}
 
 	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {

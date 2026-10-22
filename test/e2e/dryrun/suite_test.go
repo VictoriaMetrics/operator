@@ -5,6 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/VictoriaMetrics/operator/test/e2e/suite"
@@ -21,11 +22,13 @@ func TestDryRun(t *testing.T) {
 
 var (
 	k8sClient client.WithWatch
+	k8sCfg    rest.Config
 
 	_ = SynchronizedBeforeSuite(func() []byte {
 		return suite.InitTestEnv(namespace)
 	}, func(data []byte) {
 		k8sClient = suite.GetClient(data)
+		k8sCfg = suite.GetRestConfig(data)
 	})
 
 	_ = SynchronizedAfterSuite(func() {}, func() {

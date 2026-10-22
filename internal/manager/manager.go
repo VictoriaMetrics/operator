@@ -65,6 +65,9 @@ import (
 const defaultMetricsAddr = ":8080"
 const defaultWebhookPort = 9443
 
+// GetRESTConfig returns the k8s client config, required for dry-run mode tests
+var GetRESTConfig = ctrl.GetConfigOrDie
+
 var (
 	managerFlags = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	startTime    = time.Now()
@@ -125,7 +128,7 @@ var (
 	loggerJSONFields = managerFlags.String("loggerJSONFields", "", "Allows renaming fields in JSON formatted logs"+
 		`Example: "ts:timestamp,msg:message" renames "ts" to "timestamp" and "msg" to "message".`+
 		"Supported fields: ts, level, caller, msg")
-	dryRun          = managerFlags.Bool("dry-run", os.Getenv("DRY_RUN") == "true", "dry run mode for the operator. If enabled, each k8s client mutating call should be logged as debug instance, but not called.")
+	dryRun          = managerFlags.Bool("dry-run", os.Getenv("DRY_RUN") == "true", "dry run mode for the operator. If enabled, each k8s client mutating call is logged and sent with server-side dry-run, so it is validated by the API server but not persisted.")
 	statusUpdateTTL = managerFlags.Duration("controller.statusLastUpdateTimeTTL", time.Hour, "Configures TTL for LastUpdateTime status.conditions fields. "+
 		"It's used to detect stale parent objects on child objects. Like VMAlert->VMRule .status.Conditions.Type")
 )
@@ -238,7 +241,7 @@ func RunManager(ctx context.Context) error {
 	}
 
 	reconcile.Init(baseConfig, *statusUpdateTTL)
-	config := ctrl.GetConfigOrDie()
+	config := GetRESTConfig()
 	config.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(float32(*clientQPS), *clientBurst)
 
 	co, err := getClientCacheOptions(*disableCacheForObjects)

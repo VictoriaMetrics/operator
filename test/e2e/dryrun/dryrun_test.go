@@ -10,13 +10,17 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	admissionv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/rest"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -26,7 +30,48 @@ import (
 const (
 	deploymentQuota corev1.ResourceName = "count/deployments.apps"
 	quotaName       string              = "no-deployments"
+	operatorSAName  string              = "dry-run-operator"
+	webhookName     string              = "dry-run.test.victoriametrics.com"
 )
+
+// operatorRules lets the operator read everything and write all it needs, except NetworkPolicies.
+var operatorRules = []rbacv1.PolicyRule{
+	{APIGroups: []string{"*"}, Resources: []string{"*"}, Verbs: []string{"get", "list", "watch"}},
+	{
+		APIGroups: []string{"", "apps", "rbac.authorization.k8s.io", vmv1beta1.SchemeGroupVersion.Group},
+		Resources: []string{
+			"serviceaccounts", "services", "configmaps", "secrets", "events", "persistentvolumeclaims", "deployments",
+			"clusterroles", "clusterrolebindings", "roles", "rolebindings",
+			"vmsingles", "vmsingles/status", "vmsingles/finalizers", "vmservicescrapes",
+		},
+		Verbs: []string{"create", "update", "patch", "delete"},
+	},
+}
+
+// useRestrictedOperatorIdentity runs the operator as a ServiceAccount with operatorRules and returns its user name.
+func useRestrictedOperatorIdentity(ctx context.Context) string {
+	role := &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: "dry-run-operator-" + namespace}, Rules: operatorRules}
+	binding := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{Name: role.Name},
+		RoleRef:    rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: role.Name},
+		Subjects:   []rbacv1.Subject{{Kind: rbacv1.ServiceAccountKind, Namespace: namespace, Name: operatorSAName}},
+	}
+	for _, obj := range []client.Object{role, binding} {
+		Expect(k8sClient.Create(ctx, obj)).To(Succeed())
+		DeferCleanup(func() { Expect(client.IgnoreNotFound(k8sClient.Delete(ctx, obj))).To(Succeed()) })
+	}
+
+	user := "system:serviceaccount:" + namespace + ":" + operatorSAName
+	orig := manager.GetRESTConfig
+	// the admin config impersonates the ServiceAccount, RBAC matches the binding subject by name
+	manager.GetRESTConfig = func() *rest.Config {
+		cfg := rest.CopyConfig(&k8sCfg)
+		cfg.Impersonate = rest.ImpersonationConfig{UserName: user}
+		return cfg
+	}
+	DeferCleanup(func() { manager.GetRESTConfig = orig })
+	return user
+}
 
 // runDryRunOperator runs the operator in -dry-run mode until it reconciles existing objects and returns its logs.
 func runDryRunOperator(ctx context.Context) string {
@@ -73,6 +118,9 @@ var _ = Describe("operator in dry-run mode", Ordered, func() {
 	var logs string
 	ctx := context.Background()
 	create, update, remove := newVMSingle("dry-create"), newVMSingle("dry-update"), newVMSingle("dry-remove")
+	noNetPol, webhook := newVMSingle("dry-rbac"), newVMSingle("dry-webhook")
+	noNetPol.Spec.NetworkPolicy = &vmv1beta1.EmbeddedNetworkPolicy{}
+	var operatorUser string
 	childKey := func(cr *vmv1beta1.VMSingle) client.ObjectKey {
 		return client.ObjectKey{Namespace: namespace, Name: cr.PrefixedName()}
 	}
@@ -110,7 +158,30 @@ var _ = Describe("operator in dry-run mode", Ordered, func() {
 			return ok
 		}, 30*time.Second, time.Second).Should(BeTrue())
 
-		for _, obj := range []client.Object{create, update, svc, role} {
+		// the webhook is unreachable, so the API server must fail the request itself
+		hook := &admissionv1.ValidatingWebhookConfiguration{
+			ObjectMeta: metav1.ObjectMeta{Name: "dry-run-" + namespace},
+			Webhooks: []admissionv1.ValidatingWebhook{{
+				Name:                    webhookName,
+				AdmissionReviewVersions: []string{"v1"},
+				SideEffects:             ptr.To(admissionv1.SideEffectClassNone),
+				FailurePolicy:           ptr.To(admissionv1.Fail),
+				ClientConfig: admissionv1.WebhookClientConfig{
+					Service: &admissionv1.ServiceReference{Namespace: namespace, Name: "no-such-webhook", Path: ptr.To("/validate")},
+				},
+				ObjectSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"app.kubernetes.io/instance": webhook.Name}},
+				Rules: []admissionv1.RuleWithOperations{{
+					Operations: []admissionv1.OperationType{admissionv1.Create},
+					Rule:       admissionv1.Rule{APIGroups: []string{""}, APIVersions: []string{"v1"}, Resources: []string{"services"}},
+				}},
+			}},
+		}
+		Expect(k8sClient.Create(ctx, hook)).To(Succeed())
+		DeferCleanup(func() { Expect(client.IgnoreNotFound(k8sClient.Delete(ctx, hook))).To(Succeed()) })
+
+		operatorUser = useRestrictedOperatorIdentity(ctx)
+
+		for _, obj := range []client.Object{create, update, noNetPol, webhook, svc, role} {
 			Expect(k8sClient.Create(ctx, obj)).To(Succeed())
 			DeferCleanup(func() { Expect(client.IgnoreNotFound(k8sClient.Delete(ctx, obj))).To(Succeed()) })
 		}
@@ -169,6 +240,35 @@ var _ = Describe("operator in dry-run mode", Ordered, func() {
 			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(create), &got)).To(Succeed())
 			Expect(got.Finalizers).To(BeEmpty())
 			Expect(got.Status.UpdateStatus).To(BeEmpty())
+		})
+	})
+
+	Context("insufficient RBAC", func() {
+		It("should report the permission the operator lacks", func() {
+			errLine := lineOf(logs, `"msg":"reconcile failed"`, `"name":"`+noNetPol.Name+`"`)
+			Expect(errLine).To(ContainSubstring(`networkpolicies.networking.k8s.io is forbidden: User \"` + operatorUser + `\" cannot create resource \"networkpolicies\"`))
+		})
+
+		It("should not create the NetworkPolicy and stop before the Deployment", func() {
+			absent(&networkingv1.NetworkPolicy{}, childKey(noNetPol))
+			absent(&appsv1.Deployment{}, childKey(noNetPol))
+		})
+	})
+
+	Context("validating webhook", func() {
+		It("should report the rejection by the webhook", func() {
+			errLine := lineOf(logs, `"msg":"reconcile failed"`, `"name":"`+webhook.Name+`"`)
+			Expect(errLine).To(ContainSubstring("cannot create new Service=" + namespace + "/" + webhook.PrefixedName()))
+			Expect(errLine).To(ContainSubstring(`failed calling webhook \"` + webhookName + `\"`))
+		})
+
+		It("should not create the Service and stop before the Deployment", func() {
+			absent(&corev1.Service{}, childKey(webhook))
+			absent(&appsv1.Deployment{}, childKey(webhook))
+		})
+
+		It("should not affect other Services", func() {
+			Expect(lineOf(logs, `"msg":"dry-run: Create"`, `"kind":"Service"`, `"name":"`+create.PrefixedName()+`"`)).ToNot(BeEmpty())
 		})
 	})
 

@@ -65,6 +65,9 @@ import (
 const defaultMetricsAddr = ":8080"
 const defaultWebhookPort = 9443
 
+// GetRESTConfig returns the k8s client config, required for dry-run mode tests
+var GetRESTConfig = ctrl.GetConfigOrDie
+
 var (
 	managerFlags = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	startTime    = time.Now()
@@ -238,7 +241,7 @@ func RunManager(ctx context.Context) error {
 	}
 
 	reconcile.Init(baseConfig, *statusUpdateTTL)
-	config := ctrl.GetConfigOrDie()
+	config := GetRESTConfig()
 	config.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(float32(*clientQPS), *clientBurst)
 
 	co, err := getClientCacheOptions(*disableCacheForObjects)

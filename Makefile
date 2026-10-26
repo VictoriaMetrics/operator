@@ -378,7 +378,7 @@ OPM_VERSION ?= v1.74.0
 # renovate: datasource=go depName=github.com/mikefarah/yq/v4
 YQ_VERSION ?= v4.54.1
 # renovate: datasource=github-releases depName=sigstore/cosign
-COSIGN_VERSION ?= v3.1.3
+COSIGN_VERSION ?= v3.1.4
 
 CRD_REF_DOCS_VERSION ?= c5e6088a7cbca578c33aabd74ade8210985e5a67
 

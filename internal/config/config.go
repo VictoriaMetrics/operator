@@ -48,7 +48,7 @@ var (
 		// renovate: datasource=docker depName=victoriametrics/vmanomaly
 		"VM_ANOMALY_VERSION": "v1.31.1",
 		// renovate: datasource=github-releases depName=VictoriaMetrics/VictoriaTraces
-		"VM_TRACES_VERSION": "v0.12.0",
+		"VM_TRACES_VERSION": "v0.12.1",
 		// renovate: datasource=github-releases depName=VictoriaMetrics/operator
 		"VM_OPERATOR_VERSION": getVersion("v0.75.1"),
 		// renovate: datasource=github-releases depName=prometheus/alertmanager

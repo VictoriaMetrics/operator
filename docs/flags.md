@@ -34,7 +34,7 @@ Usage of bin/operator:
   -disableSecretKeySpaceTrim
     	disables trim of space at Secret/Configmap value content. It's a common mistake to put new line to the base64 encoded secret value.
   -dry-run
-    	dry run mode for the operator. If enabled, each k8s client mutating call should be logged as debug instance, but not called.
+    	dry run mode for the operator. If enabled, each k8s client mutating call is logged and sent with server-side dry-run, so it is validated by the API server but not persisted.
   -health-probe-bind-address string
     	The address the probes (health, ready) binds to. (default ":8081")
   -leader-elect

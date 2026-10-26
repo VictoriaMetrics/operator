@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): `-dry-run` mode now sends mutating k8s calls with server-side dry-run, so the API server validates them without persisting. Previously calls were only logged. See [#2494](https://github.com/VictoriaMetrics/operator/issues/2494).
+
 ## [v0.75.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.1)
 **Release date:** 21 October 2026
 

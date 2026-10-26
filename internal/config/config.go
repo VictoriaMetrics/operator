@@ -49,6 +49,8 @@ var (
 		"VM_ANOMALY_VERSION": "v1.31.1",
 		// renovate: datasource=github-releases depName=VictoriaMetrics/VictoriaTraces
 		"VM_TRACES_VERSION": "v0.12.0",
+		// renovate: datasource=github-releases depName=VictoriaMetrics/mcp-victoriametrics
+		"VM_MCP_METRICS_VERSION": "v1.20.2",
 		// renovate: datasource=github-releases depName=VictoriaMetrics/operator
 		"VM_OPERATOR_VERSION": getVersion("v0.75.1"),
 		// renovate: datasource=github-releases depName=prometheus/alertmanager
@@ -125,6 +127,9 @@ type BaseOperatorConf struct {
 	// VTSingle, VTCluster (vtselect/vtinsert/vtstorage).
 	// Used as the image tag when no explicit version is set in the CR spec.
 	TracesVersion string `default:"${VM_TRACES_VERSION}" env:"VM_TRACES_VERSION,expand"`
+	// Defines default image version for VMMCP (MCP server for VictoriaMetrics).
+	// Used as the image tag when no explicit version is set in the CR spec.
+	MCPMetricsVersion string `default:"${VM_MCP_METRICS_VERSION}" env:"VM_MCP_METRICS_VERSION,expand"`
 	// Defines the operator's own version. Used for config-reloader image tag interpolation.
 	OperatorVersion string `default:"${VM_OPERATOR_VERSION}" env:"VM_OPERATOR_VERSION,expand"`
 	// Enables support for Kubernetes Gateway API.
@@ -395,6 +400,33 @@ type BaseOperatorConf struct {
 		} `prefix:"RESOURCE_"`
 		TerminationGracePeriodSeconds int64 `default:"30"`
 	} `prefix:"VM_VMANOMALYDEFAULT_"`
+
+	// VMMCP defines default settings for VMMCP (MCP server for VictoriaMetrics) deployments.
+	VMMCP struct {
+		// Default container image for VMMCP.
+		Image string `default:"ghcr.io/victoriametrics/mcp-victoriametrics"`
+		// Default image version. Inherits VM_MCP_METRICS_VERSION if not set explicitly.
+		Version string `env:",expand" default:"${VM_MCP_METRICS_VERSION}"`
+		// Default HTTP listen port.
+		Port string `default:"8080"`
+		// Whether to apply default resource requests and limits.
+		UseDefaultResources bool `default:"true" env:"USEDEFAULTRESOURCES"`
+		// Default memory accounts for the in-memory index of VictoriaMetrics documentation,
+		// which is loaded unless the documentation tool is disabled.
+		Resource struct {
+			Limit struct {
+				Mem              string `default:"1024Mi"`
+				Cpu              string `default:"500m"`
+				EphemeralStorage string `default:"unlimited"`
+			} `prefix:"LIMIT_"`
+			Request struct {
+				Mem              string `default:"768Mi"`
+				Cpu              string `default:"100m"`
+				EphemeralStorage string `default:"unlimited"`
+			} `prefix:"REQUEST_"`
+		} `prefix:"RESOURCE_"`
+		TerminationGracePeriodSeconds int64 `default:"30"`
+	} `prefix:"VM_VMMCPDEFAULT_"`
 
 	// VMSingle defines default settings for VMSingle (single-node VictoriaMetrics) deployments.
 	VMSingle struct {
@@ -921,6 +953,9 @@ func (boc BaseOperatorConf) validate() error {
 		return err
 	}
 	if err := validateResource("vmanomaly", Resource(boc.VMAnomaly.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vmmcp", Resource(boc.VMMCP.Resource)); err != nil {
 		return err
 	}
 	if err := validateResource("vlsingle", Resource(boc.VLSingle.Resource)); err != nil {

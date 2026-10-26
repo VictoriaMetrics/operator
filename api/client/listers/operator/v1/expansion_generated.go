@@ -49,6 +49,14 @@ type VMAnomalyListerExpansion interface{}
 // VMAnomalyNamespaceLister.
 type VMAnomalyNamespaceListerExpansion interface{}
 
+// VMMCPListerExpansion allows custom methods to be added to
+// VMMCPLister.
+type VMMCPListerExpansion interface{}
+
+// VMMCPNamespaceListerExpansion allows custom methods to be added to
+// VMMCPNamespaceLister.
+type VMMCPNamespaceListerExpansion interface{}
+
 // VTAgentListerExpansion allows custom methods to be added to
 // VTAgentLister.
 type VTAgentListerExpansion interface{}

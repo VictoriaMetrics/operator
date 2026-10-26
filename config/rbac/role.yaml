@@ -179,6 +179,11 @@ rules:
   - networking.k8s.io
   resources:
   - ingresses/finalizers
+  verbs:
+  - '*'
+- apiGroups:
+  - networking.k8s.io
+  resources:
   - networkpolicies
   verbs:
   - '*'
@@ -199,6 +204,7 @@ rules:
   - vmauths
   - vmclusters
   - vmdistributed
+  - vmmcps
   - vmpodscrapes
   - vmprobes
   - vmrules
@@ -260,6 +266,7 @@ rules:
   - vmauths/status
   - vmclusters/status
   - vmdistributed/status
+  - vmmcps/status
   - vmnodescrapes/status
   - vmpodscrapes/status
   - vmprobes/status
@@ -283,6 +290,7 @@ rules:
   - vldistributed/finalizers
   - vlsingles/finalizers
   - vmdistributed/finalizers
+  - vmmcps/finalizers
   - vtclusters/finalizers
   - vtsingles/finalizers
   verbs:

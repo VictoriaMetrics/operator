@@ -31,6 +31,7 @@ type OperatorV1Interface interface {
 	VLClustersGetter
 	VLSinglesGetter
 	VMAnomaliesGetter
+	VMMCPsGetter
 	VTAgentsGetter
 	VTClustersGetter
 	VTSinglesGetter
@@ -55,6 +56,10 @@ func (c *OperatorV1Client) VLSingles(namespace string) VLSingleInterface {
 
 func (c *OperatorV1Client) VMAnomalies(namespace string) VMAnomalyInterface {
 	return newVMAnomalies(c, namespace)
+}
+
+func (c *OperatorV1Client) VMMCPs(namespace string) VMMCPInterface {
+	return newVMMCPs(c, namespace)
 }
 
 func (c *OperatorV1Client) VTAgents(namespace string) VTAgentInterface {

@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.12.1](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.12.1).
+
 ## [v0.75.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.1)
 **Release date:** 21 October 2026
 

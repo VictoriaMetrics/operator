@@ -5,7 +5,7 @@ module github.com/VictoriaMetrics/operator/api
 go 1.27.2
 
 require (
-	github.com/VictoriaMetrics/VictoriaMetrics v1.154.0
+	github.com/VictoriaMetrics/VictoriaMetrics v1.154.1
 	github.com/VictoriaMetrics/metricsql v0.87.5
 	github.com/prometheus/alertmanager v0.34.1
 	github.com/stretchr/testify v1.12.1

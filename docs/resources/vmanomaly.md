@@ -302,6 +302,50 @@ spec:
 
 If both `configSecret` and `configRawYaml` are defined, only configuration from `configRawYaml` will be used. Values from `configSecret` will be ignored.
 
+### Using with VictoriaLogs
+
+Anomaly Detection supports reading from [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/) 
+for any queries with the [stats pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe).
+
+To enable this functionallity you must set the reader class to be `vlogs`. With `spec.reader.class: vlogs` Anomaly Detection will read from VictoriaLogs using the `/select/stats_query_range` endpoint. More info on configuring Anomaly Detection for VictoriaLogs can be found [here](https://docs.victoriametrics.com/anomaly-detection/components/reader/#victorialogs-reader).
+
+> VMAnomalyConfig CRs are not checked for what type they are. Only select VMAnomalyConfig CRs that are of the correct type. Never use `selectAllByDefault: true` as this has a high likely hood for breaking later. Only select CRs of the correct type for your reader class.
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VMAnomaly
+metadata:
+  name: vmanomaly-vlogs
+spec:
+  configSelector:
+    matchLabels:
+      app: vmanomaly
+      reader: vlogs
+  reader:
+    class: vlogs
+    datasourceURL: http://localhost:9428
+  writer:
+    datasourceURL: http://localhost:8428
+
+  configRawYaml: |
+    reader:
+      queries:
+        ingestion_rate:
+          expr: '* | stats count() as logs'
+          step: '1m'
+    schedulers:
+      scheduler_periodic_1m:
+        class: "periodic"
+        infer_every: "1m"
+        fit_every: "2m"
+        fit_window: "3h"
+    models:
+      model_univariate_1:
+        class: 'zscore'
+        z_threshold: 2.5
+```
+
+
 ## High Availability and Sharding
 
 Anomaly Detection can be deployed in [HA mode](https://docs.victoriametrics.com/anomaly-detection/scaling-vmanomaly/#high-availability) and scaled horizontally. Horizontal scaling is achieved by [automatically splitting the configuration into shards](https://new.docs.victoriametrics.com/anomaly-detection/scaling-vmanomaly/#sub-configuration) using the `spec.shardCount` parameter. The `spec.replicaCount` parameter defines the number of replicas per shard. The Operator creates one StatefulSet per shard (equal to `spec.shardCount`), with each StatefulSet containing `spec.replicaCount` replicas.

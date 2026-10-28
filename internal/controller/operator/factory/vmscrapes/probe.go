@@ -3,6 +3,7 @@ package vmscrapes
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"gopkg.in/yaml.v2"
 
@@ -65,6 +66,7 @@ func generateProbeConfig(
 	scrapeClass := getScrapeClass(spec.ScrapeClassName, sp)
 	if scrapeClass != nil {
 		mergeEndpointAuthWithScrapeClass(&spec.EndpointAuth, scrapeClass)
+		spec.MetricRelabelConfigs = slices.Concat(scrapeClass.MetricRelabelConfigs, spec.MetricRelabelConfigs)
 	}
 
 	// add defaults
@@ -88,6 +90,7 @@ func generateProbeConfig(
 	cfg = addCommonScrapeParamsTo(cfg, spec.EndpointScrapeParams, se)
 
 	var relabelings []yaml.MapSlice
+	var targetRelabelings []yaml.MapSlice
 
 	staticTarget := spec.Targets.StaticConfig
 	if spec.Targets.Static != nil {
@@ -115,7 +118,7 @@ func generateProbeConfig(
 		})
 		// Add configured relabelings.
 		for _, r := range staticTarget.RelabelConfigs {
-			relabelings = append(relabelings, generateRelabelConfig(r))
+			targetRelabelings = append(targetRelabelings, generateRelabelConfig(r))
 		}
 	}
 
@@ -169,7 +172,7 @@ func generateProbeConfig(
 			},
 		}...)
 		for _, r := range t.RelabelConfigs {
-			relabelings = append(relabelings, generateRelabelConfig(r))
+			targetRelabelings = append(targetRelabelings, generateRelabelConfig(r))
 		}
 	}
 	if len(k8sSDOpts) > 0 {
@@ -179,6 +182,13 @@ func generateProbeConfig(
 			cfg = append(cfg, c...)
 		}
 	}
+
+	if scrapeClass != nil {
+		for _, r := range scrapeClass.RelabelConfigs {
+			relabelings = append(relabelings, generateRelabelConfig(r))
+		}
+	}
+	relabelings = append(relabelings, targetRelabelings...)
 
 	if spec.JobName != "" {
 		relabelings = append(relabelings, yaml.MapSlice{

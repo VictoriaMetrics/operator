@@ -2,6 +2,7 @@ package vmscrapes
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,10 +18,11 @@ import (
 
 func Test_generateProbeConfig(t *testing.T) {
 	type opts struct {
-		cr                *vmv1beta1.VMAgent
-		sc                *vmv1beta1.VMProbe
-		want              string
-		predefinedObjects []runtime.Object
+		cr                 *vmv1beta1.VMAgent
+		sc                 *vmv1beta1.VMProbe
+		want               string
+		classRelabelMarker string
+		predefinedObjects  []runtime.Object
 	}
 
 	f := func(o opts) {
@@ -35,6 +37,9 @@ func Test_generateProbeConfig(t *testing.T) {
 			gotBytes, err := yaml.Marshal(got)
 			if assert.NoError(t, err, "cannot decode probe config, it must be in yaml format") {
 				assert.Equal(t, o.want, string(gotBytes))
+				if o.classRelabelMarker != "" {
+					assert.Equal(t, 1, strings.Count(string(gotBytes), o.classRelabelMarker), "scrape class relabel must appear once")
+				}
 			}
 		}
 	}
@@ -368,6 +373,24 @@ relabel_configs:
 				Name:      "default-vmagent",
 				Namespace: "default",
 			},
+			Spec: vmv1beta1.VMAgentSpec{
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					ScrapeClasses: []vmv1beta1.ScrapeClass{
+						{
+							Name: "probe-class",
+							EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+								RelabelConfigs: []*vmv1beta1.RelabelConfig{
+									{
+										SourceLabels: []string{"namespace", "ingress", "service"},
+										Regex:        vmv1beta1.StringOrArray{`monitor;(?:[^;]+;|;[^;]+)`},
+										Action:       "keep",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 		sc: &vmv1beta1.VMProbe{
 			ObjectMeta: metav1.ObjectMeta{
@@ -375,8 +398,9 @@ relabel_configs:
 				Namespace: "monitor",
 			},
 			Spec: vmv1beta1.VMProbeSpec{
-				Module:       "http200",
-				VMProberSpec: vmv1beta1.VMProberSpec{URL: "blackbox:9115"},
+				Module:          "http200",
+				ScrapeClassName: ptr.To("probe-class"),
+				VMProberSpec:    vmv1beta1.VMProberSpec{URL: "blackbox:9115"},
 				Targets: vmv1beta1.VMProbeTargets{
 					Kubernetes: []*vmv1beta1.VMProbeTargetKubernetes{
 						{
@@ -443,10 +467,6 @@ relabel_configs:
 - source_labels:
   - __meta_kubernetes_ingress_name
   target_label: ingress
-- source_labels:
-  - label1
-  target_label: api
-  action: replacement
 - action: replace
   source_labels:
   - __meta_kubernetes_service_annotation_operator_victoriametrics_com_probe_path
@@ -486,6 +506,16 @@ relabel_configs:
   - __meta_kubernetes_service_name
   target_label: service
 - source_labels:
+  - namespace
+  - ingress
+  - service
+  regex: monitor;(?:[^;]+;|;[^;]+)
+  action: keep
+- source_labels:
+  - label1
+  target_label: api
+  action: replacement
+- source_labels:
   - label2
   target_label: api
   action: replacement
@@ -495,6 +525,7 @@ relabel_configs:
 - target_label: __address__
   replacement: blackbox:9115
 `,
+		classRelabelMarker: "regex: monitor;(?:[^;]+;|;[^;]+)\n",
 	})
 
 	// generate with vm params
@@ -706,5 +737,129 @@ relabel_configs:
 - target_label: __address__
   replacement: blackbox:9115
 `,
+	})
+
+	// scrapeClass relabelings and metric relabelings
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{Name: "default-vmagent", Namespace: "default"},
+			Spec: vmv1beta1.VMAgentSpec{
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					ScrapeClasses: []vmv1beta1.ScrapeClass{
+						{
+							Name: "probe-class",
+							EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+								RelabelConfigs: []*vmv1beta1.RelabelConfig{
+									{
+										SourceLabels: []string{"__param_target", "namespace", "service"},
+										Regex:        vmv1beta1.StringOrArray{`.+;(?:;|[^;]+;[^;]+)`},
+										Action:       "keep",
+									},
+									{TargetLabel: "env", Replacement: ptr.To("prod")},
+								},
+								MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{{SourceLabels: []string{"__name__"}, Regex: vmv1beta1.StringOrArray{"probe_.*"}, Action: "keep"}},
+							},
+						},
+					},
+				},
+			},
+		},
+		sc: &vmv1beta1.VMProbe{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "class-probe"},
+			Spec: vmv1beta1.VMProbeSpec{
+				ScrapeClassName: ptr.To("probe-class"),
+				VMProberSpec:    vmv1beta1.VMProberSpec{URL: "blackbox:9115"},
+				Targets: vmv1beta1.VMProbeTargets{
+					Static: &vmv1beta1.VMProbeTargetStatic{
+						Targets:        []string{"host-1"},
+						RelabelConfigs: []*vmv1beta1.RelabelConfig{{TargetLabel: "env", Replacement: ptr.To("user")}},
+					},
+					Kubernetes: []*vmv1beta1.VMProbeTargetKubernetes{
+						{
+							Role:              k8sSDRoleService,
+							NamespaceSelector: vmv1beta1.NamespaceSelector{},
+						},
+					},
+				},
+				MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{{TargetLabel: "probe", Replacement: ptr.To("class-probe")}},
+			},
+		},
+		want: `job_name: probe/default/class-probe
+honor_labels: false
+metrics_path: /probe
+static_configs:
+- targets:
+  - host-1
+kubernetes_sd_configs:
+- role: service
+  namespaces:
+    names:
+    - default
+relabel_configs:
+- source_labels:
+  - __address__
+  target_label: __param_target
+- action: replace
+  source_labels:
+  - __meta_kubernetes_service_annotation_operator_victoriametrics_com_probe_path
+  target_label: __meta_kubernetes_service_path
+- if: '{__meta_kubernetes_service_annotationpresent_operator_victoriametrics_com_probe_path!="true"}'
+  action: replace
+  target_label: __meta_kubernetes_service_path
+  replacement: /
+- action: replace
+  source_labels:
+  - __meta_kubernetes_service_annotation_operator_victoriametrics_com_probe_scheme
+  target_label: __meta_kubernetes_service_scheme
+- if: '{__meta_kubernetes_service_annotationpresent_operator_victoriametrics_com_probe_scheme!="true"}'
+  action: replace
+  target_label: __meta_kubernetes_service_scheme
+  replacement: http
+- source_labels:
+  - __address__
+  separator: ;
+  regex: (.*)
+  target_label: __tmp_service_address
+  replacement: $1
+  action: replace
+- source_labels:
+  - __meta_kubernetes_service_scheme
+  - __address__
+  - __meta_kubernetes_service_path
+  separator: ;
+  regex: (.+);(.+);(.+)
+  target_label: __param_target
+  replacement: ${1}://${2}${3}
+  action: replace
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: service
+- source_labels:
+  - __param_target
+  - namespace
+  - service
+  regex: .+;(?:;|[^;]+;[^;]+)
+  action: keep
+- target_label: env
+  replacement: prod
+- target_label: env
+  replacement: user
+- source_labels:
+  - __param_target
+  target_label: instance
+- target_label: __address__
+  replacement: blackbox:9115
+metric_relabel_configs:
+- source_labels:
+  - __name__
+  regex: probe_.*
+  action: keep
+- target_label: probe
+  replacement: class-probe
+`,
+		classRelabelMarker: "regex: .+;(?:;|[^;]+;[^;]+)\n",
 	})
 }

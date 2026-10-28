@@ -150,8 +150,10 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VLDistr
 			// so upgrade can delete it, instead of leaving it running forever.
 			var existing vmv1.VLAgent
 			if err := rclient.Get(ctx, nsn, &existing); err == nil {
-				zs.vlagents[i] = vlAgentRef{obj: &existing, disabled: true}
-				zs.hasChanges[i] = true
+				if metav1.IsControlledBy(&existing, cr) {
+					zs.vlagents[i] = vlAgentRef{obj: &existing, disabled: true}
+					zs.hasChanges[i] = true
+				}
 			} else if !k8serrors.IsNotFound(err) {
 				return nil, fmt.Errorf("unexpected error during attempt to get VLAgent=%s: %w", nsn.String(), err)
 			}

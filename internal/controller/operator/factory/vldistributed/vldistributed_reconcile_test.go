@@ -487,6 +487,7 @@ func Test_CreateOrUpdate_DeletesDisabledVLAgent(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "dist",
 			Namespace: "default",
+			UID:       "dist-uid",
 		},
 		Spec: vmv1alpha1.VLDistributedSpec{
 			BackendType: vmv1alpha1.VLDistributedBackendTypeVLSingle,

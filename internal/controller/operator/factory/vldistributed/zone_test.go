@@ -207,6 +207,7 @@ func TestGetZones(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "dist",
 				Namespace: "ns",
+				UID:       "dist-uid",
 			},
 			Spec: vmv1alpha1.VLDistributedSpec{
 				BackendType: vmv1alpha1.VLDistributedBackendTypeVLSingle,
@@ -226,6 +227,7 @@ func TestGetZones(t *testing.T) {
 					Name:              "dist-zone-a",
 					Namespace:         "ns",
 					CreationTimestamp: metav1.Now(),
+					OwnerReferences:   []metav1.OwnerReference{{UID: "dist-uid", Controller: ptr.To(true)}},
 				},
 				Spec: vmv1.VLAgentSpec{
 					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
@@ -238,6 +240,29 @@ func TestGetZones(t *testing.T) {
 				assert.Equal(t, "dist-zone-a", zs.vlagents[0].obj.Name)
 			}
 			assert.True(t, zs.hasChanges[0], "stale VLAgent cleanup must trigger an upgrade pass")
+		},
+	})
+
+	// Disabled zones must not delete VLAgents owned outside this distribution.
+	f(opts{
+		cr: &vmv1alpha1.VLDistributed{
+			ObjectMeta: metav1.ObjectMeta{Name: "dist", Namespace: "ns", UID: "dist-uid"},
+			Spec: vmv1alpha1.VLDistributedSpec{
+				BackendType: vmv1alpha1.VLDistributedBackendTypeVLSingle,
+				Zones: []vmv1alpha1.VLDistributedZone{{
+					Name: "zone-a",
+					VLAgent: vmv1alpha1.VLDistributedZoneAgent{Spec: vmv1alpha1.VLDistributedZoneAgentSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+					}},
+				}},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&vmv1.VLAgent{ObjectMeta: metav1.ObjectMeta{Name: "dist-zone-a", Namespace: "ns"}},
+		},
+		validate: func(cr *vmv1alpha1.VLDistributed, zs *zones) {
+			assert.Nil(t, zs.vlagents[0].obj)
+			assert.False(t, zs.vlagents[0].disabled)
 		},
 	})
 }

@@ -50,7 +50,7 @@ var (
 		// renovate: datasource=github-releases depName=VictoriaMetrics/VictoriaTraces
 		"VM_TRACES_VERSION": "v0.12.1",
 		// renovate: datasource=github-releases depName=VictoriaMetrics/operator
-		"VM_OPERATOR_VERSION": getVersion("v0.75.1"),
+		"VM_OPERATOR_VERSION": getVersion("v0.75.2"),
 		// renovate: datasource=github-releases depName=prometheus/alertmanager
 		"VM_ALERTMANAGER_VERSION": "v0.34.1",
 	}

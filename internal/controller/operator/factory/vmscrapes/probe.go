@@ -183,19 +183,20 @@ func generateProbeConfig(
 		}
 	}
 
-	if scrapeClass != nil {
-		for _, r := range scrapeClass.RelabelConfigs {
-			relabelings = append(relabelings, generateRelabelConfig(r))
-		}
-	}
-	relabelings = append(relabelings, targetRelabelings...)
-
+	// set job before the scrape class and target relabelings
 	if spec.JobName != "" {
 		relabelings = append(relabelings, yaml.MapSlice{
 			{Key: "target_label", Value: "job"},
 			{Key: "replacement", Value: spec.JobName},
 		})
 	}
+
+	if scrapeClass != nil {
+		for _, r := range scrapeClass.RelabelConfigs {
+			relabelings = append(relabelings, generateRelabelConfig(r))
+		}
+	}
+	relabelings = append(relabelings, targetRelabelings...)
 
 	// Relabelings for prober.
 	relabelings = append(relabelings, []yaml.MapSlice{

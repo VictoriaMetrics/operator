@@ -862,4 +862,196 @@ metric_relabel_configs:
 `,
 		classRelabelMarker: "regex: .+;(?:;|[^;]+;[^;]+)\n",
 	})
+
+	// default scrapeClass applies to probe without scrapeClassName
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{Name: "default-vmagent", Namespace: "default"},
+			Spec: vmv1beta1.VMAgentSpec{
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					ScrapeClasses: []vmv1beta1.ScrapeClass{
+						{
+							Name:    "default-class",
+							Default: ptr.To(true),
+							EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+								RelabelConfigs: []*vmv1beta1.RelabelConfig{{SourceLabels: []string{"namespace"}, Regex: vmv1beta1.StringOrArray{"kube-system"}, Action: "drop"}},
+							},
+						},
+					},
+				},
+			},
+		},
+		sc: &vmv1beta1.VMProbe{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "monitor", Name: "probe-ingress"},
+			Spec: vmv1beta1.VMProbeSpec{
+				VMProberSpec: vmv1beta1.VMProberSpec{URL: "blackbox:9115"},
+				Targets: vmv1beta1.VMProbeTargets{
+					Ingress: &vmv1beta1.VMProbeTargetKubernetes{},
+				},
+			},
+		},
+		want: `job_name: probe/monitor/probe-ingress
+honor_labels: false
+metrics_path: /probe
+kubernetes_sd_configs:
+- role: ingress
+  namespaces:
+    names:
+    - monitor
+relabel_configs:
+- source_labels:
+  - __address__
+  separator: ;
+  regex: (.*)
+  target_label: __tmp_ingress_address
+  replacement: $1
+  action: replace
+- source_labels:
+  - __meta_kubernetes_ingress_scheme
+  - __address__
+  - __meta_kubernetes_ingress_path
+  separator: ;
+  regex: (.+);(.+);(.+)
+  target_label: __param_target
+  replacement: ${1}://${2}${3}
+  action: replace
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_ingress_name
+  target_label: ingress
+- source_labels:
+  - namespace
+  regex: kube-system
+  action: drop
+- source_labels:
+  - __param_target
+  target_label: instance
+- target_label: __address__
+  replacement: blackbox:9115
+`,
+	})
+
+	// mixed discovery without scrapeClass: target relabelings follow the relabelings generated for all targets
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{Name: "default-vmagent", Namespace: "default"},
+		},
+		sc: &vmv1beta1.VMProbe{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "monitor", Name: "probe-mixed"},
+			Spec: vmv1beta1.VMProbeSpec{
+				VMProberSpec: vmv1beta1.VMProberSpec{URL: "blackbox:9115"},
+				Targets: vmv1beta1.VMProbeTargets{
+					Static: &vmv1beta1.VMProbeTargetStatic{
+						Targets:        []string{"host-1"},
+						RelabelConfigs: []*vmv1beta1.RelabelConfig{{TargetLabel: "namespace", Replacement: ptr.To("static")}},
+					},
+					Ingress: &vmv1beta1.VMProbeTargetKubernetes{},
+				},
+			},
+		},
+		want: `job_name: probe/monitor/probe-mixed
+honor_labels: false
+metrics_path: /probe
+static_configs:
+- targets:
+  - host-1
+kubernetes_sd_configs:
+- role: ingress
+  namespaces:
+    names:
+    - monitor
+relabel_configs:
+- source_labels:
+  - __address__
+  target_label: __param_target
+- source_labels:
+  - __address__
+  separator: ;
+  regex: (.*)
+  target_label: __tmp_ingress_address
+  replacement: $1
+  action: replace
+- source_labels:
+  - __meta_kubernetes_ingress_scheme
+  - __address__
+  - __meta_kubernetes_ingress_path
+  separator: ;
+  regex: (.+);(.+);(.+)
+  target_label: __param_target
+  replacement: ${1}://${2}${3}
+  action: replace
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_ingress_name
+  target_label: ingress
+- target_label: namespace
+  replacement: static
+- source_labels:
+  - __param_target
+  target_label: instance
+- target_label: __address__
+  replacement: blackbox:9115
+`,
+	})
+
+	// jobName is set before scrapeClass and target relabelings
+	f(opts{
+		cr: &vmv1beta1.VMAgent{
+			ObjectMeta: metav1.ObjectMeta{Name: "default-vmagent", Namespace: "default"},
+			Spec: vmv1beta1.VMAgentSpec{
+				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
+					ScrapeClasses: []vmv1beta1.ScrapeClass{
+						{
+							Name: "probe-class",
+							EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+								RelabelConfigs: []*vmv1beta1.RelabelConfig{{SourceLabels: []string{"job"}, Regex: vmv1beta1.StringOrArray{"blackbox"}, Action: "keep"}},
+							},
+						},
+					},
+				},
+			},
+		},
+		sc: &vmv1beta1.VMProbe{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "job-probe"},
+			Spec: vmv1beta1.VMProbeSpec{
+				JobName:         "blackbox",
+				ScrapeClassName: ptr.To("probe-class"),
+				VMProberSpec:    vmv1beta1.VMProberSpec{URL: "blackbox:9115"},
+				Targets: vmv1beta1.VMProbeTargets{
+					Static: &vmv1beta1.VMProbeTargetStatic{
+						Targets:        []string{"host-1"},
+						RelabelConfigs: []*vmv1beta1.RelabelConfig{{TargetLabel: "job", Replacement: ptr.To("user")}},
+					},
+				},
+			},
+		},
+		want: `job_name: probe/default/job-probe
+honor_labels: false
+metrics_path: /probe
+static_configs:
+- targets:
+  - host-1
+relabel_configs:
+- source_labels:
+  - __address__
+  target_label: __param_target
+- target_label: job
+  replacement: blackbox
+- source_labels:
+  - job
+  regex: blackbox
+  action: keep
+- target_label: job
+  replacement: user
+- source_labels:
+  - __param_target
+  target_label: instance
+- target_label: __address__
+  replacement: blackbox:9115
+`,
+	})
 }

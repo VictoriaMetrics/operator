@@ -258,6 +258,36 @@ func TestValidateVLDistributed(t *testing.T) {
 	})
 }
 
+func TestValidateVLDistributedSharedAgentDisabled(t *testing.T) {
+	for _, disabledFirst := range []bool{false, true} {
+		t.Run(map[bool]string{false: "enabled-first", true: "disabled-first"}[disabledFirst], func(t *testing.T) {
+			zones := []VLDistributedZone{
+				{
+					Name:      "zone-a",
+					VLCluster: VLDistributedZoneCluster{Spec: vmv1.VLClusterSpec{VLInsert: &vmv1.VLInsert{}, VLSelect: &vmv1.VLSelect{}}},
+					VLAgent:   VLDistributedZoneAgent{Name: "shared"},
+				},
+				{
+					Name:      "zone-b",
+					VLCluster: VLDistributedZoneCluster{Spec: vmv1.VLClusterSpec{VLInsert: &vmv1.VLInsert{}, VLSelect: &vmv1.VLSelect{}}},
+					VLAgent: VLDistributedZoneAgent{Name: "shared", Spec: VLDistributedZoneAgentSpec{
+						CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+					}},
+				},
+			}
+			if disabledFirst {
+				zones[0], zones[1] = zones[1], zones[0]
+			}
+
+			cr := VLDistributed{Spec: VLDistributedSpec{Zones: zones}}
+			err := cr.Validate()
+			if assert.Error(t, err) {
+				assert.Contains(t, err.Error(), "vlagent.name=shared is already added in a different zone")
+			}
+		})
+	}
+}
+
 // TestVLAgentEnabled covers the zone/common replicaCount=0 precedence resolution.
 func TestVLAgentEnabled(t *testing.T) {
 	cr := &VLDistributed{

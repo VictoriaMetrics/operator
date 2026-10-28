@@ -245,6 +245,7 @@ func TestGetZones(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "dist",
 				Namespace: "ns",
+				UID:       "dist-uid",
 			},
 			Spec: vmv1alpha1.VMDistributedSpec{
 				BackendType: vmv1alpha1.VMDistributedBackendTypeVMSingle,
@@ -264,6 +265,7 @@ func TestGetZones(t *testing.T) {
 					Name:              "dist-zone-a",
 					Namespace:         "ns",
 					CreationTimestamp: metav1.Now(),
+					OwnerReferences:   []metav1.OwnerReference{{UID: "dist-uid", Controller: ptr.To(true)}},
 				},
 				Spec: vmv1beta1.VMAgentSpec{
 					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
@@ -322,6 +324,53 @@ func TestGetZones_PreservesExistingShardCount(t *testing.T) {
 
 	assert.False(t, zs2.hasChanges[0], "defaulted shardCount must not be reported as a spec change")
 	assert.Equal(t, ptr.To[int32](1), zs2.vmagents[0].obj.Spec.ShardCount, "existing shardCount must be preserved, not reset to nil")
+}
+
+func TestGetZonesDisabledVMAgentOwnership(t *testing.T) {
+	cr := &vmv1alpha1.VMDistributed{
+		TypeMeta:   metav1.TypeMeta{APIVersion: vmv1alpha1.SchemeGroupVersion.String(), Kind: "VMDistributed"},
+		ObjectMeta: metav1.ObjectMeta{Name: "dist", Namespace: "ns", UID: "dist-uid"},
+		Spec: vmv1alpha1.VMDistributedSpec{
+			BackendType: vmv1alpha1.VMDistributedBackendTypeVMSingle,
+			Zones: []vmv1alpha1.VMDistributedZone{{
+				Name: "zone-a",
+				VMAgent: vmv1alpha1.VMDistributedZoneAgent{Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+				}},
+			}},
+		},
+	}
+
+	for _, tc := range []struct {
+		name  string
+		owner metav1.OwnerReference
+		owned bool
+	}{
+		{name: "unowned"},
+		{name: "other owner", owner: metav1.OwnerReference{UID: "other-uid"}},
+		{name: "owned", owner: cr.AsOwner(), owned: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			agent := &vmv1beta1.VMAgent{ObjectMeta: metav1.ObjectMeta{
+				Name: "dist-zone-a", Namespace: "ns",
+			}}
+			if tc.owner.UID != "" {
+				agent.OwnerReferences = []metav1.OwnerReference{tc.owner}
+			}
+			rclient := k8stools.GetTestClientWithObjects([]runtime.Object{agent})
+
+			zs, err := getZones(context.Background(), rclient, cr)
+			if assert.NoError(t, err) {
+				if tc.owned {
+					assert.True(t, zs.vmagents[0].delete)
+					assert.True(t, zs.hasChanges[0])
+				} else {
+					assert.Nil(t, zs.vmagents[0].obj)
+					assert.False(t, zs.vmagents[0].delete)
+				}
+			}
+		})
+	}
 }
 
 func TestWaitForEmptyPQ(t *testing.T) {

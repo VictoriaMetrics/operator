@@ -536,14 +536,12 @@ func (cr *VLDistributed) Validate() error {
 				return fmt.Errorf("either zoneCommon.vlcluster.spec.vlselect or spec.zones[%d].vlcluster.spec.vlselect is required", i)
 			}
 		}
-		if zone.VLAgentEnabled(cr) {
-			agentName := zone.VLAgentName(cr)
-			if len(agentName) > 0 {
-				if agents.Has(agentName) {
-					return fmt.Errorf("spec.zones[%d].vlagent.name=%s is already added in a different zone", i, agentName)
-				}
-				agents.Insert(agentName)
+		agentName := zone.VLAgentName(cr)
+		if len(agentName) > 0 {
+			if agents.Has(agentName) {
+				return fmt.Errorf("spec.zones[%d].vlagent.name=%s is already added in a different zone", i, agentName)
 			}
+			agents.Insert(agentName)
 		}
 	}
 	return nil

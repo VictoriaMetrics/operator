@@ -329,7 +329,7 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	}
 
 	if needsLBUpdate {
-		if backend.prevAccepts && !agentDisabled {
+		if backend.prevAccepts {
 			// wait for empty persistent queue before excluding from LB
 			zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
 			if ctx.Err() != nil {
@@ -380,7 +380,7 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 		}
 	}
 
-	if newAcceptsWrites && !agentDisabled {
+	if newAcceptsWrites {
 		// wait for empty persistent queue before restoring in LB
 		zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
 		if ctx.Err() != nil {
@@ -416,7 +416,7 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 	backendURL := zs.backends[clusterIdx].obj.GetRemoteWriteURL()
 
 	backendName := zs.backends[clusterIdx].obj.GetName()
-	nsnCluster := types.NamespacedName{Name: backendName, Namespace: zs.vmagents[clusterIdx].obj.Namespace}
+	nsnCluster := types.NamespacedName{Name: backendName, Namespace: zs.backends[clusterIdx].obj.GetNamespace()}
 	logger.WithContext(ctx).Info("ensuring persistent queues are drained", "name", nsnCluster.String())
 
 	pollMetrics := func(pctx context.Context, nsn types.NamespacedName, addr string) error {

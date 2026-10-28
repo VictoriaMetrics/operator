@@ -16,6 +16,8 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.155.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.155.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.12.1](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.12.1).
 
+* FEATURE: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): add `spec.reader.class` to support the VictoriaLogs reader with `vlogs`, the default is `vm`. The `VMAnomaly` CRD must be updated to use this field. See [these docs](https://docs.victoriametrics.com/operator/resources/vmanomaly/#using-with-victorialogs) and [#2681](https://github.com/VictoriaMetrics/operator/pull/2681).
+
 * BUGFIX: [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/), [vlsingle](https://docs.victoriametrics.com/operator/resources/vlsingle/), [vtsingle](https://docs.victoriametrics.com/operator/resources/vtsingle/), [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/), [vlcluster](https://docs.victoriametrics.com/operator/resources/vlcluster/), [vtcluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): apply a user-defined `livenessProbe` to `VMSingle`, `VLSingle`, `VTSingle`, the storage components of `VMCluster`, `VLCluster` and `VTCluster`, and `requestsLoadBalancer`. Previously, it was silently dropped. This bug was introduced in [v0.69.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.69.0). See [#2679](https://github.com/VictoriaMetrics/operator/issues/2679).
 
 ## [v0.75.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.1)

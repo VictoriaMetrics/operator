@@ -39001,6 +39001,15 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                     type: object
+                  class:
+                    description: 'Class defines reader type: vm for VictoriaMetrics
+                      or vlogs for VictoriaLogs, defaults to vm'
+                    enum:
+                    - vm
+                    - reader.vm.VmReader
+                    - vlogs
+                    - reader.vlogs.VLogsReader
+                    type: string
                   dataRange:
                     description: Optional argumentallows defining valid data ranges
                       for input of all the queries in queries
@@ -39010,7 +39019,8 @@ spec:
                   datasourceURL:
                     description: |-
                       DatasourceURL address
-                      datasource must serve /api/v1/query and /api/v1/query_range APIs
+                      datasource must serve /api/v1/query and /api/v1/query_range APIs for the vm class
+                      or be a VictoriaLogs address for the vlogs class
                     type: string
                   extraFilters:
                     description: List of strings with series selector.

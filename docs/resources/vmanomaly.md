@@ -84,7 +84,7 @@ spec:
 
 ### Reader, Writer and Monitoring
 
-Anomaly Detection [models](https://docs.victoriametrics.com/anomaly-detection/components/models/), [schedulers](https://docs.victoriametrics.com/anomaly-detection/components/scheduler/), [settings](https://docs.victoriametrics.com/anomaly-detection/components/settings/), and `reader.queries` are defined in `spec.configRawYaml` or `spec.configSecret`. Reader connection settings and `reader.workers` are configured under `spec.reader`; writer and monitoring connection settings are configured under `spec.writer` and `spec.monitoring`.
+Anomaly Detection [models](https://docs.victoriametrics.com/anomaly-detection/components/models/), [schedulers](https://docs.victoriametrics.com/anomaly-detection/components/scheduler/), [settings](https://docs.victoriametrics.com/anomaly-detection/components/settings/), and `reader.queries` are defined in `spec.configRawYaml` or `spec.configSecret`. Reader connection settings, the reader type (`spec.reader.class`, `vm` by default or `vlogs` for [VictoriaLogs](#using-with-victorialogs)) and `reader.workers` are configured under `spec.reader`; writer and monitoring connection settings are configured under `spec.writer` and `spec.monitoring`.
 
 Starting with vmanomaly v1.30.2, stable KPI policies - `data_range`, `detection_direction`, `min_dev_from_expected`, and `min_rel_dev_from_expected` - should be configured on each `reader.queries.<alias>`. Model-level placement remains compatible but is deprecated. `settings.native_threads_per_worker` remains in the raw `settings` section because `VMAnomaly` does not expose typed service settings. A value of `0` selects the automatic limit for both `spec.reader.workers` and `settings.native_threads_per_worker`.
 
@@ -147,6 +147,7 @@ metadata:
   name: example
 spec:
   reader:
+    class: vm
     datasourceURL: http://localhost:8428
     samplingPeriod: 10s
     bearer:
@@ -301,6 +302,49 @@ spec:
 ```
 
 If both `configSecret` and `configRawYaml` are defined, only configuration from `configRawYaml` will be used. Values from `configSecret` will be ignored.
+
+### Using with VictoriaLogs
+
+By default, `VMAnomaly` reads from VictoriaMetrics (`spec.reader.class: vm`). To read from [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/) instead, set `spec.reader.class: vlogs` and point `spec.reader.datasourceURL` to VictoriaLogs. Queries in `reader.queries` must then be LogsQL queries with the [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe), which turns logs into the numeric series that models need. Results are still written to VictoriaMetrics via `spec.writer`. See the [VictoriaLogs reader](https://docs.victoriametrics.com/anomaly-detection/components/reader/#victorialogs-reader) docs for supported query options.
+
+> The operator does not check that queries match the reader class. A `VMAnomaly` with the `vm` class runs MetricsQL queries from selected `VMAnomalyConfig` objects against VictoriaMetrics, and a `vlogs` one runs LogsQL queries against VictoriaLogs, without any error from the operator. If both classes are used, select `VMAnomalyConfig` objects by distinct labels or namespaces for each class. Don't use `selectAllByDefault: true` with empty selectors, since it selects every `VMAnomalyConfig`.
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VMAnomaly
+metadata:
+  name: vmanomaly-vlogs
+spec:
+  license:
+    keyRef:
+      name: k8s-secret-that-contains-license
+      key: key-in-a-secret-that-contains-license
+  configSelector:
+    matchLabels:
+      reader: vlogs
+  reader:
+    class: vlogs
+    datasourceURL: http://vlsingle-example:9428
+    samplingPeriod: 1m
+  writer:
+    datasourceURL: http://vmsingle-example:8428
+  configRawYaml: |
+    reader:
+      queries:
+        logs_rate:
+          expr: '* | stats count() as logs'
+          step: '1m'
+    schedulers:
+      scheduler_periodic_1m:
+        class: "periodic"
+        infer_every: "1m"
+        fit_every: "2m"
+        fit_window: "3h"
+    models:
+      model_univariate_1:
+        class: 'zscore'
+        z_threshold: 2.5
+```
 
 ## High Availability and Sharding
 

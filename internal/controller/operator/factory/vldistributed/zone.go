@@ -42,8 +42,8 @@ type vlBackend struct {
 // obj is the leftover CR from before the zone's VLAgent was disabled), or do
 // nothing (obj is nil — disabled and no CR ever existed).
 type vlAgentRef struct {
-	obj      *vmv1.VLAgent
-	disabled bool
+	obj    *vmv1.VLAgent
+	delete bool
 }
 
 type zones struct {
@@ -151,7 +151,7 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VLDistr
 			var existing vmv1.VLAgent
 			if err := rclient.Get(ctx, nsn, &existing); err == nil {
 				if metav1.IsControlledBy(&existing, cr) {
-					zs.vlagents[i] = vlAgentRef{obj: &existing, disabled: true}
+					zs.vlagents[i] = vlAgentRef{obj: &existing, delete: true}
 					zs.hasChanges[i] = true
 				}
 			} else if !k8serrors.IsNotFound(err) {
@@ -308,7 +308,7 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	agentRef := zs.vlagents[i]
 	vlAgent := agentRef.obj
 	// zone's VLAgent is disabled: either nothing to reconcile, or a stale CR to delete
-	agentDisabled := agentRef.disabled || vlAgent == nil
+	agentDisabled := agentRef.delete || vlAgent == nil
 	backend := zs.backends[i]
 	item := fmt.Sprintf("%d/%d", i+1, len(cr.Spec.Zones))
 
@@ -359,7 +359,7 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 		if err := reconcile.VLAgent(ctx, rclient, vlAgent, nil, &owner); err != nil {
 			return fmt.Errorf("zone=%s: failed to reconcile VLAgent=%s: %w", item, nsnAgent.String(), err)
 		}
-	case agentRef.disabled:
+	case agentRef.delete:
 		// zone's VLAgent was disabled after being created; delete the leftover CR
 		// so replicaCount: 0 actually results in 0 agents.
 		nsnAgent := types.NamespacedName{Name: vlAgent.Name, Namespace: vlAgent.Namespace}
@@ -447,7 +447,7 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 	var wg sync.WaitGroup
 	for i := range zs.vlagents {
 		agentRef := zs.vlagents[i]
-		if agentRef.disabled || agentRef.obj == nil || agentRef.obj.CreationTimestamp.IsZero() {
+		if agentRef.delete || agentRef.obj == nil || agentRef.obj.CreationTimestamp.IsZero() {
 			continue
 		}
 		vlAgent := agentRef.obj

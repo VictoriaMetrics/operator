@@ -235,7 +235,7 @@ func TestGetZones(t *testing.T) {
 			},
 		},
 		validate: func(cr *vmv1alpha1.VLDistributed, zs *zones) {
-			assert.True(t, zs.vlagents[0].disabled, "leftover VLAgent CR must be marked for deletion")
+			assert.True(t, zs.vlagents[0].delete, "leftover VLAgent CR must be marked for deletion")
 			if assert.NotNil(t, zs.vlagents[0].obj, "leftover VLAgent CR must be picked up for cleanup") {
 				assert.Equal(t, "dist-zone-a", zs.vlagents[0].obj.Name)
 			}
@@ -262,7 +262,7 @@ func TestGetZones(t *testing.T) {
 		},
 		validate: func(cr *vmv1alpha1.VLDistributed, zs *zones) {
 			assert.Nil(t, zs.vlagents[0].obj)
-			assert.False(t, zs.vlagents[0].disabled)
+			assert.False(t, zs.vlagents[0].delete)
 		},
 	})
 }

@@ -2,6 +2,7 @@ package podutil
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,6 +10,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -41,7 +44,8 @@ func TestGetMetricsAddrs(t *testing.T) {
 				Namespace: "default",
 			},
 		}
-		addrs := GetMetricsAddrs(context.Background(), rclient, cr)
+		addrs, err := GetMetricsAddrs(context.Background(), rclient, cr)
+		assert.NoError(t, err)
 		assert.ElementsMatch(t, wantAddrs, addrs.UnsortedList())
 	}
 
@@ -82,6 +86,20 @@ func TestGetMetricsAddrs_IPv6(t *testing.T) {
 			Namespace: "default",
 		},
 	}
-	addrs := GetMetricsAddrs(context.Background(), rclient, cr)
+	addrs, err := GetMetricsAddrs(context.Background(), rclient, cr)
+	assert.NoError(t, err)
 	assert.ElementsMatch(t, []string{"http://[2001:db8::1]:8080/metrics"}, addrs.UnsortedList())
+}
+
+func TestGetMetricsAddrsListError(t *testing.T) {
+	wantErr := errors.New("endpoint discovery failed")
+	rclient := k8stools.GetTestClientWithObjectsAndInterceptors(nil, interceptor.Funcs{
+		List: func(context.Context, client.WithWatch, client.ObjectList, ...client.ListOption) error {
+			return wantErr
+		},
+	})
+
+	addrs, err := GetMetricsAddrs(context.Background(), rclient, &vmv1beta1.VMAgent{})
+	assert.ErrorIs(t, err, wantErr)
+	assert.Empty(t, addrs)
 }

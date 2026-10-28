@@ -10,14 +10,18 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	discoveryv1 "k8s.io/api/discovery/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -398,10 +402,101 @@ func TestUpgradeDisabledAgentWaitsForPQ(t *testing.T) {
 	}
 	rclient := k8stools.GetTestClientWithObjects([]runtime.Object{backend})
 
+	// Existing agent can have a persisted queue even with no running replicas.
 	err := zs.upgrade(context.Background(), rclient, cr, 0)
+	assert.ErrorContains(t, err, "queue for backend=target is drained")
+
+	// Test discovery error
+	unavailable := k8stools.GetTestClientWithObjectsAndInterceptors([]runtime.Object{backend}, interceptor.Funcs{
+		List: func(ctx context.Context, cl client.WithWatch, obj client.ObjectList, opts ...client.ListOption) error {
+			if _, ok := obj.(*discoveryv1.EndpointSliceList); ok {
+				return fmt.Errorf("discovery unavailable")
+			}
+			return cl.List(ctx, obj, opts...)
+		},
+	})
+	assert.Error(t, zs.upgrade(context.Background(), unavailable, cr, 0))
+
+	// A running replica without a metrics endpoint must not be treated as drained.
+	agent.Status.Replicas = 1
+	err = zs.upgrade(context.Background(), rclient, cr, 0)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "queue for backend=target is drained")
 	}
+
+	// An agent that never existed has no queue to drain.
+	zs.vmagents[1] = vmAgentRef{}
+	assert.NoError(t, zs.upgrade(context.Background(), rclient, cr, 0))
+	zs.vmagents[1] = vmAgentRef{obj: &vmv1beta1.VMAgent{ObjectMeta: metav1.ObjectMeta{Name: "new", Namespace: "default"}}}
+	assert.NoError(t, zs.upgrade(context.Background(), rclient, cr, 0))
+}
+
+func TestUpgradeDrainsDisabledAgent(t *testing.T) {
+	var pending atomic.Bool
+	pending.Store(true)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		value := 0
+		if pending.Load() {
+			value = 100
+		}
+		fmt.Fprintf(w, "%s{url=%q} %d\n", vmAgentQueueMetricName, "http://other-backend/write", value)
+	}))
+	defer ts.Close()
+	u, err := url.Parse(ts.URL)
+	assert.NoError(t, err)
+	host, portStr, err := net.SplitHostPort(u.Host)
+	assert.NoError(t, err)
+	port, err := strconv.Atoi(portStr)
+	assert.NoError(t, err)
+
+	backend := &vmv1beta1.VMSingle{
+		ObjectMeta: metav1.ObjectMeta{Name: "target", Namespace: "default", CreationTimestamp: metav1.Now()},
+		Status: vmv1beta1.VMSingleStatus{
+			StatusMetadata: vmv1beta1.StatusMetadata{UpdateStatus: vmv1beta1.UpdateStatusOperational},
+		},
+	}
+	agent := &vmv1beta1.VMAgent{ObjectMeta: metav1.ObjectMeta{
+		Name: "source", Namespace: "default", CreationTimestamp: metav1.Now(),
+	}}
+	endpoints := &discoveryv1.EndpointSlice{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "source-endpoints", Namespace: "default",
+			Labels: map[string]string{discoveryv1.LabelServiceName: agent.PrefixedName()},
+		},
+		Endpoints: []discoveryv1.Endpoint{{
+			Addresses: []string{host}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)},
+		}},
+		Ports: []discoveryv1.EndpointPort{{Name: ptr.To("http"), Port: ptr.To(int32(port))}},
+	}
+	rclient := k8stools.GetTestClientWithObjects([]runtime.Object{backend, agent, endpoints})
+	zs := &zones{
+		httpClient:   &http.Client{Timeout: httpTimeout},
+		vmagents:     []vmAgentRef{{obj: agent, delete: true}},
+		backends:     []vmBackend{{obj: backend}},
+		hasChanges:   []bool{true},
+		trafficModes: []vmv1alpha1.VMDistributedTrafficMode{vmv1alpha1.VMDistributedTrafficModeMaintenance},
+	}
+	cr := &vmv1alpha1.VMDistributed{Spec: vmv1alpha1.VMDistributedSpec{
+		ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{ReadyTimeout: &metav1.Duration{Duration: 200 * time.Millisecond}},
+		VMAuth:     vmv1alpha1.VMDistributedAuth{Enabled: ptr.To(false)},
+		Zones:      []vmv1alpha1.VMDistributedZone{{Name: "target"}},
+	}}
+
+	err = zs.upgrade(context.Background(), rclient, cr, 0)
+	assert.ErrorContains(t, err, "queue")
+	assert.NoError(t, rclient.Get(context.Background(), client.ObjectKeyFromObject(agent), &vmv1beta1.VMAgent{}))
+
+	pending.Store(false)
+	assert.NoError(t, zs.upgrade(context.Background(), rclient, cr, 0))
+	assert.True(t, k8serrors.IsNotFound(rclient.Get(context.Background(), client.ObjectKeyFromObject(agent), &vmv1beta1.VMAgent{})))
+
+	// An agent already scaled to zero has no running queue to poll.
+	agent.Spec.ReplicaCount = ptr.To(int32(0))
+	agent.ResourceVersion = ""
+	assert.NoError(t, rclient.Create(context.Background(), agent))
+	pending.Store(true)
+	assert.NoError(t, zs.upgrade(context.Background(), rclient, cr, 0))
+	assert.True(t, k8serrors.IsNotFound(rclient.Get(context.Background(), client.ObjectKeyFromObject(agent), &vmv1beta1.VMAgent{})))
 }
 
 func TestWaitForEmptyPQ(t *testing.T) {
@@ -488,8 +583,7 @@ func TestWaitForEmptyPQ(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), o.timeout)
 		defer cancel()
 
-		zs.waitForEmptyPQ(ctx, rclient, 1*time.Second, 0)
-		err = ctx.Err()
+		err = zs.waitForEmptyPQ(ctx, rclient, 1*time.Second, 0)
 		if len(o.errMsg) > 0 {
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), o.errMsg)

@@ -331,9 +331,8 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	if needsLBUpdate {
 		if backend.prevAccepts {
 			// wait for empty persistent queue before excluding from LB
-			zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
-			if ctx.Err() != nil {
-				return fmt.Errorf("zone=%s: failed to wait till backend=%s queue is empty", item, backend.obj.GetName())
+			if err := zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i); err != nil {
+				return fmt.Errorf("zone=%s: failed to wait till backend=%s queue is empty: %w", item, backend.obj.GetName(), err)
 			}
 		}
 
@@ -371,9 +370,13 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 			return fmt.Errorf("zone=%s: failed to reconcile VMAgent=%s: %w", item, nsnAgent.String(), err)
 		}
 	case agentRef.delete:
-		// zone's VMAgent was disabled after being created; delete the leftover CR
-		// so replicaCount: 0 actually results in 0 agents.
 		nsnAgent := types.NamespacedName{Name: vmAgent.Name, Namespace: vmAgent.Namespace}
+		// Drain every remote-write queue before deleting a running VMAgent.
+		if ptr.Deref(vmAgent.Spec.ReplicaCount, 1) > 0 {
+			if err := zs.waitForAgentPQ(ctx, rclient, defaultMetricsCheckInterval, vmAgent); err != nil {
+				return fmt.Errorf("zone=%s: failed to drain VMAgent=%s queues: %w", item, nsnAgent.String(), err)
+			}
+		}
 		logger.WithContext(ctx).Info("deleting disabled VMAgent", "item", item, "name", nsnAgent)
 		if err := rclient.Delete(ctx, vmAgent); err != nil && !k8serrors.IsNotFound(err) {
 			return fmt.Errorf("zone=%s: failed to delete disabled VMAgent=%s: %w", item, nsnAgent.String(), err)
@@ -382,9 +385,8 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 
 	if newAcceptsWrites {
 		// wait for empty persistent queue before restoring in LB
-		zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
-		if ctx.Err() != nil {
-			return fmt.Errorf("zone=%s: failed to wait till VMAgent queue for backend=%s is drained", item, backend.obj.GetName())
+		if err := zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i); err != nil {
+			return fmt.Errorf("zone=%s: failed to wait till VMAgent queue for backend=%s is drained: %w", item, backend.obj.GetName(), err)
 		}
 	}
 
@@ -412,13 +414,23 @@ var vmAgentQueueMetricQueries = []podutil.MetricQuery{
 	{Name: vmAgentQueueMetricName, Dimension: "url"},
 }
 
-func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, interval time.Duration, clusterIdx int) {
+func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, interval time.Duration, clusterIdx int) error {
 	backendURL := zs.backends[clusterIdx].obj.GetRemoteWriteURL()
+	agents := make([]*vmv1beta1.VMAgent, 0, len(zs.vmagents))
+	for _, ref := range zs.vmagents {
+		if !ref.delete && ref.obj != nil && !ref.obj.CreationTimestamp.IsZero() {
+			agents = append(agents, ref.obj)
+		}
+	}
+	return zs.waitForPQ(ctx, rclient, interval, &backendURL, agents)
+}
 
-	backendName := zs.backends[clusterIdx].obj.GetName()
-	nsnCluster := types.NamespacedName{Name: backendName, Namespace: zs.backends[clusterIdx].obj.GetNamespace()}
-	logger.WithContext(ctx).Info("ensuring persistent queues are drained", "name", nsnCluster.String())
+func (zs *zones) waitForAgentPQ(ctx context.Context, rclient client.Client, interval time.Duration, agent *vmv1beta1.VMAgent) error {
+	return zs.waitForPQ(ctx, rclient, interval, nil, []*vmv1beta1.VMAgent{agent})
+}
 
+// A nil backendURL checks every remote-write destination.
+func (zs *zones) waitForPQ(ctx context.Context, rclient client.Client, interval time.Duration, backendURL *string, agents []*vmv1beta1.VMAgent) error {
 	pollMetrics := func(pctx context.Context, nsn types.NamespacedName, addr string) error {
 		return wait.PollUntilContextCancel(pctx, interval, true, func(ctx context.Context) (done bool, err error) {
 			// Query each discovered ip. If any returns non-zero metric, continue polling.
@@ -429,7 +441,7 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 				return false, nil
 			}
 			for u, v := range metrics[vmAgentQueueMetricName] {
-				if u != backendURL {
+				if backendURL != nil && u != *backendURL {
 					continue
 				}
 				if v > 0 {
@@ -443,12 +455,7 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 	}
 
 	var wg sync.WaitGroup
-	for i := range zs.vmagents {
-		agentRef := zs.vmagents[i]
-		if agentRef.delete || agentRef.obj == nil || agentRef.obj.CreationTimestamp.IsZero() {
-			continue
-		}
-		vmAgent := agentRef.obj
+	for _, vmAgent := range agents {
 		nsn := types.NamespacedName{
 			Name:      vmAgent.Name,
 			Namespace: vmAgent.Namespace,
@@ -456,7 +463,11 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 		m := podutil.NewManager(ctx)
 		wg.Go(func() {
 			wait.UntilWithContext(m.Ctx(), func(ctx context.Context) {
-				addrs := podutil.GetMetricsAddrs(ctx, rclient, vmAgent)
+				addrs, err := podutil.GetMetricsAddrs(ctx, rclient, vmAgent)
+				if err != nil {
+					logger.WithContext(ctx).Error(err, "failed to discover VMAgent metrics endpoints", "name", nsn.String())
+					return
+				}
 				for addr := range addrs {
 					if m.Has(addr) {
 						continue
@@ -481,7 +492,9 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 	}
 	wg.Wait()
 
-	if ctx.Err() == nil {
-		logger.WithContext(ctx).Info("all persistent queues were drained", "name", nsnCluster.String())
+	if err := ctx.Err(); err != nil {
+		return err
 	}
+	logger.WithContext(ctx).Info("all persistent queues were drained")
+	return nil
 }

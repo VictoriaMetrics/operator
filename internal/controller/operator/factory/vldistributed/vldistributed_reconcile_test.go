@@ -519,11 +519,33 @@ func Test_CreateOrUpdate_DeletesDisabledVLAgent(t *testing.T) {
 	var vlAgent vmv1.VLAgent
 	assert.NoError(t, fclient.Get(ctx, vlAgentName, &vlAgent), "VLAgent must be created")
 
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprintf(w, "%s{url=%q} 0\n", vlAgentQueueMetricName, "http://backend/write")
+	}))
+	defer ts.Close()
+	u, err := url.Parse(ts.URL)
+	assert.NoError(t, err)
+	host, portStr, err := net.SplitHostPort(u.Host)
+	assert.NoError(t, err)
+	port, err := strconv.Atoi(portStr)
+	assert.NoError(t, err)
+	endpoints := &discoveryv1.EndpointSlice{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "agent-endpoints", Namespace: cr.Namespace,
+			Labels: map[string]string{discoveryv1.LabelServiceName: vlAgent.PrefixedName()},
+		},
+		Endpoints: []discoveryv1.Endpoint{{
+			Addresses: []string{host}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)},
+		}},
+		Ports: []discoveryv1.EndpointPort{{Name: ptr.To("http"), Port: ptr.To(int32(port))}},
+	}
+	assert.NoError(t, fclient.Create(ctx, endpoints))
+
 	// disable the zone's VLAgent
 	cr.Spec.Zones[0].VLAgent.Spec.ReplicaCount = ptr.To(int32(0))
 	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
 
-	err := fclient.Get(ctx, vlAgentName, &vlAgent)
+	err = fclient.Get(ctx, vlAgentName, &vlAgent)
 	assert.Error(t, err)
 	assert.True(t, k8serrors.IsNotFound(err), "disabled VLAgent must be deleted, not left running")
 }

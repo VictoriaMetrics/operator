@@ -267,6 +267,35 @@ func TestGetZones(t *testing.T) {
 	})
 }
 
+func TestUpgradeDisabledAgentWaitsForPQ(t *testing.T) {
+	backend := &vmv1.VLSingle{ObjectMeta: metav1.ObjectMeta{
+		Name: "target", Namespace: "default", CreationTimestamp: metav1.Now(),
+	}}
+	agent := &vmv1.VLAgent{ObjectMeta: metav1.ObjectMeta{
+		Name: "source", Namespace: "default", CreationTimestamp: metav1.Now(),
+	}}
+	zs := &zones{
+		httpClient:   &http.Client{Timeout: httpTimeout},
+		vlagents:     []vlAgentRef{{}, {obj: agent}},
+		backends:     []vlBackend{{obj: backend}, {obj: &vmv1.VLSingle{ObjectMeta: metav1.ObjectMeta{Name: "other", Namespace: "default"}}}},
+		hasChanges:   []bool{false, false},
+		trafficModes: []vmv1alpha1.VLDistributedTrafficMode{"", ""},
+	}
+	cr := &vmv1alpha1.VLDistributed{
+		Spec: vmv1alpha1.VLDistributedSpec{
+			ZoneCommon: vmv1alpha1.VLDistributedZoneCommon{ReadyTimeout: &metav1.Duration{Duration: 200 * time.Millisecond}},
+			VMAuth:     vmv1alpha1.VLDistributedAuth{Enabled: ptr.To(false)},
+			Zones:      []vmv1alpha1.VLDistributedZone{{Name: "target"}, {Name: "other"}},
+		},
+	}
+	rclient := k8stools.GetTestClientWithObjects([]runtime.Object{backend})
+
+	err := zs.upgrade(context.Background(), rclient, cr, 0)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "queue for backend=target is drained")
+	}
+}
+
 func TestWaitForEmptyPQ(t *testing.T) {
 	type opts struct {
 		handler  http.HandlerFunc

@@ -201,7 +201,7 @@ func TestValidateVMDistributed(t *testing.T) {
 		isErr: true,
 	})
 
-	// duplicated agent names are ignored when VMAgent is disabled for both zones
+	// duplicated agent names are rejected even when VMAgent is disabled for both zones
 	f(opts{
 		cr: VMDistributed{
 			ObjectMeta: metav1.ObjectMeta{
@@ -227,7 +227,8 @@ func TestValidateVMDistributed(t *testing.T) {
 				},
 			},
 		},
-		isErr: false,
+		isErr:  true,
+		errMsg: "vmagent.name=shared-agent is already added in a different zone",
 	})
 
 	// duplicated agent names still error when VMAgent is enabled

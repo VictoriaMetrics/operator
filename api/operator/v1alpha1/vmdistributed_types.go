@@ -572,19 +572,17 @@ func (cr *VMDistributed) Validate() error {
 				return fmt.Errorf("either zoneCommon.vmcluster.spec.vmselect or spec.zones[%d].vmcluster.spec.vmselect is required", i)
 			}
 		}
-		if zone.VMAgentEnabled(cr) {
-			agentName := zone.VMAgentName(cr)
-			if len(agentName) > 0 {
-				if agents.Has(agentName) {
-					return fmt.Errorf("spec.zones[%d].vmagent.name=%s is already added in a different zone", i, agentName)
-				}
-				agents.Insert(agentName)
+		agentName := zone.VMAgentName(cr)
+		if len(agentName) > 0 {
+			if agents.Has(agentName) {
+				return fmt.Errorf("spec.zones[%d].vmagent.name=%s is already added in a different zone", i, agentName)
 			}
-			if zone.VMAgent.Spec.StatefulMode {
-				if zone.VMAgent.Spec.StatefulRollingUpdateStrategyBehavior != nil {
-					if err := zone.VMAgent.Spec.StatefulRollingUpdateStrategyBehavior.Validate(); err != nil {
-						return fmt.Errorf("spec.zones[%d].vmagent.spec.statefulRollingUpdateStrategyBehavior: %w", i, err)
-					}
+			agents.Insert(agentName)
+		}
+		if zone.VMAgent.Spec.StatefulMode {
+			if zone.VMAgent.Spec.StatefulRollingUpdateStrategyBehavior != nil {
+				if err := zone.VMAgent.Spec.StatefulRollingUpdateStrategyBehavior.Validate(); err != nil {
+					return fmt.Errorf("spec.zones[%d].vmagent.spec.statefulRollingUpdateStrategyBehavior: %w", i, err)
 				}
 			}
 		}

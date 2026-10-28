@@ -25,7 +25,7 @@ func vlAgentWriteTargetRef(vlAgents []vlAgentRef, owner *metav1.OwnerReference, 
 	// keep positional alignment with zone indices; disabled/deleted zones keep a nil entry, skipped by podutil.
 	objects := make([]metav1.Object, len(vlAgents))
 	for i := range vlAgents {
-		if !vlAgents[i].disabled && vlAgents[i].obj != nil {
+		if !vlAgents[i].delete && vlAgents[i].obj != nil {
 			objects[i] = vlAgents[i].obj
 		}
 	}

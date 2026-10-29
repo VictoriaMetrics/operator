@@ -394,7 +394,7 @@ func TestUpgradeDrainsDisabledAgent(t *testing.T) {
 	endpoints.Endpoints[0].Conditions.Ready = ptr.To(true)
 	assert.NoError(t, rclient.Update(context.Background(), endpoints))
 	err = zs.upgrade(context.Background(), rclient, cr, 0)
-	assert.ErrorContains(t, err, "queue")
+	assert.ErrorContains(t, err, "failed to drain VLAgent=default/source queues")
 	assert.NoError(t, rclient.Get(context.Background(), client.ObjectKeyFromObject(agent), &vmv1.VLAgent{}))
 
 	pending.Store(false)

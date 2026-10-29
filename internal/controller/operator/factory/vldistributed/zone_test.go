@@ -324,12 +324,21 @@ func TestUpgradeDisabledAgentWaitsForPQ(t *testing.T) {
 func TestWaitForAgentPQNoEndpoints(t *testing.T) {
 	agent := &vmv1.VLAgent{ObjectMeta: metav1.ObjectMeta{Name: "source", Namespace: "default"}}
 	zs := &zones{httpClient: &http.Client{Timeout: httpTimeout}}
-	rclient := k8stools.GetTestClientWithObjects(nil)
+	var calls atomic.Int32
+	rclient := k8stools.GetTestClientWithObjectsAndInterceptors(nil, interceptor.Funcs{
+		List: func(ctx context.Context, cl client.WithWatch, obj client.ObjectList, opts ...client.ListOption) error {
+			if _, ok := obj.(*discoveryv1.EndpointSliceList); ok && calls.Add(1) == 1 {
+				return fmt.Errorf("temporary discovery failure")
+			}
+			return cl.List(ctx, obj, opts...)
+		},
+	})
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
 
 	err := zs.waitForAgentPQ(ctx, rclient, time.Millisecond, agent)
 	assert.ErrorContains(t, err, "no ready metrics endpoints")
+	assert.Greater(t, calls.Load(), int32(1))
 }
 
 func TestUpgradeDrainsDisabledAgent(t *testing.T) {

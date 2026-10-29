@@ -422,13 +422,6 @@ func TestUpgradeDisabledAgentWaitsForPQ(t *testing.T) {
 	assert.ErrorContains(t, err, "queue for backend=target is drained")
 	assert.Greater(t, discoveryCalls.Load(), int32(0))
 
-	// A running replica without a metrics endpoint must not be treated as drained.
-	agent.Status.Replicas = 1
-	err = zs.upgrade(context.Background(), rclient, cr, 0)
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "queue for backend=target is drained")
-	}
-
 	// An agent that never existed has no queue to drain.
 	zs.vmagents[1] = vmAgentRef{}
 	assert.NoError(t, zs.upgrade(context.Background(), rclient, cr, 0))

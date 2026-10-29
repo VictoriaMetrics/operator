@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr/funcr"
 	"github.com/stretchr/testify/assert"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -27,6 +28,7 @@ import (
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 func TestGetZones(t *testing.T) {
@@ -426,6 +428,25 @@ func TestUpgradeDrainsDisabledAgent(t *testing.T) {
 	pending.Store(true)
 	assert.NoError(t, zs.upgrade(context.Background(), rclient, cr, 0))
 	assert.True(t, k8serrors.IsNotFound(rclient.Get(context.Background(), client.ObjectKeyFromObject(agent), &vmv1.VLAgent{})))
+}
+
+func TestWaitForPQLogsTarget(t *testing.T) {
+	backend := &vmv1.VLCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "target", Namespace: "default"},
+		Spec:       vmv1.VLClusterSpec{VLInsert: &vmv1.VLInsert{}},
+	}
+	zs := &zones{backends: []vlBackend{{obj: backend}}}
+	var lines []string
+	ctx := logger.AddToContext(context.Background(), funcr.New(func(prefix, args string) {
+		lines = append(lines, prefix+args)
+	}, funcr.Options{}))
+
+	assert.NoError(t, zs.waitForEmptyPQ(ctx, k8stools.GetTestClientWithObjects(nil), time.Millisecond, 0))
+	if assert.Len(t, lines, 2) {
+		for _, line := range lines {
+			assert.Contains(t, line, backend.GetRemoteWriteURL())
+		}
+	}
 }
 
 func TestWaitForEmptyPQ(t *testing.T) {

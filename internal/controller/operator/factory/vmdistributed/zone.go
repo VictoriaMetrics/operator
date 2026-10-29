@@ -446,6 +446,15 @@ func (zs *zones) waitForAgentPQ(ctx context.Context, rclient client.Client, inte
 }
 
 func (zs *zones) waitForPQ(ctx context.Context, rclient client.Client, interval time.Duration, backendURL *string, agents []*vmv1beta1.VMAgent) error {
+	targetKey, target := "backendURL", ""
+	if backendURL != nil {
+		target = *backendURL
+	} else {
+		targetKey = "agent"
+		target = types.NamespacedName{Name: agents[0].Name, Namespace: agents[0].Namespace}.String()
+	}
+	logger.WithContext(ctx).Info("ensuring persistent queues are drained", targetKey, target)
+
 	pollMetrics := func(pctx context.Context, nsn types.NamespacedName, addr string) error {
 		return wait.PollUntilContextCancel(pctx, interval, true, func(ctx context.Context) (done bool, err error) {
 			// Query each discovered ip. If any returns non-zero metric, continue polling.
@@ -531,6 +540,6 @@ func (zs *zones) waitForPQ(ctx context.Context, rclient client.Client, interval 
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	logger.WithContext(ctx).Info("all persistent queues were drained")
+	logger.WithContext(ctx).Info("all persistent queues were drained", targetKey, target)
 	return nil
 }

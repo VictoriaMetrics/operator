@@ -327,6 +327,15 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	if !zs.hasChanges[i] {
 		needsLBUpdate = false
 	}
+	drainAgent := func() error {
+		if ptr.Deref(vmAgent.Spec.ReplicaCount, 1) == 0 {
+			return nil
+		}
+		if err := zs.waitForAgentPQ(ctx, rclient, defaultMetricsCheckInterval, vmAgent); err != nil {
+			return fmt.Errorf("zone=%s: failed to drain VMAgent=%s/%s queues: %w", item, vmAgent.Namespace, vmAgent.Name, err)
+		}
+		return nil
+	}
 
 	if needsLBUpdate {
 		if backend.prevAccepts {
@@ -339,6 +348,11 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 		// excluding zone from VMAuth LB
 		if err := zs.updateLB(ctx, rclient, cr, i); err != nil {
 			return fmt.Errorf("zone=%s: failed to update VMAuth LB with excluded backend=%s: %w", item, backend.obj.GetName(), err)
+		}
+	}
+	if agentRef.delete && backend.prevAccepts {
+		if err := drainAgent(); err != nil {
+			return err
 		}
 	}
 
@@ -371,10 +385,10 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 		}
 	case agentRef.delete:
 		nsnAgent := types.NamespacedName{Name: vmAgent.Name, Namespace: vmAgent.Namespace}
-		// Drain every remote-write queue before deleting a running VMAgent.
-		if ptr.Deref(vmAgent.Spec.ReplicaCount, 1) > 0 {
-			if err := zs.waitForAgentPQ(ctx, rclient, defaultMetricsCheckInterval, vmAgent); err != nil {
-				return fmt.Errorf("zone=%s: failed to drain VMAgent=%s queues: %w", item, nsnAgent.String(), err)
+		// A backend that was down must be reconciled before its agent can drain.
+		if !backend.prevAccepts {
+			if err := drainAgent(); err != nil {
+				return err
 			}
 		}
 		logger.WithContext(ctx).Info("deleting disabled VMAgent", "item", item, "name", nsnAgent)

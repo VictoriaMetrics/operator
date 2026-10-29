@@ -299,15 +299,20 @@ func TestUpgradeDisabledAgentWaitsForPQ(t *testing.T) {
 	assert.ErrorContains(t, err, "queue for backend=target is drained")
 
 	// Emulate discovery error
+	var discoveryCalls atomic.Int32
 	unavailable := k8stools.GetTestClientWithObjectsAndInterceptors([]runtime.Object{backend}, interceptor.Funcs{
 		List: func(ctx context.Context, cl client.WithWatch, obj client.ObjectList, opts ...client.ListOption) error {
 			if _, ok := obj.(*discoveryv1.EndpointSliceList); ok {
+				discoveryCalls.Add(1)
 				return fmt.Errorf("discovery unavailable")
 			}
 			return cl.List(ctx, obj, opts...)
 		},
 	})
-	assert.Error(t, zs.upgrade(context.Background(), unavailable, cr, 0))
+	err = zs.upgrade(context.Background(), unavailable, cr, 0)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.ErrorContains(t, err, "queue for backend=target is drained")
+	assert.Greater(t, discoveryCalls.Load(), int32(0))
 
 	// A running replica without a metrics endpoint must not be treated as drained.
 	agent.Status.Replicas = 1

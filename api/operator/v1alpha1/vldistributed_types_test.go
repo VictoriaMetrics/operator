@@ -310,9 +310,16 @@ func TestVLAgentEnabled(t *testing.T) {
 	}}}
 	assert.True(t, zone.VLAgentEnabled(cr))
 
+	// zone disable overrides an enabled common agent
+	cr.Spec.ZoneCommon.VLAgent.Spec.ReplicaCount = ptr.To(int32(1))
+	zone = &VLDistributedZone{Name: "zone-3", VLAgent: VLDistributedZoneAgent{Spec: VLDistributedZoneAgentSpec{
+		CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+	}}}
+	assert.False(t, zone.VLAgentEnabled(cr))
+
 	// default is enabled when neither zone nor common set it
 	cr.Spec.ZoneCommon.VLAgent.Spec.ReplicaCount = nil
-	zone = &VLDistributedZone{Name: "zone-3"}
+	zone = &VLDistributedZone{Name: "zone-4"}
 	assert.True(t, zone.VLAgentEnabled(cr))
 }
 

@@ -426,6 +426,13 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 }
 
 func (zs *zones) waitForAgentPQ(ctx context.Context, rclient client.Client, interval time.Duration, agent *vmv1beta1.VMAgent) error {
+	addrs, err := podutil.GetMetricsAddrs(ctx, rclient, agent)
+	if err != nil {
+		return err
+	}
+	if len(addrs) == 0 {
+		return fmt.Errorf("no ready metrics endpoints for VMAgent=%s/%s; cannot verify persistent queues", agent.Namespace, agent.Name)
+	}
 	return zs.waitForPQ(ctx, rclient, interval, nil, []*vmv1beta1.VMAgent{agent})
 }
 

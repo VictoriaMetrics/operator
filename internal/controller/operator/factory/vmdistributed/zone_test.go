@@ -431,6 +431,17 @@ func TestUpgradeDisabledAgentWaitsForPQ(t *testing.T) {
 	assert.NoError(t, zs.upgrade(context.Background(), rclient, cr, 0))
 }
 
+func TestWaitForAgentPQNoEndpoints(t *testing.T) {
+	agent := &vmv1beta1.VMAgent{ObjectMeta: metav1.ObjectMeta{Name: "source", Namespace: "default"}}
+	zs := &zones{httpClient: &http.Client{Timeout: httpTimeout}}
+	rclient := k8stools.GetTestClientWithObjects(nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+
+	err := zs.waitForAgentPQ(ctx, rclient, time.Millisecond, agent)
+	assert.ErrorContains(t, err, "no ready metrics endpoints")
+}
+
 func TestUpgradeDrainsDisabledAgent(t *testing.T) {
 	var pending atomic.Bool
 	pending.Store(true)
@@ -482,6 +493,14 @@ func TestUpgradeDrainsDisabledAgent(t *testing.T) {
 		Zones:      []vmv1alpha1.VMDistributedZone{{Name: "target"}},
 	}}
 
+	endpoints.Endpoints[0].Conditions.Ready = ptr.To(false)
+	assert.NoError(t, rclient.Update(context.Background(), endpoints))
+	err = zs.upgrade(context.Background(), rclient, cr, 0)
+	assert.ErrorContains(t, err, "no ready metrics endpoints")
+	assert.NoError(t, rclient.Get(context.Background(), client.ObjectKeyFromObject(agent), &vmv1beta1.VMAgent{}))
+
+	endpoints.Endpoints[0].Conditions.Ready = ptr.To(true)
+	assert.NoError(t, rclient.Update(context.Background(), endpoints))
 	err = zs.upgrade(context.Background(), rclient, cr, 0)
 	assert.ErrorContains(t, err, "queue")
 	assert.NoError(t, rclient.Get(context.Background(), client.ObjectKeyFromObject(agent), &vmv1beta1.VMAgent{}))

@@ -1288,6 +1288,106 @@ volumes:
 
     `)
 
+	// test k8s collector with pod labels disabled
+	f(&vmv1.VLAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
+		Spec: vmv1.VLAgentSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				Image: vmv1beta1.Image{
+					Tag: "v1.53.0",
+				},
+				UseDefaultResources: ptr.To(false),
+				Port:                "9425",
+			},
+			K8sCollector: vmv1.VLAgentK8sCollector{
+				Enabled:          true,
+				MsgFields:        []string{"msg", "message"},
+				IncludePodLabels: ptr.To(false),
+			},
+			RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
+				{
+					URL:          "http://some-url/api/v1/write",
+					MaxDiskUsage: ptr.To(vmv1beta1.BytesString("10GB")),
+				},
+				{
+					URL:          "http://some-url-2/api/v1/write",
+					MaxDiskUsage: ptr.To(vmv1beta1.BytesString("10GB")),
+				},
+				{
+					URL: "http://some-url-3/api/v1/write",
+				},
+			},
+		},
+	}, []runtime.Object{}, `
+containers:
+  - name: vlagent
+    image: victoriametrics/vlagent:v1.53.0
+    args:
+      - -httpListenAddr=:9425
+      - -kubernetesCollector
+      - -kubernetesCollector.includePodLabels=false
+      - -kubernetesCollector.msgField=msg,message
+      - -remoteWrite.maxDiskUsagePerURL=10GB,10GB,
+      - -remoteWrite.url=http://some-url/api/v1/write,http://some-url-2/api/v1/write,http://some-url-3/api/v1/write
+      - -tmpDataPath=/var/lib/vlagent-data
+    ports:
+      - name: http
+        containerport: 9425
+        protocol: TCP
+    volumemounts:
+      - name: varlog
+        readonly: true
+        mountpath: /var/log
+      - name: varlib
+        readonly: true
+        mountpath: /var/lib
+      - name: tmp-data
+        mountpath: /var/lib/vlagent-data
+    livenessprobe:
+      probehandler:
+        httpget:
+          path: /health
+          port:
+            intval: 9425
+          scheme: HTTP
+      timeoutseconds: 5
+      periodseconds: 5
+      successthreshold: 1
+      failurethreshold: 10
+    readinessprobe:
+      probehandler:
+        httpget:
+          path: /health
+          port:
+            intval: 9425
+          scheme: HTTP
+      timeoutseconds: 5
+      periodseconds: 5
+      successthreshold: 1
+      failurethreshold: 10
+    lifecycle:
+      prestop:
+        sleep:
+          seconds: 15
+    terminationmessagepolicy: FallbackToLogsOnError
+    imagepullpolicy: IfNotPresent
+serviceaccountname: vlagent-agent
+volumes:
+- name: varlog
+  volumesource:
+    hostpath:
+      path: /var/log
+- name: varlib
+  volumesource:
+    hostpath:
+      path: /var/lib
+- name: tmp-data
+  volumesource:
+    hostpath:
+      path: /var/lib/vlagent-data
+
+    `)
+
 	// test MaxDiskUsage with RemoteWriteSettings
 	f(&vmv1.VLAgent{
 		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},

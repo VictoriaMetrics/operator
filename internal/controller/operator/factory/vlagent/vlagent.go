@@ -321,8 +321,12 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 		if len(cr.Spec.K8sCollector.ExcludeFilter) > 0 {
 			args = append(args, fmt.Sprintf("-kubernetesCollector.excludeFilter=%s", cr.Spec.K8sCollector.ExcludeFilter))
 		}
+		// vlagent enables -kubernetesCollector.includePodLabels by default,
+		// so it must be disabled explicitly.
 		if ptr.Deref(cr.Spec.K8sCollector.IncludePodLabels, true) {
 			args = append(args, "-kubernetesCollector.includePodLabels")
+		} else {
+			args = append(args, "-kubernetesCollector.includePodLabels=false")
 		}
 		if ptr.Deref(cr.Spec.K8sCollector.IncludePodAnnotations, false) {
 			args = append(args, "-kubernetesCollector.includePodAnnotations")

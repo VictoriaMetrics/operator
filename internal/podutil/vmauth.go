@@ -43,7 +43,7 @@ func vmAuthTargetRef(name, policy, kind string, paths []string, objects []metav1
 			continue
 		}
 		obj := objects[idx]
-		if obj.GetCreationTimestamp().Time.IsZero() || !HasOwnerReference(obj.GetOwnerReferences(), owner) {
+		if obj == nil || obj.GetCreationTimestamp().Time.IsZero() || !HasOwnerReference(obj.GetOwnerReferences(), owner) {
 			continue
 		}
 		nsns = append(nsns, vmv1beta1.NamespacedName{

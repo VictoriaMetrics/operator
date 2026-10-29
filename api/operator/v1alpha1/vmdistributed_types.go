@@ -150,6 +150,18 @@ func (z *VMDistributedZone) VMAgentName(cr *VMDistributed) string {
 	}
 }
 
+// VMAgentEnabled returns false when the zone's (or zoneCommon's) VMAgent replicaCount is explicitly 0.
+func (z *VMDistributedZone) VMAgentEnabled(cr *VMDistributed) bool {
+	switch {
+	case z.VMAgent.Spec.ReplicaCount != nil:
+		return *z.VMAgent.Spec.ReplicaCount != 0
+	case cr.Spec.ZoneCommon.VMAgent.Spec.ReplicaCount != nil:
+		return *cr.Spec.ZoneCommon.VMAgent.Spec.ReplicaCount != 0
+	default:
+		return true
+	}
+}
+
 // VMClusterName return cluster name for zone
 func (z *VMDistributedZone) VMClusterName(cr *VMDistributed) string {
 	switch {

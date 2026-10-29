@@ -29,19 +29,17 @@ type AgentMetrics interface {
 	ProbeScheme() string
 }
 
-// GetMetricsAddrs discovers the agent's active endpoints from EndpointSlices and
-// returns the full metrics URL for each ready endpoint.
-func GetMetricsAddrs(ctx context.Context, rclient client.Client, agent AgentMetrics) sets.Set[string] {
+// GetMetricsAddrs returns ready metrics endpoints, or an error if discovery fails.
+func GetMetricsAddrs(ctx context.Context, rclient client.Client, agent AgentMetrics) (sets.Set[string], error) {
 	var esl discoveryv1.EndpointSliceList
 	if err := rclient.List(ctx, &esl,
 		client.MatchingLabels{discoveryv1.LabelServiceName: agent.PrefixedName()},
 		client.InNamespace(agent.GetNamespace()),
 	); err != nil {
-		logger.WithContext(ctx).Error(err, "failed to load endpointslices", "service", agent.PrefixedName())
-		return nil
+		return nil, fmt.Errorf("failed to load endpointslices for %s/%s: %w", agent.GetNamespace(), agent.PrefixedName(), err)
 	}
 	if len(esl.Items) == 0 {
-		return nil
+		return nil, nil
 	}
 	addrs := sets.New[string]()
 	for i := range esl.Items {
@@ -76,7 +74,7 @@ func GetMetricsAddrs(ctx context.Context, rclient client.Client, agent AgentMetr
 			}
 		}
 	}
-	return addrs
+	return addrs, nil
 }
 
 // Manager tracks per-address polling goroutines with individual cancel contexts.
@@ -227,7 +225,11 @@ func WaitForEmptyPQ[Agent AgentMetrics](
 		m := NewManager(ctx)
 		wg.Go(func() {
 			wait.UntilWithContext(m.Ctx(), func(ctx context.Context) {
-				addrs := GetMetricsAddrs(ctx, rclient, agent)
+				addrs, err := GetMetricsAddrs(ctx, rclient, agent)
+				if err != nil {
+					logger.WithContext(ctx).Error(err, "failed to discover metrics endpoints", "agent", agentName)
+					return
+				}
 				for addr := range addrs {
 					if m.Has(addr) {
 						continue

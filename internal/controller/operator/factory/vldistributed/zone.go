@@ -37,9 +37,18 @@ type vlBackend struct {
 	prevAccepts bool
 }
 
+// vlAgentRef holds a zone's VLAgent together with its desired fate: reconcile
+// it (delete=false, obj set to the desired spec), delete it (delete=true,
+// obj is the leftover CR from before the zone's VLAgent was disabled), or do
+// nothing (obj is nil — disabled and no CR ever existed).
+type vlAgentRef struct {
+	obj    *vmv1.VLAgent
+	delete bool
+}
+
 type zones struct {
 	httpClient   *http.Client
-	vlagents     []*vmv1.VLAgent
+	vlagents     []vlAgentRef
 	backends     []vlBackend
 	hasChanges   []bool
 	trafficModes []vmv1alpha1.VLDistributedTrafficMode
@@ -103,7 +112,7 @@ func (zs *zones) singleObjects() []*vmv1.VLSingle {
 func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VLDistributed) (*zones, error) {
 	zs := &zones{
 		httpClient:   &http.Client{Timeout: httpTimeout},
-		vlagents:     make([]*vmv1.VLAgent, len(cr.Spec.Zones)),
+		vlagents:     make([]vlAgentRef, len(cr.Spec.Zones)),
 		backends:     make([]vlBackend, len(cr.Spec.Zones)),
 		hasChanges:   make([]bool, len(cr.Spec.Zones)),
 		trafficModes: make([]vmv1alpha1.VLDistributedTrafficMode, len(cr.Spec.Zones)),
@@ -135,6 +144,20 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VLDistr
 		nsn := types.NamespacedName{
 			Name:      vlAgentName,
 			Namespace: cr.Namespace,
+		}
+		if !z.VLAgentEnabled(cr) {
+			// zone's VLAgent may have been created before it was disabled; fetch it
+			// so upgrade can delete it, instead of leaving it running forever.
+			var existing vmv1.VLAgent
+			if err := rclient.Get(ctx, nsn, &existing); err == nil {
+				if metav1.IsControlledBy(&existing, cr) {
+					zs.vlagents[i] = vlAgentRef{obj: &existing, delete: true}
+					zs.hasChanges[i] = true
+				}
+			} else if !k8serrors.IsNotFound(err) {
+				return nil, fmt.Errorf("unexpected error during attempt to get VLAgent=%s: %w", nsn.String(), err)
+			}
+			continue
 		}
 		var vlAgent vmv1.VLAgent
 		if err := rclient.Get(ctx, nsn, &vlAgent); err != nil {
@@ -192,7 +215,7 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VLDistr
 		vlAgent.Spec = *vlAgentSpec
 		rclient.Scheme().Default(&vlAgent)
 		zs.hasChanges[i] = zs.hasChanges[i] || !equality.Semantic.DeepEqual(&vlAgent.Spec, &prevAgentSpec)
-		zs.vlagents[i] = &vlAgent
+		zs.vlagents[i] = vlAgentRef{obj: &vlAgent}
 	}
 
 	sort.Sort(zs)
@@ -282,30 +305,47 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	defer cancel()
 
 	owner := cr.AsOwner()
-	vlAgent := zs.vlagents[i]
+	agentRef := zs.vlagents[i]
+	vlAgent := agentRef.obj
+	// zone's VLAgent is disabled: either nothing to reconcile, or a stale CR to delete
+	agentDisabled := agentRef.delete || vlAgent == nil
 	backend := zs.backends[i]
 	item := fmt.Sprintf("%d/%d", i+1, len(cr.Spec.Zones))
 
 	backendCreated := !backend.obj.GetCreationTimestamp().Time.IsZero()
-	// backend or vlagent have been created
-	needsLBUpdate := backendCreated && !vlAgent.CreationTimestamp.IsZero()
+	// backend or vlagent have been created; a disabled VLAgent counts as already created
+	agentCreated := agentDisabled || !vlAgent.CreationTimestamp.IsZero()
+	needsLBUpdate := backendCreated && agentCreated
 	// No backend or vlagent spec changes required
 	if !zs.hasChanges[i] {
 		needsLBUpdate = false
+	}
+	drainAgent := func() error {
+		if ptr.Deref(vlAgent.Spec.ReplicaCount, 1) == 0 {
+			return nil
+		}
+		if err := zs.waitForAgentPQ(ctx, rclient, defaultMetricsCheckInterval, vlAgent); err != nil {
+			return fmt.Errorf("zone=%s: failed to drain VLAgent=%s/%s queues: %w", item, vlAgent.Namespace, vlAgent.Name, err)
+		}
+		return nil
 	}
 
 	if needsLBUpdate {
 		if backend.prevAccepts {
 			// wait for empty persistent queue before excluding from LB
-			zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
-			if ctx.Err() != nil {
-				return fmt.Errorf("zone=%s: failed to wait till backend=%s queue is empty", item, backend.obj.GetName())
+			if err := zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i); err != nil {
+				return fmt.Errorf("zone=%s: failed to wait till backend=%s queue is empty: %w", item, backend.obj.GetName(), err)
 			}
 		}
 
 		// excluding zone from VMAuth LB
 		if err := zs.updateLB(ctx, rclient, cr, i); err != nil {
 			return fmt.Errorf("zone=%s: failed to update VMAuth LB with excluded backend=%s: %w", item, backend.obj.GetName(), err)
+		}
+	}
+	if agentRef.delete && backend.prevAccepts {
+		if err := drainAgent(); err != nil {
+			return err
 		}
 	}
 
@@ -325,10 +365,25 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 		}
 	}
 
-	// reconcile VLAgent
-	nsnAgent := types.NamespacedName{Name: vlAgent.Name, Namespace: vlAgent.Namespace}
-	if err := reconcile.VLAgent(ctx, rclient, vlAgent, nil, &owner); err != nil {
-		return fmt.Errorf("zone=%s: failed to reconcile VLAgent=%s: %w", item, nsnAgent.String(), err)
+	// reconcile VLAgent, if enabled for this zone
+	switch {
+	case !agentDisabled:
+		nsnAgent := types.NamespacedName{Name: vlAgent.Name, Namespace: vlAgent.Namespace}
+		if err := reconcile.VLAgent(ctx, rclient, vlAgent, nil, &owner); err != nil {
+			return fmt.Errorf("zone=%s: failed to reconcile VLAgent=%s: %w", item, nsnAgent.String(), err)
+		}
+	case agentRef.delete:
+		nsnAgent := types.NamespacedName{Name: vlAgent.Name, Namespace: vlAgent.Namespace}
+		// A backend that was down must be reconciled before its agent can drain.
+		if !backend.prevAccepts {
+			if err := drainAgent(); err != nil {
+				return err
+			}
+		}
+		logger.WithContext(ctx).Info("deleting disabled VLAgent", "item", item, "name", nsnAgent)
+		if err := rclient.Delete(ctx, vlAgent); err != nil && !k8serrors.IsNotFound(err) {
+			return fmt.Errorf("zone=%s: failed to delete disabled VLAgent=%s: %w", item, nsnAgent.String(), err)
+		}
 	}
 
 	mode := zs.trafficModes[i]
@@ -341,9 +396,8 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	}
 	if newAcceptsWrites {
 		// wait for empty persistent queue before restoring in LB
-		zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
-		if ctx.Err() != nil {
-			return fmt.Errorf("zone=%s: failed to wait till VLAgent queue for backend=%s is drained", item, backend.obj.GetName())
+		if err := zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i); err != nil {
+			return fmt.Errorf("zone=%s: failed to wait till VLAgent queue for backend=%s is drained: %w", item, backend.obj.GetName(), err)
 		}
 	}
 
@@ -378,12 +432,32 @@ var vlAgentQueueMetricQueries = []podutil.MetricQuery{
 	{Name: vlAgentQueueMetricName, Dimension: "url"},
 }
 
-func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, interval time.Duration, clusterIdx int) {
+func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, interval time.Duration, clusterIdx int) error {
 	backendURL := zs.backends[clusterIdx].obj.GetRemoteWriteURL()
+	agents := make([]*vmv1.VLAgent, 0, len(zs.vlagents))
+	for _, ref := range zs.vlagents {
+		if !ref.delete && ref.obj != nil && !ref.obj.CreationTimestamp.IsZero() {
+			agents = append(agents, ref.obj)
+		}
+	}
+	return zs.waitForPQ(ctx, rclient, interval, &backendURL, agents)
+}
 
-	backendName := zs.backends[clusterIdx].obj.GetName()
-	nsnCluster := types.NamespacedName{Name: backendName, Namespace: zs.vlagents[clusterIdx].Namespace}
-	logger.WithContext(ctx).Info("ensuring persistent queues are drained", "name", nsnCluster.String())
+// waitForAgentPQ checks every remote-write queue on one agent before deletion.
+func (zs *zones) waitForAgentPQ(ctx context.Context, rclient client.Client, interval time.Duration, agent *vmv1.VLAgent) error {
+	// A nil backendURL checks every remote-write destination.
+	return zs.waitForPQ(ctx, rclient, interval, nil, []*vmv1.VLAgent{agent})
+}
+
+func (zs *zones) waitForPQ(ctx context.Context, rclient client.Client, interval time.Duration, backendURL *string, agents []*vmv1.VLAgent) error {
+	targetKey, target := "backendURL", ""
+	if backendURL != nil {
+		target = *backendURL
+	} else {
+		targetKey = "agent"
+		target = types.NamespacedName{Name: agents[0].Name, Namespace: agents[0].Namespace}.String()
+	}
+	logger.WithContext(ctx).Info("ensuring persistent queues are drained", targetKey, target)
 
 	pollMetrics := func(pctx context.Context, nsn types.NamespacedName, addr string) error {
 		return wait.PollUntilContextCancel(pctx, interval, true, func(ctx context.Context) (done bool, err error) {
@@ -393,7 +467,7 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 				return false, nil
 			}
 			for u, v := range metricValues[vlAgentQueueMetricName] {
-				if u != backendURL {
+				if backendURL != nil && u != *backendURL {
 					continue
 				}
 				if v > 0 {
@@ -406,20 +480,36 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 		})
 	}
 
+	waitCtx, stop := context.WithCancel(ctx)
+	defer stop()
+	noEndpoints := make(chan error, 1)
+	endpointInterval := defaultEndpointsUpdateInterval
+	if backendURL == nil {
+		endpointInterval = min(interval, endpointInterval)
+	}
+
 	var wg sync.WaitGroup
-	for i := range zs.vlagents {
-		vlAgent := zs.vlagents[i]
-		if vlAgent.CreationTimestamp.IsZero() {
-			continue
-		}
+	for _, vlAgent := range agents {
 		nsn := types.NamespacedName{
 			Name:      vlAgent.Name,
 			Namespace: vlAgent.Namespace,
 		}
-		m := podutil.NewManager(ctx)
+		m := podutil.NewManager(waitCtx)
 		wg.Go(func() {
 			wait.UntilWithContext(m.Ctx(), func(ctx context.Context) {
-				addrs := podutil.GetMetricsAddrs(ctx, rclient, vlAgent)
+				addrs, err := podutil.GetMetricsAddrs(ctx, rclient, vlAgent)
+				if err != nil {
+					logger.WithContext(ctx).Error(err, "failed to discover VLAgent metrics endpoints", "name", nsn.String())
+					return
+				}
+				if backendURL == nil && len(addrs) == 0 {
+					select {
+					case noEndpoints <- fmt.Errorf("no ready metrics endpoints for VLAgent=%s; cannot verify persistent queues", nsn.String()):
+					default:
+					}
+					stop()
+					return
+				}
 				for addr := range addrs {
 					if m.Has(addr) {
 						continue
@@ -439,12 +529,19 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 						m.Delete(addr)
 					}
 				}
-			}, defaultEndpointsUpdateInterval)
+			}, endpointInterval)
 		})
 	}
 	wg.Wait()
 
-	if ctx.Err() == nil {
-		logger.WithContext(ctx).Info("all persistent queues were drained", "name", nsnCluster.String())
+	select {
+	case err := <-noEndpoints:
+		return err
+	default:
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	logger.WithContext(ctx).Info("all persistent queues were drained", targetKey, target)
+	return nil
 }

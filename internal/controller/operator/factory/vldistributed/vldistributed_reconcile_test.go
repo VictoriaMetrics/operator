@@ -18,6 +18,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
@@ -476,6 +478,76 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			{Verb: "Get", Kind: "VMAuth", Resource: vmAuthLBName},
 		},
 	})
+}
+
+// Disabling a zone's VLAgent (replicaCount: 0) after it was already created must
+// delete the leftover CR, not just skip reconciling it.
+func Test_CreateOrUpdate_DeletesDisabledVLAgent(t *testing.T) {
+	cr := &vmv1alpha1.VLDistributed{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "dist",
+			Namespace: "default",
+			UID:       "dist-uid",
+		},
+		Spec: vmv1alpha1.VLDistributedSpec{
+			BackendType: vmv1alpha1.VLDistributedBackendTypeVLSingle,
+			VMAuth:      vmv1alpha1.VLDistributedAuth{Enabled: ptr.To(false)},
+			Zones: []vmv1alpha1.VLDistributedZone{
+				// maintenance mode avoids a real persistent-queue drain wait on VLAgent creation
+				{Name: "zone-1", TrafficMode: vmv1alpha1.VLDistributedTrafficModeMaintenance},
+			},
+		},
+	}
+	fclient := k8stools.GetTestClientWithObjectsAndInterceptors(nil, interceptor.Funcs{
+		Create: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+			switch v := obj.(type) {
+			case *vmv1.VLSingle:
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+			case *vmv1.VLAgent:
+				v.Status.UpdateStatus = vmv1beta1.UpdateStatusOperational
+			}
+			return cl.Create(ctx, obj, opts...)
+		},
+	})
+	ctx := context.TODO()
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	vlAgentName := types.NamespacedName{Namespace: cr.Namespace, Name: "dist-zone-1"}
+	var vlAgent vmv1.VLAgent
+	assert.NoError(t, fclient.Get(ctx, vlAgentName, &vlAgent), "VLAgent must be created")
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprintf(w, "%s{url=%q} 0\n", vlAgentQueueMetricName, "http://backend/write")
+	}))
+	defer ts.Close()
+	u, err := url.Parse(ts.URL)
+	assert.NoError(t, err)
+	host, portStr, err := net.SplitHostPort(u.Host)
+	assert.NoError(t, err)
+	port, err := strconv.Atoi(portStr)
+	assert.NoError(t, err)
+	endpoints := &discoveryv1.EndpointSlice{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "agent-endpoints", Namespace: cr.Namespace,
+			Labels: map[string]string{discoveryv1.LabelServiceName: vlAgent.PrefixedName()},
+		},
+		Endpoints: []discoveryv1.Endpoint{{
+			Addresses: []string{host}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)},
+		}},
+		Ports: []discoveryv1.EndpointPort{{Name: ptr.To("http"), Port: ptr.To(int32(port))}},
+	}
+	assert.NoError(t, fclient.Create(ctx, endpoints))
+
+	// disable the zone's VLAgent
+	cr.Spec.Zones[0].VLAgent.Spec.ReplicaCount = ptr.To(int32(0))
+	assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+	err = fclient.Get(ctx, vlAgentName, &vlAgent)
+	assert.Error(t, err)
+	assert.True(t, k8serrors.IsNotFound(err), "disabled VLAgent must be deleted, not left running")
 }
 
 func Test_CreateOrUpdate_Paused(t *testing.T) {

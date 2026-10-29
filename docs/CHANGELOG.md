@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/), [vldistributed](https://docs.victoriametrics.com/operator/resources/vldistributed/): setting `zoneCommon.vmagent.spec.replicaCount`/`zones[].vmagent.spec.replicaCount` (and `vlagent` equivalents) to `0` now disables the per-zone agent or all agents. Previously, `replicaCount: 0` created an agent resource with no pods; now the operator does not create it and deletes an existing agent resource it owns when disabled. See [#2566](https://github.com/VictoriaMetrics/operator/issues/2566).
+
 ## [v0.75.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.2)
 **Release date:** 28 October 2026
 

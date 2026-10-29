@@ -10,18 +10,24 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr/funcr"
 	"github.com/stretchr/testify/assert"
 	discoveryv1 "k8s.io/api/discovery/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 func TestGetZones(t *testing.T) {
@@ -195,9 +201,99 @@ func TestGetZones(t *testing.T) {
 			assert.Equal(t, "dist-zone-a", singles[0].Name)
 			assert.Equal(t, "dist-zone-b", singles[1].Name)
 			assert.Equal(t, "14d", singles[1].Spec.RetentionPeriod)
-			assert.Equal(t, singles[1].GetRemoteWriteURL(), zs.vmagents[0].Spec.RemoteWrite[1].URL)
+			assert.Equal(t, singles[1].GetRemoteWriteURL(), zs.vmagents[0].obj.Spec.RemoteWrite[1].URL)
 		},
 	})
+
+	// zone with VMAgent disabled has no VMAgent built, but its backend still
+	// receives replicated writes from the other zone's VMAgent
+	f(opts{
+		cr: &vmv1alpha1.VMDistributed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "dist",
+				Namespace: "ns",
+			},
+			Spec: vmv1alpha1.VMDistributedSpec{
+				BackendType: vmv1alpha1.VMDistributedBackendTypeVMSingle,
+				Zones: []vmv1alpha1.VMDistributedZone{
+					{
+						Name: "zone-a",
+						VMAgent: vmv1alpha1.VMDistributedZoneAgent{Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+						}},
+					},
+					{
+						Name: "zone-b",
+					},
+				},
+			},
+		},
+		validate: func(cr *vmv1alpha1.VMDistributed, zs *zones) {
+			singles := zs.singleObjects()
+			var zoneAIdx, zoneBIdx int
+			if singles[0].Name == "dist-zone-a" {
+				zoneAIdx, zoneBIdx = 0, 1
+			} else {
+				zoneAIdx, zoneBIdx = 1, 0
+			}
+			assert.Nil(t, zs.vmagents[zoneAIdx].obj, "disabled zone must not have a VMAgent built")
+			assert.False(t, zs.vmagents[zoneAIdx].delete, "no stale VMAgent to clean up when none existed before")
+			assert.NotNil(t, zs.vmagents[zoneBIdx].obj, "enabled zone must have a VMAgent built")
+			assert.Contains(t, remoteWriteURLs(zs.vmagents[zoneBIdx].obj), singles[zoneAIdx].GetRemoteWriteURL(),
+				"other zone's VMAgent must still replicate writes into the disabled zone's backend")
+		},
+	})
+
+	// zone's VMAgent disabled after it already existed: getZones must pick up the
+	// leftover CR so upgrade can delete it instead of leaving it running.
+	f(opts{
+		cr: &vmv1alpha1.VMDistributed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "dist",
+				Namespace: "ns",
+				UID:       "dist-uid",
+			},
+			Spec: vmv1alpha1.VMDistributedSpec{
+				BackendType: vmv1alpha1.VMDistributedBackendTypeVMSingle,
+				Zones: []vmv1alpha1.VMDistributedZone{
+					{
+						Name: "zone-a",
+						VMAgent: vmv1alpha1.VMDistributedZoneAgent{Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+						}},
+					},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "dist-zone-a",
+					Namespace:         "ns",
+					CreationTimestamp: metav1.Now(),
+					OwnerReferences:   []metav1.OwnerReference{{UID: "dist-uid", Controller: ptr.To(true)}},
+				},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
+				},
+			},
+		},
+		validate: func(cr *vmv1alpha1.VMDistributed, zs *zones) {
+			assert.True(t, zs.vmagents[0].delete, "leftover VMAgent CR must be marked for deletion")
+			if assert.NotNil(t, zs.vmagents[0].obj, "leftover VMAgent CR must be picked up for cleanup") {
+				assert.Equal(t, "dist-zone-a", zs.vmagents[0].obj.Name)
+			}
+			assert.True(t, zs.hasChanges[0], "stale VMAgent cleanup must trigger an upgrade pass")
+		},
+	})
+}
+
+func remoteWriteURLs(vmAgent *vmv1beta1.VMAgent) []string {
+	urls := make([]string, len(vmAgent.Spec.RemoteWrite))
+	for i, rw := range vmAgent.Spec.RemoteWrite {
+		urls[i] = rw.URL
+	}
+	return urls
 }
 
 // A VMAgent whose shardCount was server-defaulted must not be perpetually reported as changed.
@@ -224,7 +320,7 @@ func TestGetZones_PreservesExistingShardCount(t *testing.T) {
 	// there either, isolating the check below to the VMAgent shardCount handling.
 	persistedBackend := zs1.backends[0].obj.(*vmv1beta1.VMSingle).DeepCopy()
 	persistedBackend.ResourceVersion = ""
-	persistedAgent := zs1.vmagents[0].DeepCopy()
+	persistedAgent := zs1.vmagents[0].obj.DeepCopy()
 	persistedAgent.Spec.ShardCount = ptr.To[int32](1)
 	persistedAgent.ResourceVersion = ""
 
@@ -233,7 +329,232 @@ func TestGetZones_PreservesExistingShardCount(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.False(t, zs2.hasChanges[0], "defaulted shardCount must not be reported as a spec change")
-	assert.Equal(t, ptr.To[int32](1), zs2.vmagents[0].Spec.ShardCount, "existing shardCount must be preserved, not reset to nil")
+	assert.Equal(t, ptr.To[int32](1), zs2.vmagents[0].obj.Spec.ShardCount, "existing shardCount must be preserved, not reset to nil")
+}
+
+func TestGetZonesDisabledVMAgentOwnership(t *testing.T) {
+	cr := &vmv1alpha1.VMDistributed{
+		TypeMeta:   metav1.TypeMeta{APIVersion: vmv1alpha1.SchemeGroupVersion.String(), Kind: "VMDistributed"},
+		ObjectMeta: metav1.ObjectMeta{Name: "dist", Namespace: "ns", UID: "dist-uid"},
+		Spec: vmv1alpha1.VMDistributedSpec{
+			BackendType: vmv1alpha1.VMDistributedBackendTypeVMSingle,
+			Zones: []vmv1alpha1.VMDistributedZone{{
+				Name: "zone-a",
+				VMAgent: vmv1alpha1.VMDistributedZoneAgent{Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+				}},
+			}},
+		},
+	}
+
+	for _, tc := range []struct {
+		name  string
+		owner metav1.OwnerReference
+		owned bool
+	}{
+		{name: "unowned"},
+		{name: "other owner", owner: metav1.OwnerReference{UID: "other-uid"}},
+		{name: "owned", owner: cr.AsOwner(), owned: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			agent := &vmv1beta1.VMAgent{ObjectMeta: metav1.ObjectMeta{
+				Name: "dist-zone-a", Namespace: "ns",
+			}}
+			if tc.owner.UID != "" {
+				agent.OwnerReferences = []metav1.OwnerReference{tc.owner}
+			}
+			rclient := k8stools.GetTestClientWithObjects([]runtime.Object{agent})
+
+			zs, err := getZones(context.Background(), rclient, cr)
+			if assert.NoError(t, err) {
+				if tc.owned {
+					assert.True(t, zs.vmagents[0].delete)
+					assert.True(t, zs.hasChanges[0])
+				} else {
+					assert.Nil(t, zs.vmagents[0].obj)
+					assert.False(t, zs.vmagents[0].delete)
+				}
+			}
+		})
+	}
+}
+
+func TestUpgradeDisabledAgentWaitsForPQ(t *testing.T) {
+	backend := &vmv1beta1.VMSingle{ObjectMeta: metav1.ObjectMeta{
+		Name: "target", Namespace: "default", CreationTimestamp: metav1.Now(),
+	}, Status: vmv1beta1.VMSingleStatus{
+		StatusMetadata: vmv1beta1.StatusMetadata{UpdateStatus: vmv1beta1.UpdateStatusOperational},
+	}}
+	agent := &vmv1beta1.VMAgent{ObjectMeta: metav1.ObjectMeta{
+		Name: "source", Namespace: "default", CreationTimestamp: metav1.Now(),
+	}}
+	zs := &zones{
+		httpClient:   &http.Client{Timeout: httpTimeout},
+		vmagents:     []vmAgentRef{{}, {obj: agent}},
+		backends:     []vmBackend{{obj: backend}, {obj: &vmv1beta1.VMSingle{ObjectMeta: metav1.ObjectMeta{Name: "other", Namespace: "default"}}}},
+		hasChanges:   []bool{false, false},
+		trafficModes: []vmv1alpha1.VMDistributedTrafficMode{"", ""},
+	}
+	cr := &vmv1alpha1.VMDistributed{
+		Spec: vmv1alpha1.VMDistributedSpec{
+			ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{ReadyTimeout: &metav1.Duration{Duration: 200 * time.Millisecond}},
+			VMAuth:     vmv1alpha1.VMDistributedAuth{Enabled: ptr.To(false)},
+			Zones:      []vmv1alpha1.VMDistributedZone{{Name: "target"}, {Name: "other"}},
+		},
+	}
+	rclient := k8stools.GetTestClientWithObjects([]runtime.Object{backend})
+
+	// Existing agent can have a persisted queue even with no running replicas.
+	err := zs.upgrade(context.Background(), rclient, cr, 0)
+	assert.ErrorContains(t, err, "queue for backend=target is drained")
+
+	// Test discovery error
+	var discoveryCalls atomic.Int32
+	unavailable := k8stools.GetTestClientWithObjectsAndInterceptors([]runtime.Object{backend}, interceptor.Funcs{
+		List: func(ctx context.Context, cl client.WithWatch, obj client.ObjectList, opts ...client.ListOption) error {
+			if _, ok := obj.(*discoveryv1.EndpointSliceList); ok {
+				discoveryCalls.Add(1)
+				return fmt.Errorf("discovery unavailable")
+			}
+			return cl.List(ctx, obj, opts...)
+		},
+	})
+	err = zs.upgrade(context.Background(), unavailable, cr, 0)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.ErrorContains(t, err, "queue for backend=target is drained")
+	assert.Greater(t, discoveryCalls.Load(), int32(0))
+
+	// An agent that never existed has no queue to drain.
+	zs.vmagents[1] = vmAgentRef{}
+	assert.NoError(t, zs.upgrade(context.Background(), rclient, cr, 0))
+	zs.vmagents[1] = vmAgentRef{obj: &vmv1beta1.VMAgent{ObjectMeta: metav1.ObjectMeta{Name: "new", Namespace: "default"}}}
+	assert.NoError(t, zs.upgrade(context.Background(), rclient, cr, 0))
+}
+
+func TestWaitForAgentPQNoEndpoints(t *testing.T) {
+	agent := &vmv1beta1.VMAgent{ObjectMeta: metav1.ObjectMeta{Name: "source", Namespace: "default"}}
+	zs := &zones{httpClient: &http.Client{Timeout: httpTimeout}}
+	var calls atomic.Int32
+	rclient := k8stools.GetTestClientWithObjectsAndInterceptors(nil, interceptor.Funcs{
+		List: func(ctx context.Context, cl client.WithWatch, obj client.ObjectList, opts ...client.ListOption) error {
+			if _, ok := obj.(*discoveryv1.EndpointSliceList); ok && calls.Add(1) == 1 {
+				return fmt.Errorf("temporary discovery failure")
+			}
+			return cl.List(ctx, obj, opts...)
+		},
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+
+	err := zs.waitForAgentPQ(ctx, rclient, time.Millisecond, agent)
+	assert.ErrorContains(t, err, "no ready metrics endpoints")
+	assert.Greater(t, calls.Load(), int32(1))
+}
+
+func TestUpgradeDrainsDisabledAgent(t *testing.T) {
+	var pending atomic.Bool
+	pending.Store(true)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		value := 0
+		if pending.Load() {
+			value = 100
+		}
+		fmt.Fprintf(w, "%s{url=%q} %d\n", vmAgentQueueMetricName, "http://other-backend/write", value)
+	}))
+	defer ts.Close()
+	u, err := url.Parse(ts.URL)
+	assert.NoError(t, err)
+	host, portStr, err := net.SplitHostPort(u.Host)
+	assert.NoError(t, err)
+	port, err := strconv.Atoi(portStr)
+	assert.NoError(t, err)
+
+	backend := &vmv1beta1.VMSingle{
+		ObjectMeta: metav1.ObjectMeta{Name: "target", Namespace: "default", CreationTimestamp: metav1.Now()},
+		Status: vmv1beta1.VMSingleStatus{
+			StatusMetadata: vmv1beta1.StatusMetadata{UpdateStatus: vmv1beta1.UpdateStatusOperational},
+		},
+	}
+	agent := &vmv1beta1.VMAgent{ObjectMeta: metav1.ObjectMeta{
+		Name: "source", Namespace: "default", CreationTimestamp: metav1.Now(),
+	}}
+	endpoints := &discoveryv1.EndpointSlice{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "source-endpoints", Namespace: "default",
+			Labels: map[string]string{discoveryv1.LabelServiceName: agent.PrefixedName()},
+		},
+		Endpoints: []discoveryv1.Endpoint{{
+			Addresses: []string{host}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)},
+		}},
+		Ports: []discoveryv1.EndpointPort{{Name: ptr.To("http"), Port: ptr.To(int32(port))}},
+	}
+	rclient := k8stools.GetTestClientWithObjects([]runtime.Object{backend, agent, endpoints})
+	zs := &zones{
+		httpClient:   &http.Client{Timeout: httpTimeout},
+		vmagents:     []vmAgentRef{{obj: agent, delete: true}},
+		backends:     []vmBackend{{obj: backend}},
+		hasChanges:   []bool{true},
+		trafficModes: []vmv1alpha1.VMDistributedTrafficMode{vmv1alpha1.VMDistributedTrafficModeMaintenance},
+	}
+	cr := &vmv1alpha1.VMDistributed{Spec: vmv1alpha1.VMDistributedSpec{
+		ZoneCommon: vmv1alpha1.VMDistributedZoneCommon{ReadyTimeout: &metav1.Duration{Duration: 200 * time.Millisecond}},
+		VMAuth:     vmv1alpha1.VMDistributedAuth{Enabled: ptr.To(false)},
+		Zones:      []vmv1alpha1.VMDistributedZone{{Name: "target"}},
+	}}
+
+	// Keep a write-capable backend unchanged until its stale agent drains.
+	zs.backends[0].prevAccepts = true
+	backend.Spec.RetentionPeriod = "29d"
+	err = zs.upgrade(context.Background(), rclient, cr, 0)
+	assert.ErrorContains(t, err, "failed to drain VMAgent=default/source queues")
+	var persisted vmv1beta1.VMSingle
+	assert.NoError(t, rclient.Get(context.Background(), client.ObjectKeyFromObject(backend), &persisted))
+	assert.NotEqual(t, "29d", persisted.Spec.RetentionPeriod)
+	zs.backends[0].prevAccepts = false
+	backend.Spec.RetentionPeriod = ""
+
+	endpoints.Endpoints[0].Conditions.Ready = ptr.To(false)
+	assert.NoError(t, rclient.Update(context.Background(), endpoints))
+	err = zs.upgrade(context.Background(), rclient, cr, 0)
+	assert.ErrorContains(t, err, "no ready metrics endpoints")
+	assert.NoError(t, rclient.Get(context.Background(), client.ObjectKeyFromObject(agent), &vmv1beta1.VMAgent{}))
+
+	endpoints.Endpoints[0].Conditions.Ready = ptr.To(true)
+	assert.NoError(t, rclient.Update(context.Background(), endpoints))
+	err = zs.upgrade(context.Background(), rclient, cr, 0)
+	assert.ErrorContains(t, err, "failed to drain VMAgent=default/source queues")
+	assert.NoError(t, rclient.Get(context.Background(), client.ObjectKeyFromObject(agent), &vmv1beta1.VMAgent{}))
+
+	pending.Store(false)
+	assert.NoError(t, zs.upgrade(context.Background(), rclient, cr, 0))
+	assert.True(t, k8serrors.IsNotFound(rclient.Get(context.Background(), client.ObjectKeyFromObject(agent), &vmv1beta1.VMAgent{})))
+
+	// An agent already scaled to zero has no running queue to poll.
+	agent.Spec.ReplicaCount = ptr.To(int32(0))
+	agent.ResourceVersion = ""
+	assert.NoError(t, rclient.Create(context.Background(), agent))
+	pending.Store(true)
+	assert.NoError(t, zs.upgrade(context.Background(), rclient, cr, 0))
+	assert.True(t, k8serrors.IsNotFound(rclient.Get(context.Background(), client.ObjectKeyFromObject(agent), &vmv1beta1.VMAgent{})))
+}
+
+func TestWaitForPQLogsTarget(t *testing.T) {
+	backend := &vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "target", Namespace: "default"},
+		Spec:       vmv1beta1.VMClusterSpec{VMInsert: &vmv1beta1.VMInsert{}},
+	}
+	zs := &zones{backends: []vmBackend{{obj: backend}}}
+	var lines []string
+	ctx := logger.AddToContext(context.Background(), funcr.New(func(prefix, args string) {
+		lines = append(lines, prefix+args)
+	}, funcr.Options{}))
+
+	assert.NoError(t, zs.waitForEmptyPQ(ctx, k8stools.GetTestClientWithObjects(nil), time.Millisecond, 0))
+	if assert.Len(t, lines, 2) {
+		for _, line := range lines {
+			assert.Contains(t, line, backend.GetRemoteWriteURL())
+		}
+	}
 }
 
 func TestWaitForEmptyPQ(t *testing.T) {
@@ -313,15 +634,14 @@ func TestWaitForEmptyPQ(t *testing.T) {
 			httpClient: &http.Client{
 				Timeout: httpTimeout,
 			},
-			vmagents: []*vmv1beta1.VMAgent{vmAgent},
+			vmagents: []vmAgentRef{{obj: vmAgent}},
 			backends: []vmBackend{{obj: backend}},
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), o.timeout)
 		defer cancel()
 
-		zs.waitForEmptyPQ(ctx, rclient, 1*time.Second, 0)
-		err = ctx.Err()
+		err = zs.waitForEmptyPQ(ctx, rclient, 1*time.Second, 0)
 		if len(o.errMsg) > 0 {
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), o.errMsg)
@@ -386,15 +706,15 @@ func TestZonesSorting(t *testing.T) {
 		t.Helper()
 		zs := &zones{
 			backends:     make([]vmBackend, len(o.clusters)),
-			vmagents:     make([]*vmv1beta1.VMAgent, len(o.clusters)),
+			vmagents:     make([]vmAgentRef, len(o.clusters)),
 			hasChanges:   make([]bool, len(o.clusters)),
 			trafficModes: make([]vmv1alpha1.VMDistributedTrafficMode, len(o.clusters)),
 		}
 		for i, c := range o.clusters {
 			zs.backends[i] = vmBackend{obj: c}
-			zs.vmagents[i] = &vmv1beta1.VMAgent{
+			zs.vmagents[i] = vmAgentRef{obj: &vmv1beta1.VMAgent{
 				ObjectMeta: metav1.ObjectMeta{Name: c.Name},
-			}
+			}}
 		}
 		if o.hasChanges != nil {
 			zs.hasChanges = o.hasChanges
@@ -550,8 +870,8 @@ func TestZonesSorting(t *testing.T) {
 		hasChanges: []bool{true, false},
 		wantNames:  []string{"zone-a", "zone-b"},
 		validate: func(zs *zones) {
-			assert.Equal(t, zs.backends[0].obj.GetName(), zs.vmagents[0].Name)
-			assert.Equal(t, zs.backends[1].obj.GetName(), zs.vmagents[1].Name)
+			assert.Equal(t, zs.backends[0].obj.GetName(), zs.vmagents[0].obj.Name)
+			assert.Equal(t, zs.backends[1].obj.GetName(), zs.vmagents[1].obj.Name)
 			assert.False(t, zs.hasChanges[0])
 			assert.True(t, zs.hasChanges[1])
 		},

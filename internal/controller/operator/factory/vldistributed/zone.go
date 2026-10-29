@@ -429,18 +429,12 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 	return zs.waitForPQ(ctx, rclient, interval, &backendURL, agents)
 }
 
+// waitForAgentPQ checks every remote-write queue on one agent before deletion.
 func (zs *zones) waitForAgentPQ(ctx context.Context, rclient client.Client, interval time.Duration, agent *vmv1.VLAgent) error {
-	addrs, err := podutil.GetMetricsAddrs(ctx, rclient, agent)
-	if err != nil {
-		return err
-	}
-	if len(addrs) == 0 {
-		return fmt.Errorf("no ready metrics endpoints for VLAgent=%s/%s; cannot verify persistent queues", agent.Namespace, agent.Name)
-	}
+	// A nil backendURL checks every remote-write destination.
 	return zs.waitForPQ(ctx, rclient, interval, nil, []*vmv1.VLAgent{agent})
 }
 
-// A nil backendURL checks every remote-write destination.
 func (zs *zones) waitForPQ(ctx context.Context, rclient client.Client, interval time.Duration, backendURL *string, agents []*vmv1.VLAgent) error {
 	pollMetrics := func(pctx context.Context, nsn types.NamespacedName, addr string) error {
 		return wait.PollUntilContextCancel(pctx, interval, true, func(ctx context.Context) (done bool, err error) {
@@ -463,18 +457,34 @@ func (zs *zones) waitForPQ(ctx context.Context, rclient client.Client, interval 
 		})
 	}
 
+	waitCtx, stop := context.WithCancel(ctx)
+	defer stop()
+	noEndpoints := make(chan error, 1)
+	endpointInterval := defaultEndpointsUpdateInterval
+	if backendURL == nil {
+		endpointInterval = min(interval, endpointInterval)
+	}
+
 	var wg sync.WaitGroup
 	for _, vlAgent := range agents {
 		nsn := types.NamespacedName{
 			Name:      vlAgent.Name,
 			Namespace: vlAgent.Namespace,
 		}
-		m := podutil.NewManager(ctx)
+		m := podutil.NewManager(waitCtx)
 		wg.Go(func() {
 			wait.UntilWithContext(m.Ctx(), func(ctx context.Context) {
 				addrs, err := podutil.GetMetricsAddrs(ctx, rclient, vlAgent)
 				if err != nil {
 					logger.WithContext(ctx).Error(err, "failed to discover VLAgent metrics endpoints", "name", nsn.String())
+					return
+				}
+				if backendURL == nil && len(addrs) == 0 {
+					select {
+					case noEndpoints <- fmt.Errorf("no ready metrics endpoints for VLAgent=%s; cannot verify persistent queues", nsn.String()):
+					default:
+					}
+					stop()
 					return
 				}
 				for addr := range addrs {
@@ -496,11 +506,16 @@ func (zs *zones) waitForPQ(ctx context.Context, rclient client.Client, interval 
 						m.Delete(addr)
 					}
 				}
-			}, defaultEndpointsUpdateInterval)
+			}, endpointInterval)
 		})
 	}
 	wg.Wait()
 
+	select {
+	case err := <-noEndpoints:
+		return err
+	default:
+	}
 	if err := ctx.Err(); err != nil {
 		return err
 	}

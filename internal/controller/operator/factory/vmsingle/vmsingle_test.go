@@ -61,8 +61,11 @@ func TestCreateOrUpdate(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: vmv1beta1.VMSingleSpec{
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1))},
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+				},
 			},
 		},
 		predefinedObjects: []runtime.Object{
@@ -93,8 +96,11 @@ func TestCreateOrUpdate(t *testing.T) {
 					GraphitePort:     "8053",
 					OpenTSDBPort:     "8054",
 				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					ReplicaCount: ptr.To(int32(1))},
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						ReplicaCount: ptr.To(int32(1)),
+					},
+				},
 			},
 		},
 		predefinedObjects: []runtime.Object{
@@ -321,12 +327,14 @@ func TestMakeSpecForVMSingleOk(t *testing.T) {
 				CommonScrapeParams: vmv1beta1.CommonScrapeParams{
 					IngestOnlyMode: ptr.To(false),
 				},
-				CommonAppsParams: vmv1beta1.CommonAppsParams{
-					Image: vmv1beta1.Image{
-						Tag: "v1.97.1",
+				StandardAppsParams: vmv1beta1.StandardAppsParams{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						Image: vmv1beta1.Image{
+							Tag: "v1.97.1",
+						},
+						UseDefaultResources: ptr.To(false),
+						Port:                "8428",
 					},
-					UseDefaultResources: ptr.To(false),
-					Port:                "8428",
 				},
 				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
 					ConfigReloaderImage: "vmcustomer:v1",

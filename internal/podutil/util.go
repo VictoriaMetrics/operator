@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
@@ -26,7 +27,7 @@ type AgentMetrics interface {
 	client.Object
 	PrefixedName() string
 	GetMetricsPath() string
-	ProbeScheme() string
+	Params(vmv1beta1.ParamsKind) *vmv1beta1.StandardAppsParams
 }
 
 // GetMetricsAddrs discovers the agent's active endpoints from EndpointSlices and
@@ -43,6 +44,7 @@ func GetMetricsAddrs(ctx context.Context, rclient client.Client, agent AgentMetr
 	if len(esl.Items) == 0 {
 		return nil
 	}
+	scheme := strings.ToLower(agent.Params(vmv1beta1.ScrapeParamsKind).ProbeScheme())
 	addrs := sets.New[string]()
 	for i := range esl.Items {
 		es := &esl.Items[i]
@@ -69,7 +71,7 @@ func GetMetricsAddrs(ctx context.Context, rclient client.Client, agent AgentMetr
 				}
 				u := &url.URL{
 					Host:   host,
-					Scheme: strings.ToLower(agent.ProbeScheme()),
+					Scheme: scheme,
 					Path:   agent.GetMetricsPath(),
 				}
 				addrs.Insert(u.String())

@@ -87,6 +87,68 @@ func TestVMUser_Validate(t *testing.T) {
 		},
 	}, true)
 
+	// invalid ref crd, listenerName not supported for kind
+	f(&VMUser{
+		Spec: VMUserSpec{
+			Username: ptr.To("some-user"),
+			TargetRefs: []TargetRef{
+				{
+					CRD: &CRDRef{
+						Kind: "VMAlertmanager",
+						NamespacedName: NamespacedName{
+							Name:         "some-1",
+							Namespace:    "some-ns",
+							ListenerName: "https",
+						},
+					},
+					Paths: []string{"/some-path"},
+				},
+			},
+		},
+	}, true)
+
+	// invalid ref crd, listenerName not supported for VLogs
+	f(&VMUser{
+		Spec: VMUserSpec{
+			Username: ptr.To("some-user"),
+			TargetRefs: []TargetRef{
+				{
+					CRD: &CRDRef{
+						Kind: "VLogs",
+						NamespacedName: NamespacedName{
+							Name:         "some-1",
+							Namespace:    "some-ns",
+							ListenerName: "https",
+						},
+					},
+					Paths: []string{"/some-path"},
+				},
+			},
+		},
+	}, true)
+
+	// invalid ref crd, listenerName not supported for kind on a crd.objects[] entry
+	f(&VMUser{
+		Spec: VMUserSpec{
+			Username: ptr.To("some-user"),
+			TargetRefs: []TargetRef{
+				{
+					CRD: &CRDRef{
+						Kind: "VLogs",
+						Objects: []NamespacedName{
+							{
+								Name:         "some-1",
+								Namespace:    "some-ns",
+								ListenerName: "https",
+							},
+						},
+					},
+					Paths: []string{"/some-path"},
+				},
+			},
+		},
+	}, true)
+
 	// correct crd target
 	f(&VMUser{
 		Spec: VMUserSpec{

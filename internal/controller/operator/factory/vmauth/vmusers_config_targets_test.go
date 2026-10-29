@@ -13,6 +13,15 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
+// newTargetObject returns a fresh object for the given targetRef kind.
+func newTargetObject(kind string) (objectWithURL, error) {
+	newObj, ok := crdNameToObject[kind]
+	if !ok {
+		return nil, fmt.Errorf("unsupported kind=%q", kind)
+	}
+	return newObj(), nil
+}
+
 func Test_newTargetObject(t *testing.T) {
 	for _, kind := range []string{
 		"VMAgent", "VMAlert", "VMSingle", "VLogs", "VMAlertmanager", "VMAlertManager",

@@ -316,7 +316,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		preRun: func(c client.Client, d *testData) {
 			clusters := []*vmv1beta1.VMCluster{d.vmclusters[0]}
-			lb := buildVMAuthLB(d.cr, newTestLBZones(agentObjs(d.zones.vmagents), clusters, nil))
+			lb := buildVMAuthLB(d.cr, newTestLBZones(d.zones.vmagents, clusters, nil))
 			c.Scheme().Default(lb)
 			assert.NoError(t, c.Create(context.TODO(), lb))
 		},
@@ -341,7 +341,7 @@ func TestCreateOrUpdate(t *testing.T) {
 				LogLevel: "INFO",
 			}
 			clusters := []*vmv1beta1.VMCluster{d.vmclusters[0]}
-			vmAuth := buildVMAuthLB(d.cr, newTestLBZones(agentObjs(d.zones.vmagents), clusters, nil))
+			vmAuth := buildVMAuthLB(d.cr, newTestLBZones(d.zones.vmagents, clusters, nil))
 			owner := d.cr.AsOwner()
 			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
 		},
@@ -358,7 +358,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		preRun: func(c client.Client, d *testData) {
 			clusters := []*vmv1beta1.VMCluster{d.vmclusters[0]}
-			lb := buildVMAuthLB(d.cr, newTestLBZones(agentObjs(d.zones.vmagents), clusters, nil))
+			lb := buildVMAuthLB(d.cr, newTestLBZones(d.zones.vmagents, clusters, nil))
 			c.Scheme().Default(lb)
 			assert.NoError(t, c.Create(context.TODO(), lb))
 		},
@@ -376,7 +376,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		validate: func(ctx context.Context, rclient client.Client, d *testData) {
 			clusters := []*vmv1beta1.VMCluster{d.vmclusters[0]}
-			vmAuth := buildVMAuthLB(d.cr, newTestLBZones(agentObjs(d.zones.vmagents), clusters, nil))
+			vmAuth := buildVMAuthLB(d.cr, newTestLBZones(d.zones.vmagents, clusters, nil))
 			owner := d.cr.AsOwner()
 			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
 		},
@@ -556,7 +556,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		preRun: func(c client.Client, d *testData) {
 			clusters := []*vmv1beta1.VMCluster{d.vmclusters[0]}
-			lb := buildVMAuthLB(d.cr, newTestLBZones(agentObjs(d.zones.vmagents), clusters, nil))
+			lb := buildVMAuthLB(d.cr, newTestLBZones(d.zones.vmagents, clusters, nil))
 			c.Scheme().Default(lb)
 			lb.OwnerReferences = nil
 			assert.NoError(t, c.Create(context.TODO(), lb))
@@ -583,7 +583,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 		validate: func(ctx context.Context, rclient client.Client, d *testData) {
 			clusters := []*vmv1beta1.VMCluster{d.vmclusters[0]}
-			vmAuth := buildVMAuthLB(d.cr, newTestLBZones(agentObjs(d.zones.vmagents), clusters, nil))
+			vmAuth := buildVMAuthLB(d.cr, newTestLBZones(d.zones.vmagents, clusters, nil))
 			owner := d.cr.AsOwner()
 			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
 			var got vmv1beta1.VMAuth

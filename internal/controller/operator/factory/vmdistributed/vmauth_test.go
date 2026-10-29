@@ -11,21 +11,8 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-// agentObjs extracts the VMAgent objects from zone agent refs, for tests that
-// need to pass them around as plain *vmv1beta1.VMAgent (e.g. newTestLBZones).
-func agentObjs(refs []vmAgentRef) []*vmv1beta1.VMAgent {
-	objs := make([]*vmv1beta1.VMAgent, len(refs))
-	for i, r := range refs {
-		objs[i] = r.obj
-	}
-	return objs
-}
-
-func newTestLBZones(vmAgents []*vmv1beta1.VMAgent, vmClusters []*vmv1beta1.VMCluster, vmSingles []*vmv1beta1.VMSingle) *zones {
-	zs := &zones{vmagents: make([]vmAgentRef, len(vmAgents))}
-	for i, a := range vmAgents {
-		zs.vmagents[i] = vmAgentRef{obj: a}
-	}
+func newTestLBZones(vmAgents []vmAgentRef, vmClusters []*vmv1beta1.VMCluster, vmSingles []*vmv1beta1.VMSingle) *zones {
+	zs := &zones{vmagents: vmAgents}
 	for _, c := range vmClusters {
 		zs.backends = append(zs.backends, vmBackend{obj: c})
 	}
@@ -33,6 +20,19 @@ func newTestLBZones(vmAgents []*vmv1beta1.VMAgent, vmClusters []*vmv1beta1.VMClu
 		zs.backends = append(zs.backends, vmBackend{obj: s})
 	}
 	return zs
+}
+
+func TestNewTestLBZonesPreservesDelete(t *testing.T) {
+	now := metav1.Now()
+	owner := metav1.OwnerReference{APIVersion: "operator.victoriametrics.com/v1alpha1", Kind: "VMDistributed", Name: "dist"}
+	agents := []vmAgentRef{
+		{obj: &vmv1beta1.VMAgent{ObjectMeta: metav1.ObjectMeta{Name: "old", Namespace: "ns", CreationTimestamp: now, OwnerReferences: []metav1.OwnerReference{owner}}}, delete: true},
+		{obj: &vmv1beta1.VMAgent{ObjectMeta: metav1.ObjectMeta{Name: "live", Namespace: "ns", CreationTimestamp: now, OwnerReferences: []metav1.OwnerReference{owner}}}},
+	}
+
+	zs := newTestLBZones(agents, nil, nil)
+	ref := vmAgentTargetRef(zs.vmagents, &owner)
+	assert.Equal(t, []vmv1beta1.NamespacedName{{Name: "live", Namespace: "ns"}}, ref.CRD.Objects)
 }
 
 func TestVMBackendTargetRef(t *testing.T) {
@@ -168,20 +168,20 @@ func TestBuildVMAuthLBZoneOrder(t *testing.T) {
 			},
 		}
 	}
-	makeAgent := func(name string) *vmv1beta1.VMAgent {
-		return &vmv1beta1.VMAgent{
+	makeAgent := func(name string) vmAgentRef {
+		return vmAgentRef{obj: &vmv1beta1.VMAgent{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:              name,
 				Namespace:         "ns",
 				CreationTimestamp: now,
 				OwnerReferences:   []metav1.OwnerReference{owner},
 			},
-		}
+		}}
 	}
 
 	type opts struct {
 		clusters         []*vmv1beta1.VMCluster
-		agents           []*vmv1beta1.VMAgent
+		agents           []vmAgentRef
 		excludeIds       []int
 		wantClusterNames []string
 	}
@@ -208,7 +208,7 @@ func TestBuildVMAuthLBZoneOrder(t *testing.T) {
 			makeCluster("zone-gen3", 3),
 			makeCluster("zone-gen1", 1),
 		},
-		agents: []*vmv1beta1.VMAgent{
+		agents: []vmAgentRef{
 			makeAgent("zone-gen5"),
 			makeAgent("zone-gen3"),
 			makeAgent("zone-gen1"),
@@ -223,7 +223,7 @@ func TestBuildVMAuthLBZoneOrder(t *testing.T) {
 			makeCluster("zone-gen3", 3),
 			makeCluster("zone-gen1", 1),
 		},
-		agents: []*vmv1beta1.VMAgent{
+		agents: []vmAgentRef{
 			makeAgent("zone-gen5"),
 			makeAgent("zone-gen3"),
 			makeAgent("zone-gen1"),
@@ -250,9 +250,9 @@ func TestBuildVMAuthLBVMSingleBackend(t *testing.T) {
 	}
 	owner := cr.AsOwner()
 	vmAuth := buildVMAuthLB(cr, newTestLBZones(
-		[]*vmv1beta1.VMAgent{
-			{ObjectMeta: metav1.ObjectMeta{Name: "agent-a", Namespace: "ns", CreationTimestamp: now, OwnerReferences: []metav1.OwnerReference{owner}}},
-			{ObjectMeta: metav1.ObjectMeta{Name: "agent-b", Namespace: "ns", CreationTimestamp: now, OwnerReferences: []metav1.OwnerReference{owner}}},
+		[]vmAgentRef{
+			{obj: &vmv1beta1.VMAgent{ObjectMeta: metav1.ObjectMeta{Name: "agent-a", Namespace: "ns", CreationTimestamp: now, OwnerReferences: []metav1.OwnerReference{owner}}}},
+			{obj: &vmv1beta1.VMAgent{ObjectMeta: metav1.ObjectMeta{Name: "agent-b", Namespace: "ns", CreationTimestamp: now, OwnerReferences: []metav1.OwnerReference{owner}}}},
 		},
 		nil,
 		[]*vmv1beta1.VMSingle{

@@ -18,6 +18,7 @@ package operator
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -88,15 +89,25 @@ func (r *VMAnomalyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return
 	}
 
+	RegisterObjectStat(&instance, r.name)
+	if !instance.DeletionTimestamp.IsZero() {
+		// Deletion is handled before the IsUnmanaged lock guard below, so the release does
+		// not depend on how IsUnmanaged treats a deleting object. The lock serializes the
+		// release with the controller that writes the same Applied condition.
+		anomalySync.Lock()
+		releaseErr := vmanomaly.ReleaseAppliedConditions(ctx, r.Client, &instance)
+		anomalySync.Unlock()
+		if releaseErr != nil {
+			err = fmt.Errorf("cannot release status conditions for vmanomaly: %w", releaseErr)
+			return
+		}
+		err = finalize.OnVMAnomalyDelete(ctx, r.Client, &instance)
+		return
+	}
+
 	if !instance.IsUnmanaged() {
 		anomalySync.Lock()
 		defer anomalySync.Unlock()
-	}
-
-	RegisterObjectStat(&instance, r.name)
-	if !instance.DeletionTimestamp.IsZero() {
-		err = finalize.OnVMAnomalyDelete(ctx, r.Client, &instance)
-		return
 	}
 
 	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {

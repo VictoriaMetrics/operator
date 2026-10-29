@@ -39,7 +39,8 @@ func TestValidateVLDistributed(t *testing.T) {
 		t.Helper()
 		err := o.cr.Validate()
 		if o.isErr {
-			if assert.Error(t, err) && o.errMsg != "" {
+			assert.NotEmpty(t, o.errMsg, "validation error must be specific")
+			if assert.Error(t, err) {
 				assert.Contains(t, err.Error(), o.errMsg)
 			}
 		} else {
@@ -61,7 +62,8 @@ func TestValidateVLDistributed(t *testing.T) {
 				},
 			},
 		},
-		isErr: true,
+		isErr:  true,
+		errMsg: "spec.zones[0].name is required",
 	})
 
 	// duplicated zone names
@@ -84,7 +86,7 @@ func TestValidateVLDistributed(t *testing.T) {
 			},
 		},
 		isErr:  true,
-		errMsg: "is duplicated, zone names must be unique",
+		errMsg: "spec.zones[1].name=zone-1 is duplicated, zone names must be unique",
 	})
 
 	// same vlcluster in two zones
@@ -107,7 +109,7 @@ func TestValidateVLDistributed(t *testing.T) {
 			},
 		},
 		isErr:  true,
-		errMsg: "is already added in a different zone",
+		errMsg: "spec.zones[1].vlcluster.name=a is already added in a different zone",
 	})
 
 	// same vlsingle in two zones
@@ -130,7 +132,8 @@ func TestValidateVLDistributed(t *testing.T) {
 				},
 			},
 		},
-		isErr: true,
+		isErr:  true,
+		errMsg: "spec.zones[1].vlsingle.name=a is already added in a different zone",
 	})
 
 	// backendType=VLSingle incompatible with vlcluster config in zone
@@ -152,7 +155,8 @@ func TestValidateVLDistributed(t *testing.T) {
 				},
 			},
 		},
-		isErr: true,
+		isErr:  true,
+		errMsg: "spec.zones[0]: backendType=VLSingle is incompatible with vlcluster configuration",
 	})
 
 	// backendType=VLSingle incompatible with common vlcluster config
@@ -178,7 +182,8 @@ func TestValidateVLDistributed(t *testing.T) {
 				},
 			},
 		},
-		isErr: true,
+		isErr:  true,
+		errMsg: "backendType=VLSingle is incompatible with zoneCommon.vlcluster configuration",
 	})
 
 	// backendType=VLCluster (default) incompatible with common vlsingle config
@@ -200,7 +205,8 @@ func TestValidateVLDistributed(t *testing.T) {
 				},
 			},
 		},
-		isErr: true,
+		isErr:  true,
+		errMsg: "backendType=VLCluster is incompatible with zoneCommon.vlsingle configuration",
 	})
 
 	// duplicated agent names are rejected even when VLAgent is disabled for both zones
@@ -230,7 +236,7 @@ func TestValidateVLDistributed(t *testing.T) {
 			},
 		},
 		isErr:  true,
-		errMsg: "vlagent.name=shared-agent is already added in a different zone",
+		errMsg: "spec.zones[1].vlagent.name=shared-agent is already added in a different zone",
 	})
 
 	// duplicated agent names still error when VLAgent is enabled
@@ -254,7 +260,8 @@ func TestValidateVLDistributed(t *testing.T) {
 				},
 			},
 		},
-		isErr: true,
+		isErr:  true,
+		errMsg: "spec.zones[1].vlagent.name=shared-agent is already added in a different zone",
 	})
 }
 

@@ -392,6 +392,17 @@ func TestUpgradeDrainsDisabledAgent(t *testing.T) {
 		Zones:      []vmv1alpha1.VLDistributedZone{{Name: "target"}},
 	}}
 
+	// Keep a write-capable backend unchanged until its stale agent drains.
+	zs.backends[0].prevAccepts = true
+	backend.Spec.RetentionPeriod = "29d"
+	err = zs.upgrade(context.Background(), rclient, cr, 0)
+	assert.ErrorContains(t, err, "failed to drain VLAgent=default/source queues")
+	var persisted vmv1.VLSingle
+	assert.NoError(t, rclient.Get(context.Background(), client.ObjectKeyFromObject(backend), &persisted))
+	assert.NotEqual(t, "29d", persisted.Spec.RetentionPeriod)
+	zs.backends[0].prevAccepts = false
+	backend.Spec.RetentionPeriod = ""
+
 	endpoints.Endpoints[0].Conditions.Ready = ptr.To(false)
 	assert.NoError(t, rclient.Update(context.Background(), endpoints))
 	err = zs.upgrade(context.Background(), rclient, cr, 0)

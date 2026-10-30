@@ -972,6 +972,9 @@ func buildSlack(gc *globalConfig, rc vmv1beta1.SlackConfig, ns string, ac *build
 	if rc.UpdateMessage != nil {
 		r.set("update_message", rc.UpdateMessage)
 	}
+	if rc.PostUpdatesToThread != nil {
+		r.set("post_updates_to_thread", rc.PostUpdatesToThread)
+	}
 	r.set("mrkdwn_in", rc.MrkdwnIn)
 	var actions []yaml.MapSlice
 	for _, action := range rc.Actions {

@@ -163,6 +163,16 @@ test: manifests generate fmt vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
 	cd api/ && go test ./operator/...
 
+.PHONY: fuzz-test
+fuzz-test: ## Fuzz config generators and fake-client reconciliation
+	@for package in $$(find internal/controller/operator/factory -name '*_fuzz_test.go' -printf '%h\n' | sort -u); do \
+		fuzz_targets=$$(go test ./$$package -list '^Fuzz' | awk '/^Fuzz[A-Za-z0-9_]*$$/ { print }'); \
+		for fuzz in $$fuzz_targets; do \
+			echo "Running fuzz test: $$fuzz in $$package"; \
+			go test ./$$package -run '^$$' -fuzz "^$$fuzz$$" -fuzztime=60s -parallel=4; \
+		done; \
+	done
+
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
 	cd api && $(GOLANGCI_LINT) run operator/... & P1=$$!; \

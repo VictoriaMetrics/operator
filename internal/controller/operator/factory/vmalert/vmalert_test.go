@@ -9,9 +9,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -102,6 +104,138 @@ func TestCreateOrUpdate(t *testing.T) {
 				"/etc/vm/configs/my-templates": "",
 				"/etc/vmalert/rules-src-0":     "/etc/vmalert/rules-out/rules-src-0",
 			})
+		},
+	})
+
+	// statefulMode creates StatefulSet with stable pod identity, see #2768
+	f(opts{
+		cr: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stateful",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAlertSpec{
+				StatefulMode: true,
+				Datasource: vmv1beta1.VMAlertDatasourceSpec{
+					URL: "http://some-vm-datasource",
+				},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To[int32](2),
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) {
+			nsn := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
+			var sts appsv1.StatefulSet
+			assert.NoError(t, rclient.Get(ctx, nsn, &sts))
+			assert.Equal(t, int32(2), *sts.Spec.Replicas)
+			assert.Equal(t, cr.PrefixedName(), sts.Spec.ServiceName)
+			assert.Equal(t, appsv1.ParallelPodManagement, sts.Spec.PodManagementPolicy)
+			assert.Equal(t, cr.SelectorLabels(), sts.Spec.Selector.MatchLabels)
+			var d appsv1.Deployment
+			assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn, &d)))
+		},
+	})
+
+	// statefulMode points VPA at the StatefulSet and tolerates empty rolling update behavior, see #2768
+	f(opts{
+		cfgMutator: func(c *config.BaseOperatorConf) {
+			c.VPAAPIEnabled = true
+		},
+		cr: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "stateful-vpa",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAlertSpec{
+				StatefulMode:                          true,
+				StatefulRollingUpdateStrategyBehavior: &vmv1beta1.StatefulSetUpdateStrategyBehavior{},
+				VPA:                                   &vmv1beta1.EmbeddedVPA{},
+				Datasource: vmv1beta1.VMAlertDatasourceSpec{
+					URL: "http://some-vm-datasource",
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) {
+			var vpa vpav1.VerticalPodAutoscaler
+			assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, &vpa))
+			assert.Equal(t, "StatefulSet", vpa.Spec.TargetRef.Kind)
+		},
+	})
+
+	// switching to statefulMode removes the previous Deployment, see #2768
+	f(opts{
+		cr: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "switch",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAlertSpec{
+				StatefulMode: true,
+				Datasource: vmv1beta1.VMAlertDatasourceSpec{
+					URL: "http://some-vm-datasource",
+				},
+			},
+			Status: vmv1beta1.VMAlertStatus{
+				LastAppliedSpec: &vmv1beta1.VMAlertSpec{
+					Datasource: vmv1beta1.VMAlertDatasourceSpec{
+						URL: "http://some-vm-datasource",
+					},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			func() *appsv1.Deployment {
+				d := k8stools.NewReadyDeployment("vmalert-switch", "default")
+				d.OwnerReferences = []metav1.OwnerReference{(&vmv1beta1.VMAlert{ObjectMeta: metav1.ObjectMeta{Name: "switch"}}).AsOwner()}
+				return d
+			}(),
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) {
+			nsn := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
+			var sts appsv1.StatefulSet
+			assert.NoError(t, rclient.Get(ctx, nsn, &sts))
+			var d appsv1.Deployment
+			assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn, &d)))
+		},
+	})
+
+	// switching back from statefulMode removes the previous StatefulSet, see #2768
+	f(opts{
+		cr: &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "switch-back",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAlertSpec{
+				Datasource: vmv1beta1.VMAlertDatasourceSpec{
+					URL: "http://some-vm-datasource",
+				},
+			},
+			Status: vmv1beta1.VMAlertStatus{
+				LastAppliedSpec: &vmv1beta1.VMAlertSpec{
+					StatefulMode: true,
+					Datasource: vmv1beta1.VMAlertDatasourceSpec{
+						URL: "http://some-vm-datasource",
+					},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "vmalert-switch-back",
+					Namespace:       "default",
+					OwnerReferences: []metav1.OwnerReference{(&vmv1beta1.VMAlert{ObjectMeta: metav1.ObjectMeta{Name: "switch-back"}}).AsOwner()},
+				},
+			},
+		},
+		validate: func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) {
+			nsn := types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}
+			var d appsv1.Deployment
+			assert.NoError(t, rclient.Get(ctx, nsn, &d))
+			var sts appsv1.StatefulSet
+			assert.True(t, k8serrors.IsNotFound(rclient.Get(ctx, nsn, &sts)))
 		},
 	})
 

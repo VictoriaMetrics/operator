@@ -1411,6 +1411,9 @@ type StatefulSetUpdateStrategyBehavior struct {
 var percentPattern = regexp.MustCompile(`^\d+%$`)
 
 func (s *StatefulSetUpdateStrategyBehavior) Validate() error {
+	if s.MaxUnavailable == nil {
+		return nil
+	}
 	// If maxUnavailable is an integer, it must be >= 1
 	if s.MaxUnavailable.Type == intstr.Int {
 		if s.MaxUnavailable.IntValue() < 1 {

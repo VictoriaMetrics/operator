@@ -216,7 +216,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *ap
 			maxUnavailable:         1,
 			ignoreNotReadyOrdinals: o.IgnoreNotReadyPodOrdinals,
 		}
-		if o.UpdateBehavior != nil {
+		if o.UpdateBehavior != nil && o.UpdateBehavior.MaxUnavailable != nil {
 			if o.UpdateBehavior.MaxUnavailable.String() == "100%" {
 				opts.delete = true
 			}

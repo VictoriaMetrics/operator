@@ -135,6 +135,23 @@ type VMAlertSpec struct {
 	// RollingUpdate - overrides deployment update params.
 	// +optional
 	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
+	// StatefulMode enables StatefulSet for `VMAlert` instead of Deployment
+	// it gives replicas stable ordinal pod names, which can be used in `-external.label`
+	// with `%{POD_NAME}`
+	// +optional
+	// +notes={available_from: "v0.76.0"}
+	StatefulMode bool `json:"statefulMode,omitempty"`
+	// StatefulRollingUpdateStrategy allows configuration for strategyType
+	// set it to RollingUpdate for disabling operator statefulSet rollingUpdate
+	// +optional
+	// +kubebuilder:validation:Enum=OnDelete;RollingUpdate
+	// +notes={available_from: "v0.76.0"}
+	StatefulRollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"statefulRollingUpdateStrategy,omitempty"`
+	// StatefulRollingUpdateStrategyBehavior defines customized behavior for rolling updates.
+	// It applies if the RollingUpdateStrategy is set to OnDelete, which is the default.
+	// +optional
+	// +notes={available_from: "v0.76.0"}
+	StatefulRollingUpdateStrategyBehavior *StatefulSetUpdateStrategyBehavior `json:"statefulRollingUpdateStrategyBehavior,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
@@ -167,6 +184,14 @@ type VMAlertSpec struct {
 
 	CommonConfigReloaderParams `json:",inline,omitempty"`
 	CommonAppsParams           `json:",inline,omitempty"`
+}
+
+// WorkloadKind returns the kind of workload deployed for VMAlert based on the current mode.
+func (cr *VMAlert) WorkloadKind() WorkloadKind {
+	if cr.Spec.StatefulMode {
+		return WorkloadKindStatefulSet
+	}
+	return WorkloadKindDeployment
 }
 
 // GetReloadURL implements reloadable interface
@@ -416,6 +441,11 @@ func (cr *VMAlert) Validate() error {
 	if cr.Spec.VPA != nil {
 		if err := cr.Spec.VPA.Validate(); err != nil {
 			return err
+		}
+	}
+	if cr.Spec.StatefulMode && cr.Spec.StatefulRollingUpdateStrategyBehavior != nil {
+		if err := cr.Spec.StatefulRollingUpdateStrategyBehavior.Validate(); err != nil {
+			return fmt.Errorf("vmalert.spec.statefulRollingUpdateStrategyBehavior: %w", err)
 		}
 	}
 	if err := cr.Spec.Validate(); err != nil {

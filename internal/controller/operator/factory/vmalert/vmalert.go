@@ -3,6 +3,7 @@ package vmalert
 import (
 	"context"
 	"fmt"
+	"maps"
 	"path"
 	"sort"
 	"strconv"
@@ -163,18 +164,18 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 		}
 	}
 
-	var prevDeploy *appsv1.Deployment
+	var prevApp client.Object
 	if prevCR != nil {
 		var err error
-		prevDeploy, err = newDeploy(prevCR, cmNames, ac)
+		prevApp, err = newK8sApp(prevCR, cmNames, ac)
 		if err != nil {
-			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
+			return fmt.Errorf("cannot generate prev app spec: %w", err)
 		}
 	}
 
-	newDeploy, err := newDeploy(cr, cmNames, ac)
+	newApp, err := newK8sApp(cr, cmNames, ac)
 	if err != nil {
-		return fmt.Errorf("cannot generate new deploy for vmalert: %w", err)
+		return fmt.Errorf("cannot generate new app for vmalert: %w", err)
 	}
 
 	err = createOrUpdateAssets(ctx, rclient, cr, prevCR, ac)
@@ -182,15 +183,59 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 		return err
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, &owner, nil)
+	switch newApp := newApp.(type) {
+	case *appsv1.StatefulSet:
+		var prevSts *appsv1.StatefulSet
+		if prevApp != nil {
+			prevSts, _ = prevApp.(*appsv1.StatefulSet)
+		}
+		o := reconcile.StatefulSetOpts{
+			SelectorLabels: maps.Clone(newApp.Spec.Selector.MatchLabels),
+			UpdateBehavior: cr.Spec.StatefulRollingUpdateStrategyBehavior,
+		}
+		if err := reconcile.StatefulSet(ctx, rclient, newApp, prevSts, &owner, &o); err != nil {
+			return fmt.Errorf("cannot reconcile statefulset for vmalert: %w", err)
+		}
+	case *appsv1.Deployment:
+		var prevDeploy *appsv1.Deployment
+		if prevApp != nil {
+			prevDeploy, _ = prevApp.(*appsv1.Deployment)
+		}
+		if err := reconcile.Deployment(ctx, rclient, newApp, prevDeploy, &owner, nil); err != nil {
+			return fmt.Errorf("cannot reconcile deployment for vmalert: %w", err)
+		}
+	}
+	return nil
 }
 
-// newDeploy returns a busybox pod with the same name/namespace as the cr
-func newDeploy(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.AssetsCache) (*appsv1.Deployment, error) {
-
+// newK8sApp returns StatefulSet if statefulMode is enabled or Deployment otherwise
+func newK8sApp(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.AssetsCache) (client.Object, error) {
 	generatedSpec, err := newPodSpec(cr, ruleConfigMapNames, ac)
 	if err != nil {
 		return nil, fmt.Errorf("cannot generate new spec for vmalert: %w", err)
+	}
+
+	if cr.Spec.StatefulMode {
+		sts := &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            cr.PrefixedName(),
+				Namespace:       cr.Namespace,
+				Labels:          cr.FinalLabels(),
+				Annotations:     cr.FinalAnnotations(),
+				OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
+			},
+			Spec: appsv1.StatefulSetSpec{
+				Selector: generatedSpec.Selector,
+				UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+					Type: cr.Spec.StatefulRollingUpdateStrategy,
+				},
+				PodManagementPolicy: appsv1.ParallelPodManagement,
+				ServiceName:         cr.PrefixedName(),
+				Template:            generatedSpec.Template,
+			},
+		}
+		build.StatefulSetAddCommonParams(sts, &cr.Spec.CommonAppsParams)
+		return sts, nil
 	}
 
 	deploy := &appsv1.Deployment{
@@ -811,13 +856,18 @@ func createOrUpdateVPA(ctx context.Context, rclient client.Client, cr, prevCR *v
 	}
 	targetRef := autoscalingv1.CrossVersionObjectReference{
 		Name:       cr.PrefixedName(),
-		Kind:       string(vmv1beta1.WorkloadKindDeployment),
+		Kind:       string(cr.WorkloadKind()),
 		APIVersion: "apps/v1",
 	}
 	newVPA := build.VPA(cr, targetRef, cr.Spec.VPA)
 	var prevVPA *vpav1.VerticalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.VPA != nil {
-		prevVPA = build.VPA(prevCR, targetRef, prevCR.Spec.VPA)
+		prevTargetRef := autoscalingv1.CrossVersionObjectReference{
+			Name:       prevCR.PrefixedName(),
+			Kind:       string(prevCR.WorkloadKind()),
+			APIVersion: "apps/v1",
+		}
+		prevVPA = build.VPA(prevCR, prevTargetRef, prevCR.Spec.VPA)
 	}
 	owner := cr.AsOwner()
 	return reconcile.VPA(ctx, rclient, newVPA, prevVPA, &owner)
@@ -843,6 +893,11 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
 	var objsToRemove []client.Object
+	if cr.Spec.StatefulMode {
+		objsToRemove = append(objsToRemove, &appsv1.Deployment{ObjectMeta: objMeta})
+	} else {
+		objsToRemove = append(objsToRemove, &appsv1.StatefulSet{ObjectMeta: objMeta})
+	}
 	if cr.Spec.PodDisruptionBudget == nil {
 		objsToRemove = append(objsToRemove, &policyv1.PodDisruptionBudget{ObjectMeta: objMeta})
 	}

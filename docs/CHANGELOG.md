@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): add `spec.statefulMode`, `spec.statefulRollingUpdateStrategy` and `spec.statefulRollingUpdateStrategyBehavior` to run `VMAlert` as a StatefulSet instead of a Deployment. Replicas get stable ordinal pod names, so `-external.label=vmalert_replica=%{POD_NAME}` stays the same across pod restarts and alerts state restore keeps working. Toggling `spec.statefulMode` deletes the existing Deployment or StatefulSet and creates the other kind, so expect a short interruption of rules evaluation. The `VMAlert` CRD must be updated to use these fields. See [#2768](https://github.com/VictoriaMetrics/operator/issues/2768).
+
 * BUGFIX: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): pass `-kubernetesCollector.includePodLabels=false` when `spec.k8sCollector.includePodLabels` is set to `false`. Previously, the flag was omitted, so vlagent kept its default and still attached pod labels to log entries. See [#2772](https://github.com/VictoriaMetrics/operator/issues/2772).
 
 ## [v0.75.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.2)

@@ -5279,6 +5279,11 @@ func (in *VMAlertSpec) DeepCopyInto(out *VMAlertSpec) {
 		*out = new(appsv1.RollingUpdateDeployment)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.StatefulRollingUpdateStrategyBehavior != nil {
+		in, out := &in.StatefulRollingUpdateStrategyBehavior, &out.StatefulRollingUpdateStrategyBehavior
+		*out = new(StatefulSetUpdateStrategyBehavior)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.PodDisruptionBudget != nil {
 		in, out := &in.PodDisruptionBudget, &out.PodDisruptionBudget
 		*out = new(EmbeddedPodDisruptionBudgetSpec)

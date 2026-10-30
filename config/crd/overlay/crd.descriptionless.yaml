@@ -18441,6 +18441,21 @@ spec:
               startupProbe:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              statefulMode:
+                type: boolean
+              statefulRollingUpdateStrategy:
+                enum:
+                - OnDelete
+                - RollingUpdate
+                type: string
+              statefulRollingUpdateStrategyBehavior:
+                properties:
+                  maxUnavailable:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    x-kubernetes-int-or-string: true
+                type: object
               terminationGracePeriodSeconds:
                 format: int64
                 type: integer

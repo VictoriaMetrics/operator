@@ -36610,6 +36610,35 @@ spec:
                 description: StartupProbe that will be added to CR pod
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              statefulMode:
+                description: |-
+                  StatefulMode enables StatefulSet for `VMAlert` instead of Deployment
+                  it gives replicas stable ordinal pod names, which can be used in `-external.label`
+                  with `%{POD_NAME}`
+                type: boolean
+              statefulRollingUpdateStrategy:
+                description: |-
+                  StatefulRollingUpdateStrategy allows configuration for strategyType
+                  set it to RollingUpdate for disabling operator statefulSet rollingUpdate
+                enum:
+                - OnDelete
+                - RollingUpdate
+                type: string
+              statefulRollingUpdateStrategyBehavior:
+                description: |-
+                  StatefulRollingUpdateStrategyBehavior defines customized behavior for rolling updates.
+                  It applies if the RollingUpdateStrategy is set to OnDelete, which is the default.
+                properties:
+                  maxUnavailable:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    description: |-
+                      MaxUnavailable defines the maximum number of pods that can be unavailable during the update.
+                      It can be specified as an absolute number (e.g. 2) or a percentage of the total pods (e.g. "50%").
+                      For example, if set to 100%, all pods will be upgraded at once, minimizing downtime when needed.
+                    x-kubernetes-int-or-string: true
+                type: object
               terminationGracePeriodSeconds:
                 description: TerminationGracePeriodSeconds period for container graceful
                   termination

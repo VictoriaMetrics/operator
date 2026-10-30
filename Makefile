@@ -164,11 +164,12 @@ test: manifests generate fmt vet envtest ## Run tests.
 	cd api/ && go test ./operator/...
 
 .PHONY: fuzz-test
-fuzz-test: ## Fuzz factory tests
-	@for package in $$(find internal/controller/operator/factory -name '*_fuzz_test.go' -printf '%h\n' | sort -u); do \
-		for fuzz in $$(go test ./$$package -list '^Fuzz' | awk '/^Fuzz[A-Za-z0-9_]*$$/ { print }'); do \
+fuzz-test: ## Fuzz internal tests
+	@set -e; for package in $$(find internal -name '*_fuzz_test.go' -printf '%h\n' | sort -u); do \
+		listed=$$(go test ./$$package -list '^Fuzz'); \
+		for fuzz in $$(printf '%s\n' "$$listed" | awk '/^Fuzz[A-Za-z0-9_]*$$/ { print }'); do \
 			echo "Running fuzz test: $$fuzz in $$package"; \
-			go test ./$$package -run '^$$' -fuzz "^$$fuzz$$" -fuzztime=60s -parallel=4; \
+			go test ./$$package -run '^$$' -fuzz "^$$fuzz$$" -fuzztime=60s; \
 		done; \
 	done
 
@@ -178,7 +179,7 @@ fuzz-test-api: ## Fuzz API validation tests
 		package=$${package#api/}; \
 		for fuzz in $$(go -C api test ./$$package -list '^Fuzz' | awk '/^Fuzz[A-Za-z0-9_]*$$/ { print }'); do \
 			echo "Running fuzz test: $$fuzz in api/$$package"; \
-			go -C api test ./$$package -run '^$$' -fuzz "^$$fuzz$$" -fuzztime=60s -parallel=4; \
+			go -C api test ./$$package -run '^$$' -fuzz "^$$fuzz$$" -fuzztime=60s; \
 		done; \
 	done
 

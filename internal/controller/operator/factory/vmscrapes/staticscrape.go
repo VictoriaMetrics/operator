@@ -64,6 +64,9 @@ func generateStaticScrapeConfig(
 	}
 
 	for _, c := range ep.RelabelConfigs {
+		if c == nil {
+			continue
+		}
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
 	for _, trc := range sp.StaticScrapeRelabelTemplate {

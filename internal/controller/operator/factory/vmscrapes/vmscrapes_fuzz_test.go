@@ -43,7 +43,12 @@ func FuzzRelabelConfig(f *testing.F) {
 }
 
 func FuzzStaticScrapeConfig(f *testing.F) {
-	for _, seed := range []string{`{"targets":["localhost:8428"]}`, `{"targets":["host:9100"],"labels":{"job":"node"},"relabelConfigs":[{"targetLabel":"instance","replacement":"node"}]}`} {
+	for _, seed := range []string{
+		`{"targets":["localhost:8428"]}`,
+		`{"targets":["host:9100"],"labels":{"job":"node"},"relabelConfigs":[{"targetLabel":"instance","replacement":"node"}]}`,
+		`{"targets":["localhost:8428"],"metricRelabelConfigs":[null]}`,
+		`{"targets":["localhost:8428"],"relabelConfigs":[null]}`,
+	} {
 		f.Add([]byte(seed))
 	}
 	scheme := runtime.NewScheme()

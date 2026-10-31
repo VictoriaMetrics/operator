@@ -28,6 +28,22 @@ func mustRouteToJSON(t *testing.T, r vmv1beta1.SubRoute) apiextensionsv1.JSON {
 	return apiextensionsv1.JSON{Raw: data}
 }
 
+func TestBuildProxyConfigHeaderOrder(t *testing.T) {
+	cfg := &vmv1beta1.ProxyConfig{ProxyConnectHeader: map[string][]corev1.SecretKeySelector{
+		"Z-Header": nil,
+		"A-Header": nil,
+	}}
+	want := yaml.MapSlice{{Key: "proxy_connect_header", Value: yaml.MapSlice{
+		{Key: "A-Header", Value: []string(nil)},
+		{Key: "Z-Header", Value: []string(nil)},
+	}}}
+	for range 100 {
+		got, err := buildProxyConfig(cfg, "default", nil)
+		assert.NoError(t, err)
+		assert.Equal(t, want, got)
+	}
+}
+
 func TestBuildMattermostNilAttachment(t *testing.T) {
 	_, err := buildMattermost(vmv1beta1.MattermostConfig{
 		Attachments: []*vmv1beta1.MattermostAttachment{{Text: "valid"}, nil},

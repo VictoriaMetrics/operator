@@ -1518,8 +1518,15 @@ func buildProxyConfig(proxyCfg *vmv1beta1.ProxyConfig, ns string, ac *build.Asse
 	r.set("no_proxy", proxyCfg.NoProxy)
 	r.set("proxy_from_environment", proxyCfg.ProxyFromEnvironment)
 	if len(proxyCfg.ProxyConnectHeader) > 0 {
+		names := make([]string, 0, len(proxyCfg.ProxyConnectHeader))
+		for name := range proxyCfg.ProxyConnectHeader {
+			names = append(names, name)
+		}
+		slices.Sort(names)
+
 		var h yaml.MapSlice
-		for k, vs := range proxyCfg.ProxyConnectHeader {
+		for _, k := range names {
+			vs := proxyCfg.ProxyConnectHeader[k]
 			var secrets []string
 			for i, v := range vs {
 				secret, err := ac.LoadKeyFromSecret(ns, &v)

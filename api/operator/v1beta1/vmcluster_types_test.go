@@ -193,6 +193,35 @@ func TestVMCluster_StorageNodeIDsUnderMaintenance(t *testing.T) {
 	f(&VMCluster{}, nil)
 }
 
+func TestVMCluster_ValidateStorageReplicaLimit(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		storage VMStorage
+		skip    bool
+		wantErr bool
+	}{
+		{name: "100 replicas", storage: VMStorage{CommonAppsParams: CommonAppsParams{ReplicaCount: ptr.To(int32(100))}}},
+		{name: "101 replicas", storage: VMStorage{CommonAppsParams: CommonAppsParams{ReplicaCount: ptr.To(int32(101))}}, wantErr: true},
+		{name: "skip validation cannot bypass limit", storage: VMStorage{CommonAppsParams: CommonAppsParams{ReplicaCount: ptr.To(int32(101))}}, skip: true, wantErr: true},
+		{name: "large replica count", storage: VMStorage{CommonAppsParams: CommonAppsParams{ReplicaCount: ptr.To(int32(100000000))}}, wantErr: true},
+		{name: "100 HPA min replicas", storage: VMStorage{HPA: &EmbeddedHPA{MinReplicas: ptr.To(int32(100)), MaxReplicas: 100}}},
+		{name: "101 HPA min replicas", storage: VMStorage{HPA: &EmbeddedHPA{MinReplicas: ptr.To(int32(101)), MaxReplicas: 101}}, wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cr := &VMCluster{Spec: VMClusterSpec{VMStorage: &tc.storage}}
+			if tc.skip {
+				cr.Annotations = map[string]string{SkipValidationAnnotation: SkipValidationValue}
+			}
+			err := cr.Validate()
+			if tc.wantErr {
+				assert.ErrorContains(t, err, "vmstorage")
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestVMCluster_Validate(t *testing.T) {
 	f := func(spec VMClusterSpec, wantErr bool) {
 		t.Helper()

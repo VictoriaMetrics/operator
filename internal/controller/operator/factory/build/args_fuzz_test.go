@@ -28,7 +28,7 @@ func FuzzLicenseBuilders(f *testing.F) {
 			Mounts   []corev1.VolumeMount `json:"mounts"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			fuzztest.New(data).Fuzz(&input)
+			fuzztest.New(data).Fill(&input)
 		}
 		assertStableBuilder(t, func() (any, error) {
 			volumes, mounts := LicenseVolumeTo(input.Volumes, input.Mounts, input.License, input.MountDir)
@@ -58,7 +58,7 @@ func FuzzStreamAggrRelabelArgs(f *testing.F) {
 			Relabel    []*vmv1beta1.CommonRelabelParams `json:"relabel"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			fuzztest.New(data).Fuzz(&input)
+			fuzztest.New(data).Fill(&input)
 		}
 		streamKeys := make([]string, len(input.StreamAggr))
 		for i := range streamKeys {

@@ -27,7 +27,7 @@ func FuzzConfigReloaderContainer(f *testing.F) {
 			Init   bool                      `json:"init"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			fuzztest.New(data).Fuzz(&input)
+			fuzztest.New(data).Fill(&input)
 		}
 		input.Agent.Name, input.Agent.Namespace = "agent", "default"
 		assertStableBuilder(t, func() (any, error) {

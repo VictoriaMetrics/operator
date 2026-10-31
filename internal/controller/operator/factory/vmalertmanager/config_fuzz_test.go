@@ -56,7 +56,7 @@ func FuzzBuildRoute(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte, disableEnforcement bool) {
 		var cr vmv1beta1.VMAlertmanagerConfig
 		if err := json.Unmarshal(data, &cr); err != nil {
-			fuzztest.New(data).Fuzz(&cr)
+			fuzztest.New(data).Fill(&cr)
 		}
 		if cr.Spec.Route == nil {
 			return
@@ -90,7 +90,7 @@ func FuzzBuildReceiver(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		var r vmv1beta1.Receiver
 		if err := json.Unmarshal(data, &r); err != nil {
-			fuzztest.New(data).Fuzz(&r)
+			fuzztest.New(data).Fill(&r)
 		}
 		cr := &vmv1beta1.VMAlertmanagerConfig{ObjectMeta: metav1.ObjectMeta{Name: "config", Namespace: "default"}}
 		am := fuzzAlertmanager()
@@ -114,7 +114,7 @@ func FuzzBuildTimeIntervals(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		var intervals []vmv1beta1.TimeIntervals
 		if err := json.Unmarshal(data, &intervals); err != nil {
-			fuzztest.New(data).Fuzz(&intervals)
+			fuzztest.New(data).Fill(&intervals)
 		}
 		cr := &vmv1beta1.VMAlertmanagerConfig{ObjectMeta: metav1.ObjectMeta{Name: "config", Namespace: "default"}}
 		cr.Spec.TimeIntervals = intervals
@@ -130,7 +130,7 @@ func FuzzBuildInhibitRule(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte, enforceNamespace bool) {
 		var rule vmv1beta1.InhibitRule
 		if err := json.Unmarshal(data, &rule); err != nil {
-			fuzztest.New(data).Fuzz(&rule)
+			fuzztest.New(data).Fill(&rule)
 		}
 		assertStableBuild(t, func() (any, error) { return buildInhibitRule("default", rule, enforceNamespace), nil })
 	})

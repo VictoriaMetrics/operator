@@ -23,7 +23,7 @@ func FuzzValidateCRs(f *testing.F) {
 				_ = cr.Validate()
 			}
 			// Limit depth past unsupported interfaces.
-			fuzztest.New(data).Fuzz(cr)
+			fuzztest.New(data).Fill(cr)
 			_ = cr.Validate()
 		}
 	})

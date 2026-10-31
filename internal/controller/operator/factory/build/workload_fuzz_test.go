@@ -24,7 +24,7 @@ func fuzzCommonWorkloadParams[T any](f *testing.F, build func(*T, *vmv1beta1.Com
 			Initial T                          `json:"initial"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			fuzztest.New(data).Fuzz(&input)
+			fuzztest.New(data).Fill(&input)
 		}
 		assertStableBuilder(t, func() (any, error) {
 			build(&input.Initial, &input.Params)

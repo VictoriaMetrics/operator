@@ -25,7 +25,7 @@ func fuzzPromConversion[T any](t *testing.T, data []byte, convert func(*T) any) 
 	t.Helper()
 	var src T
 	if err := json.Unmarshal(data, &src); err != nil {
-		fuzztest.New(data).Fuzz(&src)
+		fuzztest.New(data).Fill(&src)
 	}
 	first, err := json.Marshal(convert(&src))
 	if err != nil {

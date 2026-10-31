@@ -26,7 +26,7 @@ func FuzzVMServiceScrapeBuilder(f *testing.F) {
 			AdditionalPorts []string           `json:"additionalPorts"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			fuzztest.New(data).Fuzz(&input)
+			fuzztest.New(data).Fill(&input)
 		}
 		input.CR.Name, input.CR.Namespace = "single", "default"
 		assertStableBuilder(t, func() (any, error) {
@@ -51,7 +51,7 @@ func FuzzVMPodScrapeBuilder(f *testing.F) {
 			AdditionalPorts []string           `json:"additionalPorts"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			fuzztest.New(data).Fuzz(&input)
+			fuzztest.New(data).Fill(&input)
 		}
 		input.CR.Name, input.CR.Namespace = "single", "default"
 		assertStableBuilder(t, func() (any, error) {

@@ -74,7 +74,7 @@ settings:
 			Server     *vmv1.VMAnomalyServerSpec     `json:"server"`
 		}
 		if err := json.Unmarshal(spec, &input); err != nil {
-			fuzztest.New(spec).Fuzz(&input)
+			fuzztest.New(spec).Fill(&input)
 		}
 		cr := &vmv1.VMAnomaly{
 			ObjectMeta: metav1.ObjectMeta{Name: "fuzz", Namespace: "default"},

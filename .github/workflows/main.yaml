@@ -4,15 +4,11 @@ name: Build and Test
 # Pull requests:
 # - The workflow is not triggered when only docs/**, *.md, config/examples/**, config/samples/**
 #   or .github/** (except this workflow and .github/actions/**) change.
-# - Draft PRs skip lint, unit tests and e2e.
-# - e2e is skipped when only the paths above, the root Makefile, go.mod/go.sum or codespell/** change.
+# - Draft PRs skip lint and unit tests.
 #
-# Pushes to master:
-# - Build and Test always runs.
-# - e2e runs unless only the paths above or codespell/** change; Makefile and go.mod/go.sum
-#   changes skip e2e on PRs but are tested here.
+# Pushes to master always run Build and Test.
 #
-# See the "Check changed files" step for the e2e filters.
+# e2e tests run in the E2E workflow, see e2e.yaml.
 on:
   push:
     branches:
@@ -51,8 +47,6 @@ jobs:
       contents: read
       security-events: write
       checks: write
-    outputs:
-      run_e2e: ${{ steps.changes.outputs.src == 'true' || steps.changes.outputs.ci == 'true' || (github.event_name == 'push' && steps.changes.outputs.deps == 'true') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -94,67 +88,3 @@ jobs:
       - name: Save Go cache
         if: ${{ github.ref == 'refs/heads/master' }}
         uses: ./.github/actions/save-go-cache
-
-      - name: Check changed files
-        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d  # v4.0.3
-        id: changes
-        with:
-          # a file matches a filter when it matches one of its rules and none of its '!' rules
-          predicate-quantifier: 'some-with-excludes'
-          filters: |
-            src:
-              - '**'
-              - '!Makefile'
-              - '!docs/**'
-              - '!**/*.md'
-              - '!config/examples/**'
-              - '!config/samples/**'
-              - '!**/go.mod'
-              - '!**/go.sum'
-              - '!.github/**'
-              - '!codespell/**'
-            # kept out of src, since an excluded path cannot be re-included there
-            ci:
-              - '.github/workflows/main.yaml'
-              - '.github/actions/**'
-            # dependency and tool version bumps: e2e on master pushes only
-            deps:
-              - 'Makefile'
-              - '**/go.mod'
-              - '**/go.sum'
-
-  e2e:
-    name: E2E / ${{ matrix.name }}
-    needs: build
-    if: github.event.pull_request.draft == false && needs.build.outputs.run_e2e == 'true'
-    runs-on: vm-runner
-    permissions:
-      actions: read
-      contents: read
-      checks: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: main
-            e2e_target: ./test/e2e/
-          - name: upgrade
-            e2e_target: ./test/e2e/upgrade/...
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-      - name: Setup build environment
-        id: setup
-        uses: ./.github/actions/setup-build-env
-      - name: E2E Tests
-        env:
-          DOCKER_BUILD_ARGS: --cache-from=type=gha --cache-to=type=gha,mode=max
-          LICENSE_KEY: ${{ secrets.ENTERPRISE_COMPONENTS_LICENSE_KEY }}
-          E2E_TARGET: ${{ matrix.e2e_target }}
-        run: |
-          TAG=${GITHUB_SHA:0:7} BASE_REF=origin/${{ github.base_ref || 'master' }} make test-e2e
-      - name: Save Go cache
-        if: ${{ github.ref == 'refs/heads/master' }}
-        uses: ./.github/actions/save-go-cache
-      - name: Publish reports
-        uses: ./.github/actions/publish-reports

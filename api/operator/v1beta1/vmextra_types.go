@@ -1552,6 +1552,7 @@ type CommonAppsParams struct {
 	// ReplicaCount is the expected size of the Application.
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	// +optional
+	// +kubebuilder:validation:Maximum=100
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
 	// The number of old ReplicaSets to retain to allow rollback in deployment or
 	// maximum number of revisions that will be maintained in the Deployment revision history.

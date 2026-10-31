@@ -169,17 +169,17 @@ fuzz-test: ## Fuzz internal tests
 		listed=$$(go test ./$$package -list '^Fuzz'); \
 		for fuzz in $$(printf '%s\n' "$$listed" | awk '/^Fuzz[A-Za-z0-9_]*$$/ { print }'); do \
 			echo "Running fuzz test: $$fuzz in $$package"; \
-			go test ./$$package -run '^$$' -fuzz "^$$fuzz$$" -fuzztime=200000x; \
+			go test ./$$package -run '^$$' -fuzz "^$$fuzz$$" -fuzztime=500000x; \
 		done; \
 	done
 
 .PHONY: fuzz-test-api
 fuzz-test-api: ## Fuzz API validation tests
-	@for package in $$(find api/operator -name '*_fuzz_test.go' -printf '%h\n' | sort -u); do \
+	@set -e; for package in $$(find api/operator -name '*_fuzz_test.go' -printf '%h\n' | sort -u); do \
 		package=$${package#api/}; \
 		for fuzz in $$(go -C api test ./$$package -list '^Fuzz' | awk '/^Fuzz[A-Za-z0-9_]*$$/ { print }'); do \
 			echo "Running fuzz test: $$fuzz in api/$$package"; \
-			go -C api test ./$$package -run '^$$' -fuzz "^$$fuzz$$" -fuzztime=200000x; \
+			go -C api test ./$$package -run '^$$' -fuzz "^$$fuzz$$" -fuzztime=500000x; \
 		done; \
 	done
 

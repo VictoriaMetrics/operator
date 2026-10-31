@@ -1,0 +1,100 @@
+name: E2E
+# Runs e2e tests against a kind cluster:
+# - on pushes to master;
+# - on pull requests targeting master or release-* branches, when the PR is approved
+#   or when the run-e2e label is added. To run them again, e.g. after new commits or a rebase,
+#   remove and re-add the run-e2e label, or approve the PR again.
+# Draft PRs are skipped, and so are changes that don't affect e2e, see the "Check changed files" step.
+on:
+  push:
+    branches:
+      - master
+  pull_request_review:
+    types:
+      - submitted
+  pull_request:
+    branches:
+      - master
+      - release-*
+    types:
+      - labeled
+
+permissions: {}
+
+jobs:
+  changes:
+    name: Check changed files
+    if: >-
+      github.event_name == 'push' ||
+      (github.event.pull_request.draft == false &&
+       (github.event.pull_request.base.ref == 'master' || startsWith(github.event.pull_request.base.ref, 'release-')) &&
+       ((github.event.review.state == 'approved' &&
+         contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.review.author_association)) ||
+        github.event.label.name == 'run-e2e'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      run_e2e: ${{ steps.changes.outputs.src }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check changed files
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d  # v4.0.3
+        id: changes
+        with:
+          filters: |
+            src:
+              - '**'
+              - '!Makefile'
+              - '!docs/**'
+              - '!*.md'
+              - '!.github/**'
+              - '.github/workflows/e2e.yaml'
+              - '!codespell/**'
+              - 'LICENSE'
+              - 'PROJECT'
+
+  e2e:
+    name: E2E / ${{ matrix.name }}
+    needs: changes
+    if: needs.changes.outputs.run_e2e == 'true'
+    # job-level, so that unrelated reviews and labels, which skip all jobs, don't cancel a running e2e
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ matrix.name }}
+      cancel-in-progress: true
+    runs-on: vm-runner
+    permissions:
+      actions: read
+      contents: read
+      checks: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: main
+            e2e_target: ./test/e2e/
+          - name: upgrade
+            e2e_target: ./test/e2e/upgrade/...
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - name: Setup build environment
+        id: setup
+        uses: ./.github/actions/setup-build-env
+      - name: E2E Tests
+        env:
+          DOCKER_BUILD_ARGS: --cache-from=type=gha --cache-to=type=gha,mode=max
+          LICENSE_KEY: ${{ secrets.ENTERPRISE_COMPONENTS_LICENSE_KEY }}
+          E2E_TARGET: ${{ matrix.e2e_target }}
+        run: |
+          TAG=${GITHUB_SHA:0:7} BASE_REF=origin/${{ github.event.pull_request.base.ref || 'master' }} make test-e2e
+      - name: Save Go cache
+        if: ${{ github.ref == 'refs/heads/master' }}
+        uses: ./.github/actions/save-go-cache
+      - name: Publish reports
+        uses: ./.github/actions/publish-reports

@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
@@ -43,16 +44,13 @@ func FuzzMergeMapsWithStrategy(f *testing.F) {
 		mergePromPriority: vmv1beta1.MetadataStrategyMergePromPriority,
 	}
 	f.Fuzz(func(t *testing.T, strategy uint8, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		var input struct {
 			Existing map[string]string `json:"existing"`
 			New      map[string]string `json:"new"`
 			Prev     map[string]string `json:"prev"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			return
+			fuzztest.New(data).Fuzz(&input)
 		}
 		existing, next, prev := maps.Clone(input.Existing), maps.Clone(input.New), maps.Clone(input.Prev)
 		mode := strategies[int(strategy)%len(strategies)]

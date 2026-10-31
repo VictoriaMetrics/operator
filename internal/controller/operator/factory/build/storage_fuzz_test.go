@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
+
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -19,9 +21,6 @@ func FuzzStorageVolumeMounts(f *testing.F) {
 		f.Add([]byte(seed))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		var input struct {
 			Volumes        []corev1.Volume      `json:"volumes"`
 			Mounts         []corev1.VolumeMount `json:"mounts"`
@@ -31,7 +30,7 @@ func FuzzStorageVolumeMounts(f *testing.F) {
 			Stateful       bool                 `json:"stateful"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			return
+			fuzztest.New(data).Fuzz(&input)
 		}
 		var pvc *corev1.PersistentVolumeClaimVolumeSource
 		if input.PVC {

@@ -169,7 +169,7 @@ fuzz-test: ## Fuzz internal tests
 		listed=$$(go test ./$$package -list '^Fuzz'); \
 		for fuzz in $$(printf '%s\n' "$$listed" | awk '/^Fuzz[A-Za-z0-9_]*$$/ { print }'); do \
 			echo "Running fuzz test: $$fuzz in $$package"; \
-			go test ./$$package -run '^$$' -fuzz "^$$fuzz$$" -fuzztime=60s; \
+			go test ./$$package -run '^$$' -fuzz "^$$fuzz$$" -fuzztime=200000x; \
 		done; \
 	done
 
@@ -179,7 +179,7 @@ fuzz-test-api: ## Fuzz API validation tests
 		package=$${package#api/}; \
 		for fuzz in $$(go -C api test ./$$package -list '^Fuzz' | awk '/^Fuzz[A-Za-z0-9_]*$$/ { print }'); do \
 			echo "Running fuzz test: $$fuzz in api/$$package"; \
-			go -C api test ./$$package -run '^$$' -fuzz "^$$fuzz$$" -fuzztime=60s; \
+			go -C api test ./$$package -run '^$$' -fuzz "^$$fuzz$$" -fuzztime=200000x; \
 		done; \
 	done
 

@@ -17,9 +17,6 @@ func FuzzPrometheusRelabelConversion(f *testing.F) {
 		f.Add([]byte(seed))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		fuzzPromConversion(t, data, func(src *[]promv1.RelabelConfig) any {
 			return ConvertRelabelConfig(context.Background(), *src)
 		})
@@ -38,9 +35,6 @@ func FuzzPrometheusAuthConversion(f *testing.F) {
 		f.Add([]byte(seed))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		type authInput struct {
 			TLSConfig         *promv1.TLSConfig         `json:"tlsConfig"`
 			SafeTLSConfig     *promv1.SafeTLSConfig     `json:"safeTLSConfig"`

@@ -6,7 +6,11 @@ import (
 	"testing"
 
 	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
@@ -20,12 +24,9 @@ func FuzzRelabelConfig(f *testing.F) {
 		f.Add([]byte(seed))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		var rc vmv1beta1.RelabelConfig
-		if json.Unmarshal(data, &rc) != nil {
-			return
+		if err := json.Unmarshal(data, &rc); err != nil {
+			fuzztest.New(data).Fuzz(&rc)
 		}
 		a, err := yaml.Marshal(generateRelabelConfig(&rc))
 		if err != nil {
@@ -45,17 +46,19 @@ func FuzzStaticScrapeConfig(f *testing.F) {
 	for _, seed := range []string{`{"targets":["localhost:8428"]}`, `{"targets":["host:9100"],"labels":{"job":"node"},"relabelConfigs":[{"targetLabel":"instance","replacement":"node"}]}`} {
 		f.Add([]byte(seed))
 	}
+	scheme := runtime.NewScheme()
+	if err := corev1.AddToScheme(scheme); err != nil {
+		f.Fatal(err)
+	}
+	client := fake.NewClientBuilder().WithScheme(scheme).Build()
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		var ep vmv1beta1.TargetEndpoint
-		if json.Unmarshal(data, &ep) != nil {
-			return
+		if err := json.Unmarshal(data, &ep); err != nil {
+			fuzztest.New(data).Fuzz(&ep)
 		}
 		render := func() ([]byte, error) {
 			copy := ep.DeepCopy()
-			cfg, err := generateStaticScrapeConfig(t.Context(), &vmv1beta1.CommonScrapeParams{}, &vmv1beta1.VMStaticScrape{}, copy, 0, build.NewAssetsCache(t.Context(), nil, nil))
+			cfg, err := generateStaticScrapeConfig(t.Context(), &vmv1beta1.CommonScrapeParams{}, &vmv1beta1.VMStaticScrape{}, copy, 0, build.NewAssetsCache(t.Context(), client, nil))
 			if err != nil {
 				return nil, err
 			}

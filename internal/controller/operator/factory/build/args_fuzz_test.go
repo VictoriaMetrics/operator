@@ -6,6 +6,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
@@ -19,9 +20,6 @@ func FuzzLicenseBuilders(f *testing.F) {
 		f.Add([]byte(seed))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		var input struct {
 			License  *vmv1beta1.License   `json:"license"`
 			Args     []string             `json:"args"`
@@ -30,7 +28,7 @@ func FuzzLicenseBuilders(f *testing.F) {
 			Mounts   []corev1.VolumeMount `json:"mounts"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			return
+			fuzztest.New(data).Fuzz(&input)
 		}
 		assertStableBuilder(t, func() (any, error) {
 			volumes, mounts := LicenseVolumeTo(input.Volumes, input.Mounts, input.License, input.MountDir)
@@ -54,19 +52,13 @@ func FuzzStreamAggrRelabelArgs(f *testing.F) {
 		f.Add([]byte(seed))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		var input struct {
 			Args       []string                         `json:"args"`
 			StreamAggr []*vmv1beta1.StreamAggrConfig    `json:"streamAggr"`
 			Relabel    []*vmv1beta1.CommonRelabelParams `json:"relabel"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			return
-		}
-		if len(input.StreamAggr) > 8 || len(input.Relabel) > 8 {
-			t.Skip()
+			fuzztest.New(data).Fuzz(&input)
 		}
 		streamKeys := make([]string, len(input.StreamAggr))
 		for i := range streamKeys {

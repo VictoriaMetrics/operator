@@ -5,8 +5,12 @@ import (
 	"encoding/json"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
@@ -21,18 +25,20 @@ func FuzzVMUserConfig(f *testing.F) {
 	} {
 		f.Add([]byte(seed))
 	}
+	scheme := runtime.NewScheme()
+	if err := corev1.AddToScheme(scheme); err != nil {
+		f.Fatal(err)
+	}
+	client := fake.NewClientBuilder().WithScheme(scheme).Build()
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		var spec vmv1beta1.VMUserSpec
-		if json.Unmarshal(data, &spec) != nil {
-			return
+		if err := json.Unmarshal(data, &spec); err != nil {
+			fuzztest.New(data).Fuzz(&spec)
 		}
 		render := func() ([]byte, error) {
 			user := &vmv1beta1.VMUser{ObjectMeta: metav1.ObjectMeta{Name: "user", Namespace: "default"}, Spec: *spec.DeepCopy()}
 			pos := &parsedObjects{users: build.NewChildObjects("vmuser", []*vmv1beta1.VMUser{user}, []string{"default/user"})}
-			return pos.generateConfig(&vmv1beta1.VMAuth{ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"}}, map[string]string{}, build.NewAssetsCache(t.Context(), nil, nil))
+			return pos.generateConfig(&vmv1beta1.VMAuth{ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"}}, map[string]string{}, build.NewAssetsCache(t.Context(), client, nil))
 		}
 		a, err := render()
 		b, err2 := render()

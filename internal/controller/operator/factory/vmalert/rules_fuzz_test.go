@@ -7,6 +7,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
@@ -21,12 +22,9 @@ func FuzzRuleConfig(f *testing.F) {
 		f.Add([]byte(seed))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		var spec vmv1beta1.VMRuleSpec
-		if json.Unmarshal(data, &spec) != nil {
-			return
+		if err := json.Unmarshal(data, &spec); err != nil {
+			fuzztest.New(data).Fuzz(&spec)
 		}
 		render := func() ([][]byte, error) {
 			cr := &vmv1beta1.VMAlert{ObjectMeta: metav1.ObjectMeta{Name: "alert", Namespace: "default"}}

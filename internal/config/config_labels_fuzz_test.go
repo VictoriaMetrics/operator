@@ -14,9 +14,6 @@ func FuzzLabelsSet(f *testing.F) {
 		f.Add(seed)
 	}
 	f.Fuzz(func(t *testing.T, input string) {
-		if len(input) > 4096 {
-			t.Skip()
-		}
 		labels := Labels{}
 		if err := labels.Set("existing=value"); err != nil {
 			t.Fatal(err)
@@ -53,9 +50,6 @@ func FuzzLabelsMerge(f *testing.F) {
 		f.Add(seed[0], seed[1])
 	}
 	f.Fuzz(func(t *testing.T, local, external string) {
-		if len(local) > 4096 || len(external) > 4096 {
-			t.Skip()
-		}
 		var labels, other Labels
 		if labels.Set(local) != nil || other.Set(external) != nil {
 			return

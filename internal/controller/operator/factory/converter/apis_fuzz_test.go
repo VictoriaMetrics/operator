@@ -8,6 +8,7 @@ import (
 
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 
+	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
 	"github.com/VictoriaMetrics/operator/internal/config"
 )
 
@@ -24,7 +25,7 @@ func fuzzPromConversion[T any](t *testing.T, data []byte, convert func(*T) any) 
 	t.Helper()
 	var src T
 	if err := json.Unmarshal(data, &src); err != nil {
-		return
+		fuzztest.New(data).Fuzz(&src)
 	}
 	first, err := json.Marshal(convert(&src))
 	if err != nil {
@@ -57,9 +58,6 @@ func FuzzPrometheusConversion(f *testing.F) {
 		f.Add(seed.kind, []byte(seed.data))
 	}
 	f.Fuzz(func(t *testing.T, kind uint8, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		ctx := context.Background()
 		conf := &config.BaseOperatorConf{}
 		switch kind % promKindCount {

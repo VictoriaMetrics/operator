@@ -2,6 +2,7 @@ package build
 
 import (
 	"encoding/json"
+	"regexp"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -82,6 +83,8 @@ func FuzzAddDefaults(f *testing.F) {
 		defaultsHTTPRoute:       {func() runtime.Object { return &gwapiv1.HTTPRoute{} }, ""},
 		defaultsSecret:          {func() runtime.Object { return &corev1.Secret{} }, ""},
 	}
+	f.Add(uint8(defaultsVMAuth), []byte(""))
+	f.Add(uint8(defaultsVLCluster), []byte("9"))
 	for kind := defaultsKind(0); kind < defaultsKindCount; kind++ {
 		f.Add(uint8(kind), []byte(`{}`))
 		if seed := cases[kind].seed; seed != "" {
@@ -90,13 +93,13 @@ func FuzzAddDefaults(f *testing.F) {
 	}
 	scheme := runtime.NewScheme()
 	AddDefaults(scheme)
+	// gofuzz cannot populate runtime.RawExtension.Object (an interface).
+	skipRawObject := regexp.MustCompile(`^Object$`)
 	f.Fuzz(func(t *testing.T, kind uint8, data []byte) {
-		if len(data) > 8192 {
-			t.Skip()
-		}
 		obj := cases[defaultsKind(kind)%defaultsKindCount].newObject()
 		if err := json.Unmarshal(data, obj); err != nil {
-			return
+			fuzztest.New(data).
+				SkipFieldsWithPattern(skipRawObject).Fuzz(obj)
 		}
 		service, isService := obj.(*corev1.Service)
 		needsServiceType := isService && service.Spec.Type == ""

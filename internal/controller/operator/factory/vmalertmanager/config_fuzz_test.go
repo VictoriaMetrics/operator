@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
@@ -53,11 +54,11 @@ func FuzzBuildRoute(f *testing.F) {
 		f.Add([]byte(seed), true)
 	}
 	f.Fuzz(func(t *testing.T, data []byte, disableEnforcement bool) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		var cr vmv1beta1.VMAlertmanagerConfig
-		if err := json.Unmarshal(data, &cr); err != nil || cr.Spec.Route == nil {
+		if err := json.Unmarshal(data, &cr); err != nil {
+			fuzztest.New(data).Fuzz(&cr)
+		}
+		if cr.Spec.Route == nil {
 			return
 		}
 		cr.Name, cr.Namespace = "config", "default"
@@ -80,13 +81,11 @@ func FuzzBuildReceiver(f *testing.F) {
 	}
 	f.Add([]byte(`{"name":"hook","webhook_configs":[{"url":"https://example.org","http_config":{"follow_redirects":true}}]}`))
 	f.Add([]byte(`{"name":"slack","slack_configs":[{"api_url":"https://example.org","fields":[{"title":"site","value":"prod"}]}]}`))
+	f.Add([]byte(`{"name":"mattermost","mattermost_configs":[{"attachments":[null]}]}`))
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		var r vmv1beta1.Receiver
 		if err := json.Unmarshal(data, &r); err != nil {
-			return
+			fuzztest.New(data).Fuzz(&r)
 		}
 		cr := &vmv1beta1.VMAlertmanagerConfig{ObjectMeta: metav1.ObjectMeta{Name: "config", Namespace: "default"}}
 		am := fuzzAlertmanager()
@@ -113,12 +112,9 @@ func FuzzBuildTimeIntervals(f *testing.F) {
 		f.Add([]byte(seed))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		var intervals []vmv1beta1.TimeIntervals
 		if err := json.Unmarshal(data, &intervals); err != nil {
-			return
+			fuzztest.New(data).Fuzz(&intervals)
 		}
 		cr := &vmv1beta1.VMAlertmanagerConfig{ObjectMeta: metav1.ObjectMeta{Name: "config", Namespace: "default"}}
 		cr.Spec.TimeIntervals = intervals
@@ -132,12 +128,9 @@ func FuzzBuildInhibitRule(f *testing.F) {
 		f.Add([]byte(seed), true)
 	}
 	f.Fuzz(func(t *testing.T, data []byte, enforceNamespace bool) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		var rule vmv1beta1.InhibitRule
 		if err := json.Unmarshal(data, &rule); err != nil {
-			return
+			fuzztest.New(data).Fuzz(&rule)
 		}
 		assertStableBuild(t, func() (any, error) { return buildInhibitRule("default", rule, enforceNamespace), nil })
 	})

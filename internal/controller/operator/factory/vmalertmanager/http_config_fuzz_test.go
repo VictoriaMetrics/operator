@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
@@ -25,13 +26,11 @@ func FuzzBuildHTTPConfig(f *testing.F) {
 	} {
 		f.Add([]byte(seed))
 	}
+	f.Add([]byte("\"\\u\xa4\xa4\xa4\xa4"))
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		var httpCfg vmv1beta1.HTTPConfig
 		if err := json.Unmarshal(data, &httpCfg); err != nil {
-			return
+			fuzztest.New(data).Fuzz(&httpCfg)
 		}
 		scheme := runtime.NewScheme()
 		if err := corev1.AddToScheme(scheme); err != nil {

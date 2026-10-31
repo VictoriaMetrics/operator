@@ -1,5 +1,18 @@
 name: Build and Test
-# This workflow will run on master branch and on any pull requests targeting master
+# Runs on every push to master and on pull requests targeting master or release-* branches.
+#
+# Pull requests:
+# - The workflow is not triggered when only docs/**, *.md, config/examples/**, config/samples/**
+#   or .github/** (except this workflow and .github/actions/**) change.
+# - Draft PRs skip lint, unit tests and e2e.
+# - e2e is skipped when only the paths above, the root Makefile, go.mod/go.sum or codespell/** change.
+#
+# Pushes to master:
+# - Build and Test always runs.
+# - e2e runs unless only the paths above or codespell/** change; Makefile and go.mod/go.sum
+#   changes skip e2e on PRs but are tested here.
+#
+# See the "Check changed files" step for the e2e filters.
 on:
   push:
     branches:
@@ -18,9 +31,11 @@ on:
       - '**'
       - '!docs/**'
       - '!**/*.md'
-      - '!**/*.yaml'
-      - '!**/*.yml'
+      - '!config/examples/**'
+      - '!config/samples/**'
+      - '!.github/**'
       - '.github/workflows/main.yaml'
+      - '.github/actions/**'
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -37,7 +52,7 @@ jobs:
       security-events: write
       checks: write
     outputs:
-      run_e2e: ${{ steps.changes.outputs.src }}
+      run_e2e: ${{ steps.changes.outputs.src == 'true' || steps.changes.outputs.ci == 'true' || (github.event_name == 'push' && steps.changes.outputs.deps == 'true') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -84,17 +99,29 @@ jobs:
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d  # v4.0.3
         id: changes
         with:
+          # a file matches a filter when it matches one of its rules and none of its '!' rules
+          predicate-quantifier: 'some-with-excludes'
           filters: |
             src:
               - '**'
               - '!Makefile'
               - '!docs/**'
-              - '!*.md'
+              - '!**/*.md'
+              - '!config/examples/**'
+              - '!config/samples/**'
+              - '!**/go.mod'
+              - '!**/go.sum'
               - '!.github/**'
-              - '.github/workflows/main.yaml'
               - '!codespell/**'
-              - 'LICENSE'
-              - 'PROJECT'
+            # kept out of src, since an excluded path cannot be re-included there
+            ci:
+              - '.github/workflows/main.yaml'
+              - '.github/actions/**'
+            # dependency and tool version bumps: e2e on master pushes only
+            deps:
+              - 'Makefile'
+              - '**/go.mod'
+              - '**/go.sum'
 
   e2e:
     name: E2E / ${{ matrix.name }}

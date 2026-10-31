@@ -70,9 +70,9 @@ func FuzzValidateCRs(f *testing.F) {
 			_ = parsed.Validate()
 		}
 		cr := fuzzValidatorFor(data[0])
-		// RawExtension.Object is an interface unsupported by gofuzz.
+		// RawExtension.Object is an interface unsupported by randfill.
 		fuzztest.New(data[1:]).
-			SkipFieldsWithPattern(skipObject).Fuzz(cr)
+			SkipFieldsWithPattern(skipObject).Fill(cr)
 		_ = cr.Validate()
 	})
 }

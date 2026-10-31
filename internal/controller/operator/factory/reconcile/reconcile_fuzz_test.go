@@ -50,7 +50,7 @@ func FuzzMergeMapsWithStrategy(f *testing.F) {
 			Prev     map[string]string `json:"prev"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			fuzztest.New(data).Fuzz(&input)
+			fuzztest.New(data).Fill(&input)
 		}
 		existing, next, prev := maps.Clone(input.Existing), maps.Clone(input.New), maps.Clone(input.Prev)
 		mode := strategies[int(strategy)%len(strategies)]

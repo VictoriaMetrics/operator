@@ -26,7 +26,7 @@ func FuzzServiceBuilder(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		var cr vmv1beta1.VMSingle
 		if err := json.Unmarshal(data, &cr); err != nil {
-			fuzztest.New(data).Fuzz(&cr)
+			fuzztest.New(data).Fill(&cr)
 		}
 		cr.Name, cr.Namespace = "single", "default"
 		assertStableBuilder(t, func() (any, error) {
@@ -56,7 +56,7 @@ func FuzzPolicyBuilders(f *testing.F) {
 			VPA           vmv1beta1.EmbeddedVPA                     `json:"vpa"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			fuzztest.New(data).Fuzz(&input)
+			fuzztest.New(data).Fill(&input)
 		}
 		cr := &vmv1beta1.VMSingle{ObjectMeta: metav1.ObjectMeta{Name: "single", Namespace: "default"}}
 		assertStableBuilder(t, func() (any, error) {

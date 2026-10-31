@@ -56,7 +56,7 @@ func FuzzVMBackupContainers(f *testing.F) {
 			Cluster     bool                 `json:"cluster"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			fuzztest.New(data).Fuzz(&input)
+			fuzztest.New(data).Fill(&input)
 		}
 		assertStableBuilder(t, func() (any, error) {
 			manager, err := VMBackupManager(context.Background(), &input.Backup, input.Port, input.StoragePath, input.Mounts, input.ExtraArgs, input.Cluster, input.License)

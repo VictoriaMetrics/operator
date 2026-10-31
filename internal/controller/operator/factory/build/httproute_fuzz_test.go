@@ -29,7 +29,7 @@ func FuzzHTTPRouteBuilder(f *testing.F) {
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
 			fuzztest.New(data).
-				SkipFieldsWithPattern(regexp.MustCompile(`^Object$`)).Fuzz(&input)
+				SkipFieldsWithPattern(regexp.MustCompile(`^Object$`)).Fill(&input)
 		}
 		cr := &vmv1beta1.VMAuth{ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"}}
 		assertStableBuilder(t, func() (any, error) { return HTTPRoute(cr, input.Port, &input.Route) })

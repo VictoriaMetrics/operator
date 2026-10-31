@@ -36,7 +36,7 @@ func FuzzBuildHTTPConfig(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		var httpCfg vmv1beta1.HTTPConfig
 		if err := json.Unmarshal(data, &httpCfg); err != nil {
-			fuzztest.New(data).Fuzz(&httpCfg)
+			fuzztest.New(data).Fill(&httpCfg)
 		}
 		am := fuzzAlertmanager()
 		assertStableBuild(t, func() (any, error) {

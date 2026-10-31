@@ -26,7 +26,7 @@ func FuzzRelabelConfig(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		var rc vmv1beta1.RelabelConfig
 		if err := json.Unmarshal(data, &rc); err != nil {
-			fuzztest.New(data).Fuzz(&rc)
+			fuzztest.New(data).Fill(&rc)
 		}
 		a, err := yaml.Marshal(generateRelabelConfig(&rc))
 		if err != nil {
@@ -59,7 +59,7 @@ func FuzzStaticScrapeConfig(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		var ep vmv1beta1.TargetEndpoint
 		if err := json.Unmarshal(data, &ep); err != nil {
-			fuzztest.New(data).Fuzz(&ep)
+			fuzztest.New(data).Fill(&ep)
 		}
 		render := func() ([]byte, error) {
 			copy := ep.DeepCopy()

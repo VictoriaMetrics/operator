@@ -93,13 +93,13 @@ func FuzzAddDefaults(f *testing.F) {
 	}
 	scheme := runtime.NewScheme()
 	AddDefaults(scheme)
-	// gofuzz cannot populate runtime.RawExtension.Object (an interface).
+	// randfill cannot populate runtime.RawExtension.Object (an interface).
 	skipRawObject := regexp.MustCompile(`^Object$`)
 	f.Fuzz(func(t *testing.T, kind uint8, data []byte) {
 		obj := cases[defaultsKind(kind)%defaultsKindCount].newObject()
 		if err := json.Unmarshal(data, obj); err != nil {
 			fuzztest.New(data).
-				SkipFieldsWithPattern(skipRawObject).Fuzz(obj)
+				SkipFieldsWithPattern(skipRawObject).Fill(obj)
 		}
 		service, isService := obj.(*corev1.Service)
 		needsServiceType := isService && service.Spec.Type == ""

@@ -34,7 +34,7 @@ func FuzzRemoteWriteArgs(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		var spec vmv1beta1.VMAgentSpec
 		if err := json.Unmarshal(data, &spec); err != nil {
-			fuzztest.New(data).Fuzz(&spec)
+			fuzztest.New(data).Fill(&spec)
 		}
 		render := func() ([]string, error) {
 			return buildRemoteWriteArgs(&vmv1beta1.VMAgent{Spec: *spec.DeepCopy()}, build.NewAssetsCache(t.Context(), client, nil))

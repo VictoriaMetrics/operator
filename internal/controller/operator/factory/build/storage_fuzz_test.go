@@ -30,7 +30,7 @@ func FuzzStorageVolumeMounts(f *testing.F) {
 			Stateful       bool                 `json:"stateful"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			fuzztest.New(data).Fuzz(&input)
+			fuzztest.New(data).Fill(&input)
 		}
 		var pvc *corev1.PersistentVolumeClaimVolumeSource
 		if input.PVC {

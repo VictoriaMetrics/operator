@@ -33,7 +33,7 @@ func FuzzVMUserConfig(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		var spec vmv1beta1.VMUserSpec
 		if err := json.Unmarshal(data, &spec); err != nil {
-			fuzztest.New(data).Fuzz(&spec)
+			fuzztest.New(data).Fill(&spec)
 		}
 		render := func() ([]byte, error) {
 			user := &vmv1beta1.VMUser{ObjectMeta: metav1.ObjectMeta{Name: "user", Namespace: "default"}, Spec: *spec.DeepCopy()}

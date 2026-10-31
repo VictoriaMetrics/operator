@@ -24,7 +24,7 @@ func FuzzRuleConfig(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		var spec vmv1beta1.VMRuleSpec
 		if err := json.Unmarshal(data, &spec); err != nil {
-			fuzztest.New(data).Fuzz(&spec)
+			fuzztest.New(data).Fill(&spec)
 		}
 		render := func() ([][]byte, error) {
 			cr := &vmv1beta1.VMAlert{ObjectMeta: metav1.ObjectMeta{Name: "alert", Namespace: "default"}}

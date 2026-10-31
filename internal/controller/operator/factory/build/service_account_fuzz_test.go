@@ -29,7 +29,7 @@ func FuzzServiceAccountBuilders(f *testing.F) {
 			Automount bool               `json:"automount"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			fuzztest.New(data).Fuzz(&input)
+			fuzztest.New(data).Fill(&input)
 		}
 		input.CR.Name, input.CR.Namespace = "single", "default"
 		assertStableBuilder(t, func() (any, error) {

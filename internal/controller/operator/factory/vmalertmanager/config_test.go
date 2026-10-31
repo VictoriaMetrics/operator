@@ -28,6 +28,13 @@ func mustRouteToJSON(t *testing.T, r vmv1beta1.SubRoute) apiextensionsv1.JSON {
 	return apiextensionsv1.JSON{Raw: data}
 }
 
+func TestBuildMattermostNilAttachment(t *testing.T) {
+	_, err := buildMattermost(vmv1beta1.MattermostConfig{
+		Attachments: []*vmv1beta1.MattermostAttachment{{Text: "valid"}, nil},
+	}, "default", nil)
+	assert.EqualError(t, err, "mattermost attachment at index 1 is null")
+}
+
 //nolint:gofmt
 func TestBuildConfig(t *testing.T) {
 	type opts struct {

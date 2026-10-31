@@ -8,6 +8,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
@@ -45,9 +46,6 @@ func FuzzVMBackupContainers(f *testing.F) {
 		f.Add([]byte(seed))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		var input struct {
 			Backup      vmv1beta1.VMBackup   `json:"backup"`
 			License     *vmv1beta1.License   `json:"license"`
@@ -58,7 +56,7 @@ func FuzzVMBackupContainers(f *testing.F) {
 			Cluster     bool                 `json:"cluster"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			return
+			fuzztest.New(data).Fuzz(&input)
 		}
 		assertStableBuilder(t, func() (any, error) {
 			manager, err := VMBackupManager(context.Background(), &input.Backup, input.Port, input.StoragePath, input.Mounts, input.ExtraArgs, input.Cluster, input.License)

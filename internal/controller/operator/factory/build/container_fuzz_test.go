@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"testing"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 func FuzzConfigReloaderContainer(f *testing.F) {
@@ -18,9 +20,6 @@ func FuzzConfigReloaderContainer(f *testing.F) {
 		f.Add([]byte(seed))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		var input struct {
 			Agent  vmv1beta1.VMAgent         `json:"agent"`
 			Mounts []corev1.VolumeMount      `json:"mounts"`
@@ -28,7 +27,7 @@ func FuzzConfigReloaderContainer(f *testing.F) {
 			Init   bool                      `json:"init"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			return
+			fuzztest.New(data).Fuzz(&input)
 		}
 		input.Agent.Name, input.Agent.Namespace = "agent", "default"
 		assertStableBuilder(t, func() (any, error) {

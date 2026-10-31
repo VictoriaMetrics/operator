@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
+
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -22,12 +24,9 @@ func FuzzServiceBuilder(f *testing.F) {
 		f.Add([]byte(seed))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		var cr vmv1beta1.VMSingle
 		if err := json.Unmarshal(data, &cr); err != nil {
-			return
+			fuzztest.New(data).Fuzz(&cr)
 		}
 		cr.Name, cr.Namespace = "single", "default"
 		assertStableBuilder(t, func() (any, error) {
@@ -50,9 +49,6 @@ func FuzzPolicyBuilders(f *testing.F) {
 		f.Add([]byte(seed))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		var input struct {
 			NetworkPolicy vmv1beta1.EmbeddedNetworkPolicy           `json:"networkPolicy"`
 			PDB           vmv1beta1.EmbeddedPodDisruptionBudgetSpec `json:"pdb"`
@@ -60,7 +56,7 @@ func FuzzPolicyBuilders(f *testing.F) {
 			VPA           vmv1beta1.EmbeddedVPA                     `json:"vpa"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			return
+			fuzztest.New(data).Fuzz(&input)
 		}
 		cr := &vmv1beta1.VMSingle{ObjectMeta: metav1.ObjectMeta{Name: "single", Namespace: "default"}}
 		assertStableBuilder(t, func() (any, error) {

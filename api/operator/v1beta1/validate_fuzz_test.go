@@ -1,8 +1,10 @@
 package v1beta1
 
 import (
-	"encoding/json"
+	"regexp"
 	"testing"
+
+	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
 )
 
 type validatorKind uint8
@@ -29,36 +31,48 @@ type fuzzValidator interface {
 	Validate() error
 }
 
-// FuzzValidateCRs feeds the same mutated spec to every v1beta1 CR validator.
-func FuzzValidateCRs(f *testing.F) {
-	for _, seed := range []string{
-		`{}`,
-		`{"spec":{"vmstorage":{"replicaCount":2,"maintenanceSelectNodeIDs":[0,1]}}}`,
-		`{"spec":{"remoteWrite":[{"url":"http://localhost:8428/api/v1/write"}]}}`,
-		`{"spec":{"targetRefs":[{"static":{"url":"http://localhost:8428"},"paths":["/api/v1/.*"]}]}}`,
-		`{"spec":{"route":{"receiver":"main","routes":[{"receiver":"main","matchers":["job=api"]}]},"receivers":[{"name":"main"}]}}`,
-		`{"spec":{"receivers":[{"name":"main","webhook_configs":[{"url":"http://example.com"}]}]}}`,
-		`{"spec":{"receivers":[{"name":"main","jira_configs":[{"api_url":"http://example.com","project":"ops","issue_type":"Bug"}]}]}}`,
-		`{"spec":{"receivers":[{"name":"main","slack_configs":[{"api_url":"https://hooks.example.com"}]}]}}`,
-		`{"spec":{"time_intervals":[{"name":"office","time_intervals":[{"times":[{"start_time":"09:00","end_time":"17:00"}]}]}]}}`,
-	} {
-		f.Add([]byte(seed))
+func fuzzValidatorFor(selector byte) fuzzValidator {
+	validators := [...]fuzzValidator{
+		&VMAgent{}, &VMAlert{}, &VMAlertmanager{}, &VMAlertmanagerConfig{},
+		&VMAuth{}, &VMCluster{}, &VMNodeScrape{}, &VMPodScrape{},
+		&VMProbe{}, &VMRule{}, &VMScrapeConfig{}, &VMServiceScrape{},
+		&VMSingle{}, &VMStaticScrape{}, &VMUser{},
 	}
+	return validators[int(selector)%len(validators)]
+}
+
+func FuzzValidateCRs(f *testing.F) {
+	for _, seed := range []struct {
+		kind validatorKind
+		data string
+	}{
+		{vmAgentKind, `{}`},
+		{vmClusterKind, `{"spec":{"vmstorage":{"replicaCount":2,"maintenanceSelectNodeIDs":[0,1]}}}`},
+		{vmProbeKind, `{"spec":{"targets":{"kubernetes":[null]}}}`},
+		{vmAgentKind, `{"spec":{"remoteWrite":[{"url":"http://localhost:8428/api/v1/write"}]}}`},
+		{vmUserKind, `{"spec":{"targetRefs":[{"static":{"url":"http://localhost:8428"},"paths":["/api/v1/.*"]}]}}`},
+		{vmClusterKind, "\r\r\r\r\r"},
+		{vmAlertmanagerConfigKind, `{"spec":{"route":{"receiver":"main","routes":[{"receiver":"main","matchers":["job=api"]}]},"receivers":[{"name":"main"}]}}`},
+		{vmAlertmanagerConfigKind, `{"spec":{"receivers":[{"name":"main","webhook_configs":[{"url":"http://example.com"}]}]}}`},
+		{vmAlertmanagerConfigKind, `{"spec":{"receivers":[{"name":"main","jira_configs":[{"api_url":"http://example.com","project":"ops","issue_type":"Bug"}]}]}}`},
+		{vmAlertmanagerConfigKind, `{"spec":{"receivers":[{"name":"main","slack_configs":[{"api_url":{"name":"slack-webhook","key":"url"}}]}]}}`},
+		{vmAlertmanagerConfigKind, `{"spec":{"time_intervals":[{"name":"office","time_intervals":[{"times":[{"start_time":"09:00","end_time":"17:00"}]}]}]}}`},
+	} {
+		f.Add(append([]byte{byte(seed.kind)}, seed.data...))
+	}
+	skipObject := regexp.MustCompile(`^Object$`)
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
+		if len(data) == 0 {
+			return
 		}
-		validators := []fuzzValidator{
-			&VMAgent{}, &VMAlert{}, &VMAlertmanager{}, &VMAlertmanagerConfig{},
-			&VMAuth{}, &VMCluster{}, &VMNodeScrape{}, &VMPodScrape{},
-			&VMProbe{}, &VMRule{}, &VMScrapeConfig{}, &VMServiceScrape{},
-			&VMSingle{}, &VMStaticScrape{}, &VMUser{},
+		parsed := fuzzValidatorFor(data[0])
+		if err := json.Unmarshal(data[1:], parsed); err == nil {
+			_ = parsed.Validate()
 		}
-		for _, cr := range validators {
-			if err := json.Unmarshal(data, cr); err != nil {
-				continue
-			}
-			_ = cr.Validate()
-		}
+		cr := fuzzValidatorFor(data[0])
+		// RawExtension.Object is an interface unsupported by gofuzz.
+		fuzztest.New(data[1:]).
+			SkipFieldsWithPattern(skipObject).Fuzz(cr)
+		_ = cr.Validate()
 	})
 }

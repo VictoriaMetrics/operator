@@ -3,6 +3,8 @@ package v1alpha1
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
 )
 
 func FuzzValidateCRs(f *testing.F) {
@@ -16,13 +18,12 @@ func FuzzValidateCRs(f *testing.F) {
 		f.Add([]byte(seed))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		for _, cr := range []interface{ Validate() error }{&VMDistributed{}, &VLDistributed{}} {
-			if err := json.Unmarshal(data, cr); err != nil {
-				continue
+			if err := json.Unmarshal(data, cr); err == nil {
+				_ = cr.Validate()
 			}
+			// Limit depth past unsupported interfaces.
+			fuzztest.New(data).Fuzz(cr)
 			_ = cr.Validate()
 		}
 	})

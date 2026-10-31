@@ -7,13 +7,14 @@ import (
 	"testing"
 
 	"gopkg.in/yaml.v2"
-
-	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 )
 
 func FuzzVMAnomalyConfigLoad(f *testing.F) {
@@ -66,9 +67,6 @@ settings:
 	fclient := fake.NewClientBuilder().WithScheme(scheme).Build()
 	ctx := context.Background()
 	f.Fuzz(func(t *testing.T, raw, spec, childRaw []byte) {
-		if len(raw) > 4096 || len(spec) > 4096 || len(childRaw) > 4096 {
-			t.Skip()
-		}
 		var input struct {
 			Reader     *vmv1.VMAnomalyReadersSpec    `json:"reader"`
 			Writer     *vmv1.VMAnomalyWritersSpec    `json:"writer"`
@@ -76,7 +74,7 @@ settings:
 			Server     *vmv1.VMAnomalyServerSpec     `json:"server"`
 		}
 		if err := json.Unmarshal(spec, &input); err != nil {
-			return
+			fuzztest.New(spec).Fuzz(&input)
 		}
 		cr := &vmv1.VMAnomaly{
 			ObjectMeta: metav1.ObjectMeta{Name: "fuzz", Namespace: "default"},
@@ -139,9 +137,6 @@ schedulers:
 		f.Add([]byte(seed))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		var cfg PartialConfig
 		if err := yaml.Unmarshal(data, &cfg); err != nil {
 			return

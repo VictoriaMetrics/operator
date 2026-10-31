@@ -3,10 +3,21 @@ package v1
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
 )
 
+func fuzzValidator(selector byte) interface{ Validate() error } {
+	validators := [...]interface{ Validate() error }{
+		&VMAnomaly{}, &VTAgent{}, &VTCluster{}, &VTSingle{},
+		&VLAgent{}, &VLCluster{}, &VLSingle{},
+		&TLSServerConfig{}, &OAuth2{}, &TLSConfig{}, &SyslogServerSpec{},
+	}
+	return validators[int(selector)%len(validators)]
+}
+
 func FuzzValidateCRs(f *testing.F) {
-	for _, seed := range []string{
+	for i, seed := range []string{
 		`{}`,
 		`{"spec":{"remoteWrite":[{"url":"http://localhost:9428/insert/native"}]}}`,
 		`{"spec":{"insert":{"grpcSpec":{"listenPort":10428,"tlsConfig":{"cipherSuites":["TLS_AES_128_GCM_SHA256"]}}},"storage":{},"select":{}}}`,
@@ -19,21 +30,19 @@ func FuzzValidateCRs(f *testing.F) {
 		`{"caFile":"/etc/tls/ca.crt","caSecretKeyRef":{"name":"ca","key":"ca.crt"}}`,
 		`{"tcpListeners":[{"tlsConfig":{"minVersion":"TLS12"}},{"tlsConfig":{"minVersion":"TLS13"}}]}`,
 	} {
-		f.Add([]byte(seed))
+		f.Add(append([]byte{byte(i)}, seed...))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
+		if len(data) == 0 {
+			return
 		}
-		for _, v := range []interface{ Validate() error }{
-			&VMAnomaly{}, &VTAgent{}, &VTCluster{}, &VTSingle{},
-			&VLAgent{}, &VLCluster{}, &VLSingle{},
-			&TLSServerConfig{}, &OAuth2{}, &TLSConfig{}, &SyslogServerSpec{},
-		} {
-			if err := json.Unmarshal(data, v); err != nil {
-				continue
-			}
-			_ = v.Validate()
+		parsed := fuzzValidator(data[0])
+		if err := json.Unmarshal(data[1:], parsed); err == nil {
+			_ = parsed.Validate()
 		}
+		v := fuzzValidator(data[0])
+		// Limit depth past unsupported interfaces.
+		fuzztest.New(data[1:]).Fuzz(v)
+		_ = v.Validate()
 	})
 }

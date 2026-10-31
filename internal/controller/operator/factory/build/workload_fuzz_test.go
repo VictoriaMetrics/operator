@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
+
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
@@ -17,15 +19,12 @@ func fuzzCommonWorkloadParams[T any](f *testing.F, build func(*T, *vmv1beta1.Com
 		f.Add([]byte(seed))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		var input struct {
 			Params  vmv1beta1.CommonAppsParams `json:"params"`
 			Initial T                          `json:"initial"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			return
+			fuzztest.New(data).Fuzz(&input)
 		}
 		assertStableBuilder(t, func() (any, error) {
 			build(&input.Initial, &input.Params)

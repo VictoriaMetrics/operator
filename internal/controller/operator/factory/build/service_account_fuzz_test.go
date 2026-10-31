@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
+
 	corev1 "k8s.io/api/core/v1"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -20,9 +22,6 @@ func FuzzServiceAccountBuilders(f *testing.F) {
 		f.Add([]byte(seed))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
-		if len(data) > 4096 {
-			t.Skip()
-		}
 		var input struct {
 			CR        vmv1beta1.VMSingle `json:"cr"`
 			Container corev1.Container   `json:"container"`
@@ -30,7 +29,7 @@ func FuzzServiceAccountBuilders(f *testing.F) {
 			Automount bool               `json:"automount"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			return
+			fuzztest.New(data).Fuzz(&input)
 		}
 		input.CR.Name, input.CR.Namespace = "single", "default"
 		assertStableBuilder(t, func() (any, error) {

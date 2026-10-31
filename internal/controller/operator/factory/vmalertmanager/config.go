@@ -588,7 +588,10 @@ func buildMattermost(rc vmv1beta1.MattermostConfig, ns string, ac *build.AssetsC
 		r.set("webhook_url", u)
 	}
 	var attachments []yaml.MapSlice
-	for _, attachment := range rc.Attachments {
+	for i, attachment := range rc.Attachments {
+		if attachment == nil {
+			return nil, fmt.Errorf("mattermost attachment at index %d is null", i)
+		}
 		var ar rawValue
 		ar.set("fallback", attachment.Fallback)
 		ar.set("color", attachment.Color)

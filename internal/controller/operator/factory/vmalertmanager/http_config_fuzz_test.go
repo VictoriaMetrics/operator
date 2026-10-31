@@ -27,17 +27,17 @@ func FuzzBuildHTTPConfig(f *testing.F) {
 		f.Add([]byte(seed))
 	}
 	f.Add([]byte("\"\\u\xa4\xa4\xa4\xa4"))
+	scheme := runtime.NewScheme()
+	if err := corev1.AddToScheme(scheme); err != nil {
+		f.Fatal(err)
+	}
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "creds", Namespace: "default"}, Data: map[string][]byte{"token": []byte("value")}}
+	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(secret).Build()
 	f.Fuzz(func(t *testing.T, data []byte) {
 		var httpCfg vmv1beta1.HTTPConfig
 		if err := json.Unmarshal(data, &httpCfg); err != nil {
 			fuzztest.New(data).Fuzz(&httpCfg)
 		}
-		scheme := runtime.NewScheme()
-		if err := corev1.AddToScheme(scheme); err != nil {
-			t.Fatal(err)
-		}
-		secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "creds", Namespace: "default"}, Data: map[string][]byte{"token": []byte("value")}}
-		client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(secret).Build()
 		am := fuzzAlertmanager()
 		assertStableBuild(t, func() (any, error) {
 			return buildHTTPConfig(&httpCfg, "default", getAssetsCache(context.Background(), client, am))

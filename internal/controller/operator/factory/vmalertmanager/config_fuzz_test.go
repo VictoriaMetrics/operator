@@ -82,6 +82,11 @@ func FuzzBuildReceiver(f *testing.F) {
 	f.Add([]byte(`{"name":"hook","webhook_configs":[{"url":"https://example.org","http_config":{"follow_redirects":true}}]}`))
 	f.Add([]byte(`{"name":"slack","slack_configs":[{"api_url":"https://example.org","fields":[{"title":"site","value":"prod"}]}]}`))
 	f.Add([]byte(`{"name":"mattermost","mattermost_configs":[{"attachments":[null]}]}`))
+	scheme := runtime.NewScheme()
+	if err := corev1.AddToScheme(scheme); err != nil {
+		f.Fatal(err)
+	}
+	client := fake.NewClientBuilder().WithScheme(scheme).Build()
 	f.Fuzz(func(t *testing.T, data []byte) {
 		var r vmv1beta1.Receiver
 		if err := json.Unmarshal(data, &r); err != nil {
@@ -89,11 +94,6 @@ func FuzzBuildReceiver(f *testing.F) {
 		}
 		cr := &vmv1beta1.VMAlertmanagerConfig{ObjectMeta: metav1.ObjectMeta{Name: "config", Namespace: "default"}}
 		am := fuzzAlertmanager()
-		scheme := runtime.NewScheme()
-		if err := corev1.AddToScheme(scheme); err != nil {
-			t.Fatal(err)
-		}
-		client := fake.NewClientBuilder().WithScheme(scheme).Build()
 		assertStableBuild(t, func() (any, error) {
 			ac := getAssetsCache(context.Background(), client, am)
 			result := &receiver{Name: buildCRPrefixedName(cr, r.Name)}

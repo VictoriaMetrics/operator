@@ -50,7 +50,7 @@ func FuzzVMUserConfig(f *testing.F) {
 		render := func() ([]byte, error) {
 			user := &vmv1beta1.VMUser{ObjectMeta: metav1.ObjectMeta{Name: "user", Namespace: "default"}, Spec: *spec.DeepCopy()}
 			pos := &parsedObjects{users: build.NewChildObjects("vmuser", []*vmv1beta1.VMUser{user}, []string{"default/user"})}
-			return pos.generateConfig(&vmv1beta1.VMAuth{ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"}}, map[string]string{}, build.NewAssetsCache(t.Context(), client, nil))
+			return pos.generateConfig(&vmv1beta1.VMAuth{ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"}}, objURLs, build.NewAssetsCache(t.Context(), client, nil))
 		}
 		a, err := render()
 		b, err2 := render()

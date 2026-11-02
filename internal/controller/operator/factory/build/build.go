@@ -322,9 +322,13 @@ func GunzipConfig(data []byte) ([]byte, error) {
 // mergeMapsRecursive deeply merges overrideMap into baseMap.
 // It handles nested maps (which correspond to nested structs after JSON unmarshal).
 // Values from overrideMap overwrite values in baseMap.
-func mergeMapsRecursive(baseMap, overrideMap map[string]any) {
+// It returns baseMap, allocated if it was nil.
+func mergeMapsRecursive(baseMap, overrideMap map[string]any) map[string]any {
 	if len(overrideMap) == 0 {
-		return
+		return baseMap
+	}
+	if baseMap == nil {
+		baseMap = make(map[string]any, len(overrideMap))
 	}
 	for key, overrideValue := range overrideMap {
 		if baseVal, ok := baseMap[key]; ok {
@@ -338,6 +342,7 @@ func mergeMapsRecursive(baseMap, overrideMap map[string]any) {
 		}
 		baseMap[key] = overrideValue
 	}
+	return baseMap
 }
 
 // MergeDeep merges an override object into a base one.
@@ -371,7 +376,7 @@ func MergeDeep[T comparable](base, override T, reverse bool) error {
 	if reverse {
 		baseMap, overrideMap = overrideMap, baseMap
 	}
-	mergeMapsRecursive(baseMap, overrideMap)
+	baseMap = mergeMapsRecursive(baseMap, overrideMap)
 	mergedSpecJSON, err := json.Marshal(baseMap)
 	if err != nil {
 		return fmt.Errorf("failed to marshal merged spec map: %w", err)

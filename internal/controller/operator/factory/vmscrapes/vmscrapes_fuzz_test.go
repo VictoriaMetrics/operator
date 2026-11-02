@@ -20,6 +20,8 @@ func FuzzRelabelConfig(f *testing.F) {
 		`{}`,
 		`{"sourceLabels":["job"],"targetLabel":"service","regex":"(.*)"}`,
 		`{"source_labels":["__name__"],"target_label":"metric","action":"replace"}`,
+		`{"sourceLabels":["a","b"],"separator":";","targetLabel":"t","regex":["x","y"],"modulus":4,"replacement":"$1","action":"hashmod"}`,
+		`{"action":"keep_if_equal","if":["{a=\"b\"}"],"match":"m","labels":{"b":"2","a":"1"}}`,
 	} {
 		f.Add([]byte(seed))
 	}
@@ -42,12 +44,31 @@ func FuzzRelabelConfig(f *testing.F) {
 	})
 }
 
+type staticScrapeInput struct {
+	Params   vmv1beta1.CommonScrapeParams `json:"params"`
+	Spec     vmv1beta1.VMStaticScrapeSpec `json:"spec"`
+	Endpoint vmv1beta1.TargetEndpoint     `json:"endpoint"`
+}
+
 func FuzzStaticScrapeConfig(f *testing.F) {
 	for _, seed := range []string{
-		`{"targets":["localhost:8428"]}`,
-		`{"targets":["host:9100"],"labels":{"job":"node"},"relabelConfigs":[{"targetLabel":"instance","replacement":"node"}]}`,
-		`{"targets":["localhost:8428"],"metricRelabelConfigs":[null]}`,
-		`{"targets":["localhost:8428"],"relabelConfigs":[null]}`,
+		`{}`,
+		`{"endpoint":{"targets":["localhost:8428"]}}`,
+		`{"endpoint":{"targets":["host:9100"],"labels":{"job":"node"},"relabelConfigs":[{"targetLabel":"instance","replacement":"node"}]}}`,
+		`{"endpoint":{"targets":["localhost:8428"],"metricRelabelConfigs":[null]}}`,
+		`{"endpoint":{"targets":["localhost:8428"],"relabelConfigs":[null]}}`,
+		`{"endpoint":{"targets":["h:1"],"path":"/m","scheme":"HTTPS","params":{"b":["1"],"a":["2"]},"follow_redirects":true,"sampleLimit":5,"seriesLimit":6,"interval":"30s","scrapeTimeout":"10s","proxyURL":"http://p","honorLabels":true,"honorTimestamps":false,"max_scrape_size":"1MB","bearerTokenFile":"/t","tlsConfig":{"caFile":"/ca","certFile":"/c","keyFile":"/k","serverName":"s","insecureSkipVerify":true},"vm_scrape_params":{"disable_compression":true,"disable_keep_alive":true,"no_stale_markers":true,"stream_parse":true,"scrape_align_interval":"1m","scrape_offset":"5s","headers":["h:v"]},"metricRelabelConfigs":[{"targetLabel":"ns"},{"targetLabel":"drop"}]}}`,
+		`{"params":{"enforcedNamespaceLabel":"ns","overrideHonorLabels":true,"overrideHonorTimestamps":true,"scrapeTimeout":"5s","minScrapeInterval":"1m","staticScrapeRelabelTemplate":[{"targetLabel":"tpl","replacement":"v"}]},"spec":{"jobName":"j","sampleLimit":10,"seriesLimit":20},"endpoint":{"targets":["h:1"],"interval":"5s","honorLabels":true,"metricRelabelConfigs":[{"targetLabel":"ns"}]}}`,
+		`{"params":{"staticScrapeRelabelTemplate":[null]},"endpoint":{"targets":["h:1"]}}`,
+		`{"params":{"maxScrapeInterval":"1m"},"endpoint":{"targets":["h:1"],"interval":"5m"}}`,
+		`{"params":{"minScrapeInterval":"x"},"endpoint":{"targets":["h:1"],"interval":"5s"}}`,
+		`{"params":{"minScrapeInterval":"1m","maxScrapeInterval":"x"},"endpoint":{"targets":["h:1"],"interval":"5m"}}`,
+		`{"params":{"scrapeClasses":[{"name":"c","default":true,"tlsConfig":{"caFile":"/ca"},"authorization":{"credentialsFile":"/c"},"relabelConfigs":[{"targetLabel":"cls"}],"metricRelabelConfigs":[{"targetLabel":"m"}]}]},"spec":{"scrapeClass":"c"},"endpoint":{"targets":["h:1"],"basicAuth":{"username_file":"/u","password_file":"/p"}}}`,
+		`{"params":{"scrapeClasses":[{"name":"c","tlsConfig":{"caFile":"/ca","certFile":"/c","keyFile":"/k","serverName":"s"},"authorization":{"credentialsFile":"/c"},"basicAuth":{"username":{"name":"s","key":"u"},"password":{"name":"s","key":"p"}},"oauth2":{"client_id":{"secret":{"name":"s","key":"i"}},"client_secret":{"name":"s","key":"k"},"token_url":"http://t","scopes":["a"],"endpoint_params":{"a":"b"},"proxy_url":"http://p","tlsConfig":{"caFile":"/ca"}},"bearerTokenFile":"/b"}]},"spec":{"scrapeClass":"c"},"endpoint":{"targets":["h:1"],"tlsConfig":{"insecureSkipVerify":true},"authorization":{"type":"Bearer"},"basicAuth":{"username":{"name":"x"}},"oauth2":{"token_url":"http://u","tlsConfig":{"serverName":"x"}}}}`,
+		`{"endpoint":{"targets":["h:1"],"bearerTokenSecret":{"name":"s","key":"k"}}}`,
+		`{"endpoint":{"targets":["h:1"],"basicAuth":{"username":{"name":"s","key":"u"},"password":{"name":"s","key":"p"}}}}`,
+		`{"endpoint":{"targets":["h:1"],"oauth2":{"client_id":{"configMap":{"name":"c","key":"k"}},"client_secret":{"name":"s","key":"k"},"token_url":"http://t"}}}`,
+		`{"endpoint":{"targets":["h:1"],"vm_scrape_params":{"proxy_client_config":{"basic_auth":{"username":{"name":"s","key":"u"}}}}}}`,
 	} {
 		f.Add([]byte(seed))
 	}
@@ -57,13 +78,14 @@ func FuzzStaticScrapeConfig(f *testing.F) {
 	}
 	client := fake.NewClientBuilder().WithScheme(scheme).Build()
 	f.Fuzz(func(t *testing.T, data []byte) {
-		var ep vmv1beta1.TargetEndpoint
-		if err := json.Unmarshal(data, &ep); err != nil {
-			fuzztest.New(data).Fill(&ep)
+		var in staticScrapeInput
+		if err := json.Unmarshal(data, &in); err != nil {
+			fuzztest.New(data).Fill(&in)
 		}
 		render := func() ([]byte, error) {
-			copy := ep.DeepCopy()
-			cfg, err := generateStaticScrapeConfig(t.Context(), &vmv1beta1.CommonScrapeParams{}, &vmv1beta1.VMStaticScrape{}, copy, 0, build.NewAssetsCache(t.Context(), client, nil))
+			params := in.Params.DeepCopy()
+			sc := &vmv1beta1.VMStaticScrape{Spec: *in.Spec.DeepCopy()}
+			cfg, err := generateStaticScrapeConfig(t.Context(), params, sc, in.Endpoint.DeepCopy(), 0, build.NewAssetsCache(t.Context(), client, nil))
 			if err != nil {
 				return nil, err
 			}

@@ -93,7 +93,7 @@ func FuzzStaticScrapeConfig(f *testing.F) {
 		}
 		a, err := render()
 		b, err2 := render()
-		if (err == nil) != (err2 == nil) || !bytes.Equal(a, b) {
+		if (err == nil) != (err2 == nil) || err != nil && err.Error() != err2.Error() || !bytes.Equal(a, b) {
 			t.Fatalf("non-idempotent static scrape: %q (%v) != %q (%v)", a, err, b, err2)
 		}
 	})

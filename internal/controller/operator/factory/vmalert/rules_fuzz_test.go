@@ -40,7 +40,7 @@ func FuzzRuleConfig(f *testing.F) {
 		}
 		a, err := render()
 		b, err2 := render()
-		if (err == nil) != (err2 == nil) || len(a) != len(b) {
+		if (err == nil) != (err2 == nil) || err != nil && err.Error() != err2.Error() || len(a) != len(b) {
 			t.Fatalf("non-idempotent rule config: %v != %v", err, err2)
 		}
 		for i := range a {

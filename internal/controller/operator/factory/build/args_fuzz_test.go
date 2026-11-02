@@ -66,3 +66,30 @@ func FuzzStreamAggrRelabelArgs(f *testing.F) {
 		RelabelArgsTo(input.Args, "remoteWrite.relabelConfig", relabelKeys, input.Relabel...)
 	})
 }
+
+func FuzzGzipConfig(f *testing.F) {
+	valid, err := GzipConfig([]byte("global:\n  scrape_interval: 30s\n"))
+	if err != nil {
+		f.Fatal(err)
+	}
+	empty, err := GzipConfig(nil)
+	if err != nil {
+		f.Fatal(err)
+	}
+	for _, seed := range [][]byte{
+		nil,
+		[]byte("plain text"),
+		valid,
+		empty,
+		valid[:len(valid)/2],
+		append(append([]byte{}, valid...), "trailing"...),
+		{0x1f, 0x8b},
+		{0x1f, 0x8b, 0x08, 0x00},
+	} {
+		f.Add(seed)
+	}
+	f.Fuzz(func(t *testing.T, data []byte) {
+		GunzipConfig(data)
+		GzipConfig(data)
+	})
+}

@@ -1,7 +1,7 @@
 package v1beta1
 
 import (
-	"regexp"
+	"encoding/json"
 	"testing"
 
 	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
@@ -60,7 +60,7 @@ func FuzzValidateCRs(f *testing.F) {
 	} {
 		f.Add(append([]byte{byte(seed.kind)}, seed.data...))
 	}
-	skipObject := regexp.MustCompile(`^Object$`)
+
 	f.Fuzz(func(t *testing.T, data []byte) {
 		if len(data) == 0 {
 			return
@@ -70,9 +70,7 @@ func FuzzValidateCRs(f *testing.F) {
 			_ = parsed.Validate()
 		}
 		cr := fuzzValidatorFor(data[0])
-		// RawExtension.Object is an interface unsupported by randfill.
-		fuzztest.New(data[1:]).
-			SkipFieldsWithPattern(skipObject).Fill(cr)
+		fuzztest.New(data[1:]).Fill(cr)
 		_ = cr.Validate()
 	})
 }

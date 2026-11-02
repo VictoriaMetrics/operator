@@ -2,7 +2,6 @@ package build
 
 import (
 	"encoding/json"
-	"regexp"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -93,13 +92,11 @@ func FuzzAddDefaults(f *testing.F) {
 	}
 	scheme := runtime.NewScheme()
 	AddDefaults(scheme)
-	// randfill cannot populate runtime.RawExtension.Object (an interface).
-	skipRawObject := regexp.MustCompile(`^Object$`)
+
 	f.Fuzz(func(t *testing.T, kind uint8, data []byte) {
 		obj := cases[defaultsKind(kind)%defaultsKindCount].newObject()
 		if err := json.Unmarshal(data, obj); err != nil {
-			fuzztest.New(data).
-				SkipFieldsWithPattern(skipRawObject).Fill(obj)
+			fuzztest.New(data).Fill(obj)
 		}
 		service, isService := obj.(*corev1.Service)
 		needsServiceType := isService && service.Spec.Type == ""

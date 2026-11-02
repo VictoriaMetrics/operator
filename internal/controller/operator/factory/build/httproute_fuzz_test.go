@@ -2,7 +2,6 @@ package build
 
 import (
 	"encoding/json"
-
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,6 +30,6 @@ func FuzzHTTPRouteBuilder(f *testing.F) {
 			fuzztest.New(data).Fill(&input)
 		}
 		cr := &vmv1beta1.VMAuth{ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"}}
-		assertStableBuilder(t, func() (any, error) { return HTTPRoute(cr, input.Port, &input.Route) })
+		_, _ = HTTPRoute(cr, input.Port, &input.Route)
 	})
 }

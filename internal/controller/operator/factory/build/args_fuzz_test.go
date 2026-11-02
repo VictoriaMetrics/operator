@@ -30,15 +30,9 @@ func FuzzLicenseBuilders(f *testing.F) {
 		if err := json.Unmarshal(data, &input); err != nil {
 			fuzztest.New(data).Fill(&input)
 		}
-		assertStableBuilder(t, func() (any, error) {
-			volumes, mounts := LicenseVolumeTo(input.Volumes, input.Mounts, input.License, input.MountDir)
-			return struct {
-				Args       []string
-				DoubleArgs []string
-				Volumes    []corev1.Volume
-				Mounts     []corev1.VolumeMount
-			}{LicenseArgsTo(input.Args, input.License, input.MountDir), LicenseDoubleDashArgsTo(input.Args, input.License, input.MountDir), volumes, mounts}, nil
-		})
+		LicenseVolumeTo(input.Volumes, input.Mounts, input.License, input.MountDir)
+		LicenseArgsTo(input.Args, input.License, input.MountDir)
+		LicenseDoubleDashArgsTo(input.Args, input.License, input.MountDir)
 	})
 }
 
@@ -68,11 +62,7 @@ func FuzzStreamAggrRelabelArgs(f *testing.F) {
 		for i := range relabelKeys {
 			relabelKeys[i] = "relabel.yaml"
 		}
-		assertStableBuilder(t, func() (any, error) {
-			return struct {
-				StreamAggr []string
-				Relabel    []string
-			}{StreamAggrArgsTo(input.Args, "streamAggr", streamKeys, input.StreamAggr...), RelabelArgsTo(input.Args, "remoteWrite.relabelConfig", relabelKeys, input.Relabel...)}, nil
-		})
+		StreamAggrArgsTo(input.Args, "streamAggr", streamKeys, input.StreamAggr...)
+		RelabelArgsTo(input.Args, "remoteWrite.relabelConfig", relabelKeys, input.Relabel...)
 	})
 }

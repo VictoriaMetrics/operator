@@ -27,6 +27,7 @@ func FuzzPrometheusAuthConversion(f *testing.F) {
 	for _, seed := range []string{
 		`{}`,
 		`{"tlsConfig":{"caFile":"/etc/prometheus/secrets/ca","certFile":"/etc/prometheus/configmaps/cert"}}`,
+		`{"tlsConfig":{"serverName":"example.org","insecureSkipVerify":true},"safeAuthorization":{"type":"Bearer"}}`,
 		`{"safeTLSConfig":{"serverName":"example.org","insecureSkipVerify":true}}`,
 		`{"oauth":{"clientID":{"secret":{"name":"oauth","key":"id"}},"clientSecret":{"name":"oauth","key":"secret"},"tokenUrl":"https://example.org/token"}}`,
 		`{"basicAuth":{"username":{"name":"auth","key":"user"},"password":{"name":"auth","key":"pass"}}}`,

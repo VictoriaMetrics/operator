@@ -20,6 +20,7 @@ func FuzzConfigReloaderContainer(f *testing.F) {
 		f.Add([]byte(seed))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
+		// Use custom struct as `reloader` is an interface.
 		var input struct {
 			Agent  vmv1beta1.VMAgent         `json:"agent"`
 			Mounts []corev1.VolumeMount      `json:"mounts"`

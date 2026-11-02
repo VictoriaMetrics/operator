@@ -173,9 +173,15 @@ func generatePodScrapeConfig(
 	}
 
 	for _, c := range ep.RelabelConfigs {
+		if c == nil {
+			continue
+		}
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
 	for _, trc := range sp.PodScrapeRelabelTemplate {
+		if trc == nil {
+			continue
+		}
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the

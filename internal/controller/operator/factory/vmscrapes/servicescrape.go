@@ -240,10 +240,16 @@ func generateServiceScrapeConfig(
 	}
 
 	for _, c := range ep.RelabelConfigs {
+		if c == nil {
+			continue
+		}
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
 
 	for _, trc := range sp.ServiceScrapeRelabelTemplate {
+		if trc == nil {
+			continue
+		}
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 

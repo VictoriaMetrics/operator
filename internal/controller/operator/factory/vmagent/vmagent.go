@@ -366,9 +366,14 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 		close(rtCh)
 	}()
 
+	// drain rtCh on error, otherwise remaining shard goroutines block on send forever
+	var firstErr error
 	for rt := range rtCh {
 		if rt.err != nil {
-			return rt.err
+			if firstErr == nil {
+				firstErr = rt.err
+			}
+			continue
 		}
 		if rt.deploymentName != "" {
 			deploymentToKeep.Insert(rt.deploymentName)
@@ -382,6 +387,9 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 				pdbToKeep.Insert(rt.stsName)
 			}
 		}
+	}
+	if firstErr != nil {
+		return firstErr
 	}
 
 	if err := finalize.RemoveOrphanedPDBs(ctx, rclient, cr, pdbToKeep, true); err != nil {

@@ -18,6 +18,8 @@ func FuzzCreateOrUpdate(f *testing.F) {
 		`{"spec":{"selectAllByDefault":true,"configSecret":{"name":"cfg","key":"c"},"reader":{"datasourceURL":"http://reader","samplingPeriod":"1m"},"writer":{"datasourceURL":"http://writer"},"monitoring":{"push":{"url":"http://push"}}}}`,
 		`{"spec":{"reader":{"datasourceURL":"http://reader","samplingPeriod":"1m"},"writer":{"datasourceURL":"http://writer"},"replicaCount":2},"status":{"lastAppliedSpec":{"reader":{"datasourceURL":"http://old","samplingPeriod":"1m"},"writer":{"datasourceURL":"http://writer"},"replicaCount":1}}}`,
 		`{"spec":{"paused":true}}`,
+		// null model panicked config validation
+		`{"spec":{"configRawYaml":"models:\n  M1:\nschedulers:\n  S1:\n    class: periodic\n    infer_every: 1m\n","reader":{"datasourceURL":"http://readnscheduler","samplingPeriod":"1m"},"writer":{"datasourceURL":"http://writer"}}}`,
 	}, func() *vmv1.VMAnomaly { return &vmv1.VMAnomaly{} }, func(ctx context.Context, rclient client.Client, cr *vmv1.VMAnomaly) error {
 		return CreateOrUpdate(ctx, cr, rclient)
 	})

@@ -58,6 +58,8 @@ func FuzzCreateOrUpdate(f *testing.F) {
 		`{"spec":{"remoteWrite":[{"url":"http://vm:8428"}],"shardCount":2,"ingestOnlyMode":true,"streamAggrConfig":{"rules":[{"outputs":["total"],"interval":"1m"}]}}}`,
 		`{"spec":{"remoteWrite":[{"url":"http://vm:8428"}],"replicaCount":2},"status":{"lastAppliedSpec":{"remoteWrite":[{"url":"http://old:8428"}],"replicaCount":1}}}`,
 		`{"spec":{"paused":true}}`,
+		// invalid JSON, filled by fuzztest; failed shard leaked result goroutines
+		`{"s(ec":00080000108"0000`,
 	}, func() *vmv1beta1.VMAgent { return &vmv1beta1.VMAgent{} }, func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) error {
 		return CreateOrUpdate(ctx, cr, rclient)
 	})

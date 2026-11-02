@@ -293,6 +293,9 @@ func (c *config) build(cr *vmv1.VMAnomaly, pos *ParsedObjects, ac *build.AssetsC
 		prefix := fmt.Sprintf("%s-%s", cfg.Namespace, cfg.Name)
 		for k, v := range cv.Models {
 			name := fmt.Sprintf("%s-%s", prefix, k)
+			if v == nil || v.anomalyModel == nil {
+				return fmt.Errorf("failed to add config=%s/%s, model=%s is empty", cfg.Namespace, cfg.Name, name)
+			}
 			if c.Models == nil {
 				c.Models = make(map[string]*model)
 			}
@@ -339,7 +342,15 @@ func (c *config) validate() error {
 	if c.Reader == nil {
 		return fmt.Errorf("reader is required")
 	}
+	for name, s := range c.Schedulers {
+		if s == nil || s.anomalyScheduler == nil {
+			return fmt.Errorf("scheduler=%q is empty", name)
+		}
+	}
 	for modelName, m := range c.Models {
+		if m == nil || m.anomalyModel == nil {
+			return fmt.Errorf("model=%q is empty", modelName)
+		}
 		for _, q := range m.queries() {
 			if _, ok := c.Reader.Queries[q]; !ok {
 				return fmt.Errorf(`models.%s.queries contains %q, which is not listed in reader.queries`, modelName, q)

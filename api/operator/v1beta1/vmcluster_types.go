@@ -771,6 +771,9 @@ func (cr *VMCluster) Validate() error {
 		if storage.HPA != nil && storage.HPA.GetMinReplicas() > 100 {
 			return fmt.Errorf("vmstorage hpa.minReplicas cannot exceed 100")
 		}
+		if storage.HPA != nil && storage.HPA.MaxReplicas > 100 {
+			return fmt.Errorf("vmstorage hpa.maxReplicas cannot exceed 100")
+		}
 	}
 	if MustSkipCRValidation(cr) {
 		return nil

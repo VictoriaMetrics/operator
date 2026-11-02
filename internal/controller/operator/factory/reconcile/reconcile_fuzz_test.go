@@ -81,6 +81,7 @@ func FuzzMergeMapsWithStrategy(f *testing.F) {
 					t.Fatalf("%s merge lost primary value for %q: got %q, want %q", mode, key, actual, value)
 				}
 			}
+			wantLen := len(primary)
 			for key, value := range secondary {
 				if _, ok := primary[key]; ok {
 					continue
@@ -91,7 +92,12 @@ func FuzzMergeMapsWithStrategy(f *testing.F) {
 					}
 				} else if actual, ok := got[key]; !ok || actual != value {
 					t.Fatalf("%s merge lost unowned key %q: got %q, want %q", mode, key, actual, value)
+				} else {
+					wantLen++
 				}
+			}
+			if len(got) != wantLen {
+				t.Fatalf("%s merge returned unexpected keys: got %v, want %d keys", mode, got, wantLen)
 			}
 		}
 	})

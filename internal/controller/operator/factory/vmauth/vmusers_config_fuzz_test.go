@@ -37,6 +37,11 @@ func FuzzVMUserConfig(f *testing.F) {
 		f.Fatal(err)
 	}
 	client := fake.NewClientBuilder().WithScheme(scheme).Build()
+	objURLs := map[string]string{
+		"VMCluster/vminsert/default/vm": "http://vminsert",
+		"VMCluster/vmselect/default/vm": "http://vmselect",
+		"VLCluster/vlinsert/default/vm": "http://vlinsert",
+	}
 	f.Fuzz(func(t *testing.T, data []byte) {
 		var spec vmv1beta1.VMUserSpec
 		if err := json.Unmarshal(data, &spec); err != nil {

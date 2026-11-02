@@ -2,10 +2,10 @@ module github.com/VictoriaMetrics/operator/api
 
 // NOTE: modify go version only if it's really needed
 // and api package is no longer compatible with previous go versions.
-go 1.27.2
+go 1.27.3
 
 require (
-	github.com/VictoriaMetrics/VictoriaMetrics v1.154.1
+	github.com/VictoriaMetrics/VictoriaMetrics v1.155.0
 	github.com/VictoriaMetrics/metricsql v0.87.5
 	github.com/prometheus/alertmanager v0.34.1
 	github.com/stretchr/testify v1.12.1

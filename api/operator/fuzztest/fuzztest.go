@@ -3,13 +3,15 @@ package fuzztest
 
 import (
 	"fmt"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/randfill"
 )
 
-// New returns a fuzzer with valid Kubernetes quantity and int-or-string values.
+// New returns a fuzzer with valid Kubernetes quantity, duration and int-or-string values.
 func New(data []byte) *randfill.Filler {
 	return randfill.NewFromGoFuzz(data).
 		// Fuzzing defaults: up to 4 levels deep, 20% chance for nil values, 0-3 elements in the slice/maps
@@ -33,6 +35,17 @@ func New(data []byte) *randfill.Filler {
 					}
 				}
 				*quantity = *resource.NewQuantity(size, resource.BinarySI)
+			},
+			// Function to fuzz metav1.Duration
+			func(value *metav1.Duration, c randfill.Continue) {
+				if c.Intn(8) == 0 {
+					value.Duration = 0
+					return
+				}
+				value.Duration = time.Duration(1+c.Intn(3600)) * time.Second
+				if c.Bool() {
+					value.Duration = -value.Duration
+				}
 			},
 			// Function to fuzz intstr.IntOrString
 			func(value *intstr.IntOrString, c randfill.Continue) {

@@ -41,25 +41,38 @@ func fuzzPromConversion[T any](t *testing.T, data []byte, convert func(*T) any) 
 }
 
 func FuzzPrometheusConversion(f *testing.F) {
+	const (
+		meta     = `"metadata":{"labels":{"keep":"1","drop/x":"2"},"annotations":{"drop/x":"2"}}`
+		secret   = `{"name":"s","key":"k"}`
+		scm      = `{"secret":` + secret + `}`
+		selector = `{"matchLabels":{"app":"api"},"matchExpressions":[]}`
+		relabel  = `[{"action":"keep","sourceLabels":["a"],"regex":"b"},{"action":"drop"}]`
+		auth     = `"basicAuth":{"username":` + secret + `,"password":` + secret + `},"bearerTokenSecret":` + secret + `,"authorization":{"type":"Bearer"},` +
+			`"oauth2":{"clientId":` + scm + `,"clientSecret":` + secret + `,"tokenUrl":"http://t"},"tlsConfig":{"ca":` + scm + `,"cert":` + scm + `,"insecureSkipVerify":true,"serverName":"sn"}`
+		endpoint = `{"scheme":"https","bearerTokenFile":"/etc/prometheus/secrets/s/t",` + auth + `,"relabelings":` + relabel + `,"metricRelabelings":` + relabel + `}`
+		sampling = `"sampleLimit":10,"attachMetadata":{"node":true}`
+	)
 	for _, seed := range []struct {
 		kind uint8
 		data string
 	}{
-		{promRuleKind, `{}`},
-		{promRuleKind, `{"metadata":{"name":"rules","namespace":"default"},"spec":{"groups":[{"name":"recording","rules":[{"record":"up:sum","expr":"sum(up)","labels":{"team":"ops"}}]}]}}`},
-		{serviceMonitorKind, `{}`},
-		{serviceMonitorKind, `{"metadata":{"name":"service","namespace":"default"},"spec":{"selector":{"matchLabels":{"app":"api"}},"endpoints":[{"port":"http","path":"/metrics","relabelings":[{"action":"keep","sourceLabels":["job"],"regex":"api"}]}]}}`},
+		{promRuleKind, `{` + meta + `,"spec":{"groups":[{"name":"g","interval":"1m","query_offset":"5s","limit":10,"rules":[{"alert":"a","expr":"up == 0","for":"5m","keep_firing_for":"10m"}]}]}}`},
+		{serviceMonitorKind, `{` + meta + `,"spec":{"selector":` + selector + `,"namespaceSelector":{"any":true},` + sampling + `,"serviceDiscoveryRole":"EndpointSlice","endpoints":[` + endpoint + `,{"bearerTokenFile":"/etc/prometheus/configmaps/c/t","bearerTokenSecret":{}}]}}`},
 		{podMonitorKind, `{}`},
-		{podMonitorKind, `{"metadata":{"name":"pod","namespace":"default"},"spec":{"selector":{"matchLabels":{"app":"api"}},"podMetricsEndpoints":[{"port":"http","path":"/metrics"}]}}`},
+		{podMonitorKind, `{` + meta + `,"spec":{"selector":` + selector + `,` + sampling + `,"podMetricsEndpoints":[{"filterRunning":true,` + auth + `,"relabelings":` + relabel + `}]}}`},
 		{probeKind, `{}`},
-		{probeKind, `{"metadata":{"name":"probe","namespace":"default"},"spec":{"prober":{"url":"blackbox:9115"},"targets":{"staticConfig":{"static":["example.org"]}}}}`},
-		{probeKind, `{"metadata":{"name":"probe","namespace":"default"},"spec":{"targets":{"ingress":{"selector":{"matchLabels":{"app":"api"}}}}}}`},
+		{probeKind, `{` + meta + `,"spec":{"sampleLimit":10,"prober":{"url":"bb:9115","proxyUrl":"http://p"},"targets":{"staticConfig":{"static":["a"],"relabelingConfigs":` + relabel + `},"ingress":{"selector":` + selector + `}},` + auth + `}}`},
 	} {
 		f.Add(seed.kind, []byte(seed.data))
 	}
 	f.Fuzz(func(t *testing.T, kind uint8, data []byte) {
 		ctx := context.Background()
-		conf := &config.BaseOperatorConf{}
+		conf := &config.BaseOperatorConf{
+			EnabledPrometheusConverterOwnerReferences:     true,
+			PrometheusConverterAddArgoCDIgnoreAnnotations: true,
+			FilterPrometheusConverterLabelPrefixes:        []string{"drop/"},
+			FilterPrometheusConverterAnnotationPrefixes:   []string{"drop/"},
+		}
 		switch kind % promKindCount {
 		case promRuleKind:
 			fuzzPromConversion(t, data, func(src *promv1.PrometheusRule) any { return PrometheusRule(ctx, src, conf) })

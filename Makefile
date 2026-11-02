@@ -368,7 +368,7 @@ ENVTEST_VERSION ?= release-0.23
 # renovate: datasource=go depName=github.com/golangci/golangci-lint/v2
 GOLANGCI_LINT_VERSION ?= v2.15.0
 # renovate: datasource=go depName=k8s.io/code-generator
-CODEGENERATOR_VERSION ?= v0.37.1
+CODEGENERATOR_VERSION ?= v0.37.2
 # renovate: datasource=github-releases depName=operator-framework/operator-lifecycle-manager extractVersion=^v(?<version>.*)$
 OLM_VERSION ?= 0.46.0
 # renovate: datasource=go depName=github.com/operator-framework/operator-sdk

@@ -1,10 +1,7 @@
 package vlsingle
 
 import (
-	"context"
 	"testing"
-
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/fuzzutil"
@@ -18,7 +15,5 @@ func FuzzCreateOrUpdate(f *testing.F) {
 		`{"spec":{"vpa":{"updatePolicy":{"updateMode":"Auto"}},"networkPolicy":{},"podDisruptionBudget":{"minAvailable":1}}}`,
 		`{"spec":{"replicaCount":2},"status":{"lastAppliedSpec":{"replicaCount":1,"storage":{"resources":{"requests":{"storage":"1Gi"}}}}}}`,
 		`{"spec":{"paused":true}}`,
-	}, func() *vmv1.VLSingle { return &vmv1.VLSingle{} }, func(ctx context.Context, rclient client.Client, cr *vmv1.VLSingle) error {
-		return CreateOrUpdate(ctx, rclient, cr)
-	})
+	}, func() *vmv1.VLSingle { return &vmv1.VLSingle{} }, CreateOrUpdate)
 }

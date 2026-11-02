@@ -2,7 +2,7 @@ package build
 
 import (
 	"encoding/json"
-	"regexp"
+
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,8 +28,7 @@ func FuzzHTTPRouteBuilder(f *testing.F) {
 			Route vmv1beta1.EmbeddedHTTPRoute `json:"route"`
 		}
 		if err := json.Unmarshal(data, &input); err != nil {
-			fuzztest.New(data).
-				SkipFieldsWithPattern(regexp.MustCompile(`^Object$`)).Fill(&input)
+			fuzztest.New(data).Fill(&input)
 		}
 		cr := &vmv1beta1.VMAuth{ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"}}
 		assertStableBuilder(t, func() (any, error) { return HTTPRoute(cr, input.Port, &input.Route) })

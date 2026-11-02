@@ -7,11 +7,12 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/randfill"
 )
 
-// New returns a fuzzer with valid Kubernetes quantity, duration and int-or-string values.
+// New returns a fuzzer with Kubernetes quantity, duration, raw extension and int-or-string values.
 func New(data []byte) *randfill.Filler {
 	return randfill.NewFromGoFuzz(data).
 		// Fuzzing defaults: up to 4 levels deep, 20% chance for nil values, 0-3 elements in the slice/maps
@@ -46,6 +47,19 @@ func New(data []byte) *randfill.Filler {
 				if c.Bool() {
 					value.Duration = -value.Duration
 				}
+			},
+			func(value *runtime.RawExtension, c randfill.Continue) {
+				switch c.Intn(4) {
+				case 0:
+					value.Raw = nil
+				case 1:
+					value.Raw = []byte(`{}`)
+				case 2:
+					value.Raw = []byte(fmt.Sprintf(`{"matches":[{"path":{"type":"Exact","value":"/%d"}}]}`, c.Uint64()))
+				default:
+					value.Raw = []byte("{")
+				}
+				value.Object = nil
 			},
 			// Function to fuzz intstr.IntOrString
 			func(value *intstr.IntOrString, c randfill.Continue) {

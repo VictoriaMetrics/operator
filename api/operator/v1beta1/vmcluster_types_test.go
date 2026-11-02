@@ -206,6 +206,9 @@ func TestVMCluster_ValidateStorageReplicaLimit(t *testing.T) {
 		{name: "large replica count", storage: VMStorage{CommonAppsParams: CommonAppsParams{ReplicaCount: ptr.To(int32(100000000))}}, wantErr: true},
 		{name: "100 HPA min replicas", storage: VMStorage{HPA: &EmbeddedHPA{MinReplicas: ptr.To(int32(100)), MaxReplicas: 100}}},
 		{name: "101 HPA min replicas", storage: VMStorage{HPA: &EmbeddedHPA{MinReplicas: ptr.To(int32(101)), MaxReplicas: 101}}, wantErr: true},
+		{name: "101 HPA max replicas", storage: VMStorage{HPA: &EmbeddedHPA{MinReplicas: ptr.To(int32(1)), MaxReplicas: 101}}, wantErr: true},
+		{name: "large HPA max replicas", storage: VMStorage{HPA: &EmbeddedHPA{MaxReplicas: 100000000}}, wantErr: true},
+		{name: "skip validation cannot bypass HPA max limit", storage: VMStorage{HPA: &EmbeddedHPA{MaxReplicas: 101}}, skip: true, wantErr: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cr := &VMCluster{Spec: VMClusterSpec{VMStorage: &tc.storage}}

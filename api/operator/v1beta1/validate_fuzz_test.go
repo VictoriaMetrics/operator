@@ -48,6 +48,7 @@ func FuzzValidateCRs(f *testing.F) {
 	}{
 		{vmAgentKind, `{}`},
 		{vmClusterKind, `{"spec":{"vmstorage":{"replicaCount":2,"maintenanceSelectNodeIDs":[0,1]}}}`},
+		{vmClusterKind, `{"spec":{"vmstorage":{"hpa":{"minReplicas":1,"maxReplicas":101}}}}`},
 		{vmProbeKind, `{"spec":{"targets":{"kubernetes":[null]}}}`},
 		{vmAgentKind, `{"spec":{"remoteWrite":[{"url":"http://localhost:8428/api/v1/write"}]}}`},
 		{vmUserKind, `{"spec":{"targetRefs":[{"static":{"url":"http://localhost:8428"},"paths":["/api/v1/.*"]}]}}`},

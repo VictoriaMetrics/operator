@@ -22,7 +22,7 @@ BUILDINFO = $(DATEINFO_TAG)-$(TAG)
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 # renovate: datasource=github-releases depName=kubernetes/kubernetes extractVersion=^v(?<version>.*)$
-ENVTEST_K8S_VERSION = 1.37.1
+ENVTEST_K8S_VERSION = 1.37.2
 PLATFORM = $(shell uname -o)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)

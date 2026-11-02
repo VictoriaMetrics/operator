@@ -44,7 +44,7 @@ func FuzzRemoteWriteArgs(f *testing.F) {
 		}
 		a, err := render()
 		b, err2 := render()
-		if (err == nil) != (err2 == nil) || !reflect.DeepEqual(a, b) {
+		if (err == nil) != (err2 == nil) || err != nil && err.Error() != err2.Error() || !reflect.DeepEqual(a, b) {
 			t.Fatalf("non-idempotent remoteWrite: %q (%v) != %q (%v)", a, err, b, err2)
 		}
 	})

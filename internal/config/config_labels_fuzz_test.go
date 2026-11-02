@@ -56,20 +56,18 @@ func FuzzLabelsMerge(f *testing.F) {
 		}
 		original := maps.Clone(other.LabelsMap)
 		merged := labels.Merge(other.LabelsMap)
-		for key, value := range labels.LabelsMap {
-			if merged[key] != value {
-				t.Fatalf("local label %q lost: %q != %q", key, merged[key], value)
-			}
-		}
 		if !maps.Equal(other.LabelsMap, original) || !maps.Equal(merged, labels.Merge(other.LabelsMap)) {
 			t.Fatalf("Merge changed inputs or produced unstable output: %v", merged)
 		}
-		for key := range merged {
-			if _, ok := labels.LabelsMap[key]; !ok {
-				if merged[key] != original[key] {
-					t.Fatalf("external label %q lost", key)
-				}
-			}
+
+		// local labels override external ones, nothing else is added or lost
+		want := maps.Clone(original)
+		if want == nil {
+			want = map[string]string{}
+		}
+		maps.Copy(want, labels.LabelsMap)
+		if !maps.Equal(merged, want) {
+			t.Fatalf("Merge(%v, %v) = %v, want %v", labels.LabelsMap, original, merged, want)
 		}
 	})
 }

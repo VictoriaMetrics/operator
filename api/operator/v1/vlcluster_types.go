@@ -791,6 +791,14 @@ func (cr *VLCluster) AsOwner() metav1.OwnerReference {
 
 //nolint:dupl,lll
 func (cr *VLCluster) Validate() error {
+	if storage := cr.Spec.VLStorage; storage != nil {
+		if storage.ReplicaCount != nil && *storage.ReplicaCount > vmv1beta1.MaxReplicaCount {
+			return fmt.Errorf("vlstorage replicaCount cannot exceed %d", vmv1beta1.MaxReplicaCount)
+		}
+		if storage.HPA != nil && storage.HPA.GetMinReplicas() > vmv1beta1.MaxReplicaCount {
+			return fmt.Errorf("vlstorage hpa.minReplicas cannot exceed %d", vmv1beta1.MaxReplicaCount)
+		}
+	}
 	if vmv1beta1.MustSkipCRValidation(cr) {
 		return nil
 	}

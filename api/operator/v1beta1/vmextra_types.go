@@ -47,6 +47,9 @@ const (
 	WorkloadKindDeployment  WorkloadKind = "Deployment"
 )
 
+// MaxReplicaCount bounds replicas; keep in sync with ReplicaCount kubebuilder Maximum marker
+const MaxReplicaCount = 100
+
 // ClusterComponent defines component kind for cluster
 type ClusterComponent string
 

@@ -1,7 +1,9 @@
 package deploy
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"os/exec"
 	"strings"
 	"sync"
@@ -10,8 +12,25 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/VictoriaMetrics/operator/internal/podutil"
 	"github.com/VictoriaMetrics/operator/test/utils"
 )
+
+// expectedMetrics: single-series metrics from client_golang and vmmetrics; each must appear exactly once per scrape.
+var expectedMetrics = []string{
+	"go_goroutines",
+	"go_threads",
+	"go_info",
+	"go_gc_duration_seconds_count",
+	"process_cpu_seconds_total",
+	"process_resident_memory_bytes",
+	"process_virtual_memory_bytes",
+	"process_start_time_seconds",
+	"process_io_read_bytes_total",
+	"process_cpu_seconds_system_total",
+	"go_cpu_count",
+	"go_info_ext",
+}
 
 var (
 	_ = Describe("operator in-cluster deployment", Ordered, func() {
@@ -121,6 +140,48 @@ var (
 					return nil
 				}
 				EventuallyWithOffset(1, verifyControllerUp, 3*time.Minute, time.Second).ShouldNot(HaveOccurred())
+			})
+
+			It("should not expose duplicate metric families on /metrics", func() {
+				By("locating the operator pod's IP")
+				var podIP string
+				EventuallyWithOffset(1, func() error {
+					cmd := exec.Command("kubectl", "get", "pods",
+						"-l", "control-plane=vm-operator",
+						"-n", ns,
+						"-o", "jsonpath={.items[0].status.podIP}",
+					)
+					out, err := utils.Run(cmd)
+					if err != nil {
+						return err
+					}
+					podIP = strings.TrimSpace(string(out))
+					if podIP == "" {
+						return fmt.Errorf("operator pod has no IP assigned yet")
+					}
+					return nil
+				}, time.Minute, time.Second).ShouldNot(HaveOccurred())
+
+				// empty Dimension requests every sample regardless of labels, so a duplicate surfaces as len(values[name]) > 1.
+				By("scraping the operator's own /metrics endpoint and checking for duplicates")
+				queries := make([]podutil.MetricQuery, 0, len(expectedMetrics))
+				for _, name := range expectedMetrics {
+					queries = append(queries, podutil.MetricQuery{Name: name})
+				}
+
+				metricsURL := fmt.Sprintf("http://%s:8080/metrics", podIP)
+				var values map[string]map[string]float64
+				EventuallyWithOffset(1, func() error {
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					defer cancel()
+					var err error
+					values, err = podutil.FetchMetricsValues(ctx, http.DefaultClient, metricsURL, queries)
+					return err
+				}, time.Minute, time.Second).ShouldNot(HaveOccurred())
+
+				for _, name := range expectedMetrics {
+					ExpectWithOffset(1, values[name]).To(HaveLen(1), "metric %q missing or duplicated on /metrics", name)
+				}
 			})
 		})
 	})

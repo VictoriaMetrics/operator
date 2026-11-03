@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -15,10 +16,15 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
+	vmmetrics "github.com/VictoriaMetrics/metrics"
 	"github.com/go-logr/logr"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -211,12 +217,13 @@ func RunManager(ctx context.Context) error {
 	})
 
 	metricsServerOptions := metricsserver.Options{
-		BindAddress:   *metricsAddr,
-		SecureServing: *tlsEnable,
-		CertDir:       *tlsCertDir,
-		CertName:      *tlsCertName,
-		KeyName:       *tlsCertKey,
-		TLSOpts:       metricServerTLSOpts,
+		BindAddress:    *metricsAddr,
+		SecureServing:  *tlsEnable,
+		CertDir:        *tlsCertDir,
+		CertName:       *tlsCertName,
+		KeyName:        *tlsCertKey,
+		TLSOpts:        metricServerTLSOpts,
+		FilterProvider: vmMetricsFilterProvider,
 	}
 
 	setupLog.Info(fmt.Sprintf("starting VictoriaMetrics operator build version: %s, short_version: %s", buildinfo.Version, buildinfo.ShortVersion()))
@@ -532,6 +539,56 @@ func mustAddRestClientMetrics(r metrics.RegistererGatherer) {
 	// replace global go-client RequestLatency metric
 	restmetrics.RequestLatency = &latencyMetricWrapper{collector: restClientLatency}
 	r.MustRegister(restClientLatency)
+}
+
+// vmMetricsFilterProvider serves "/metrics" from the controller-runtime registry merged with standard VM process/go metrics (e.g. process_cpu_cores_available).
+func vmMetricsFilterProvider(*rest.Config, *http.Client) (metricsserver.Filter, error) {
+	return func(logr.Logger, http.Handler) (http.Handler, error) {
+		return vmMetricsHandler(metrics.Registry), nil
+	}, nil
+}
+
+// vmMetricsHandler lets promhttp encode both sources, so text, OpenMetrics and protobuf scrapes all work.
+func vmMetricsHandler(g prometheus.Gatherer) http.Handler {
+	// emit # TYPE so summaries/histograms parse as one family, e.g. go_gc_duration_seconds
+	vmmetrics.ExposeMetadata(true)
+	return promhttp.HandlerFor(
+		vmGatherer{g},
+		promhttp.HandlerOpts{ErrorHandling: promhttp.HTTPErrorOnError},
+	)
+}
+
+// vmGatherer appends vmmetrics families not already exposed by Gatherer, e.g. keeps client_golang's go_gc_duration_seconds and adds go_cpu_count.
+type vmGatherer struct {
+	prometheus.Gatherer
+}
+
+func (vg vmGatherer) Gather() ([]*dto.MetricFamily, error) {
+	baseFamilies, err := vg.Gatherer.Gather()
+	if err != nil {
+		return nil, err
+	}
+
+	taken := sets.New[string]()
+	for _, mf := range baseFamilies {
+		taken.Insert(mf.GetName())
+	}
+
+	var buf bytes.Buffer
+	vmmetrics.WritePrometheus(&buf, true)
+	parser := expfmt.NewTextParser(model.UTF8Validation)
+	newFamilies, err := parser.TextToMetricFamilies(&buf)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse VM metrics: %w", err)
+	}
+
+	// Add any VM families not already exposed by Gatherer
+	for n, mf := range newFamilies {
+		if !taken.Has(n) {
+			baseFamilies = append(baseFamilies, mf)
+		}
+	}
+	return baseFamilies, nil
 }
 
 type crdController interface {

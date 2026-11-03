@@ -912,6 +912,7 @@ type SlackConfig struct {
 	// Requires Slack Bot API and chat:write scope.
 	// Available since alertmanager v0.35.0.
 	// +optional
+	// +notes={available_from: "v0.76.0"}
 	PostUpdatesToThread *bool `json:"post_updates_to_thread,omitempty" yaml:"post_updates_to_thread,omitempty"`
 	// HTTP client configuration.
 	// +optional

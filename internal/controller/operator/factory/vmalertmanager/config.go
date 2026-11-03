@@ -397,8 +397,8 @@ func buildCRPrefixedName(cr *vmv1beta1.VMAlertmanagerConfig, name string) string
 func validateReceiverVersion(cr *vmv1beta1.VMAlertmanager, r vmv1beta1.Receiver) error {
 	for i, c := range r.SlackConfigs {
 		// any non-nil value is rendered, and older versions reject unknown fields
-		if c.PostUpdatesToThread != nil && !versionSupported(cr, postUpdatesToThreadMinVersion) {
-			return fmt.Errorf("receiver %q: slack_configs[%d].post_updates_to_thread requires alertmanager >= %s, got image tag %q; set VM_DISABLE_ALERTMANAGER_VERSION_CHECK=true to skip this check for custom builds",
+		if c.PostUpdatesToThread != nil && !postUpdatesToThreadSupported(cr) {
+			return fmt.Errorf("receiver %q: slack_configs[%d].post_updates_to_thread requires alertmanager >= %s, got image tag %q; set VM_VMALERTMANAGER_SLACK_POST_UPDATES_TO_THREAD_SUPPORT=true if the image supports it",
 				r.Name, i, postUpdatesToThreadMinVersion.Original(), cr.Spec.Image.Tag)
 		}
 	}

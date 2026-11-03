@@ -725,6 +725,18 @@ templates: []
 
 	// slack ok
 	f(opts{
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				ConfigNamespaceSelector: &metav1.LabelSelector{},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					Image: vmv1beta1.Image{Tag: "v0.35.0"},
+				},
+			},
+		},
 		baseCfg: []byte(`global:
  time_out: 1min
 `),
@@ -1182,7 +1194,7 @@ templates: []
 				},
 			},
 		},
-		parseError: `receiver "slack": slack_configs[0].post_updates_to_thread requires alertmanager >= v0.35.0, got image tag "v0.34.1"; set VM_DISABLE_ALERTMANAGER_VERSION_CHECK=true to skip this check for custom builds`,
+		parseError: `receiver "slack": slack_configs[0].post_updates_to_thread requires alertmanager >= v0.35.0, got image tag "v0.34.1"; set VM_VMALERTMANAGER_SLACK_POST_UPDATES_TO_THREAD_SUPPORT=true if the image supports it`,
 		want: `global:
   time_out: 1min
 route:
@@ -2567,14 +2579,14 @@ func Test_validateReceiverVersion(t *testing.T) {
 	type opts struct {
 		tag                 string
 		postUpdatesToThread *bool
-		disableVersionCheck bool
+		declareSupport      bool
 		wantErr             bool
 	}
 	f := func(o opts) {
 		t.Helper()
 		cfg := config.MustGetBaseConfig()
 		defaultCfg := *cfg
-		cfg.DisableAlertmanagerVersionCheck = o.disableVersionCheck
+		cfg.VMAlertmanagerSlackPostUpdatesToThreadSupport = o.declareSupport
 		defer func() {
 			*config.MustGetBaseConfig() = defaultCfg
 		}()
@@ -2610,8 +2622,11 @@ func Test_validateReceiverVersion(t *testing.T) {
 	f(opts{tag: "v0.35.0", postUpdatesToThread: ptr.To(true)})
 
 	// field set, non-semver custom tag
-	f(opts{tag: "main-2026-11-03", postUpdatesToThread: ptr.To(true)})
+	f(opts{tag: "main-2026-11-03", postUpdatesToThread: ptr.To(true), wantErr: true})
 
-	// field set, old version with version check disabled
-	f(opts{tag: "v0.34.1", postUpdatesToThread: ptr.To(true), disableVersionCheck: true})
+	// field set, non-semver custom tag with declared support
+	f(opts{tag: "main-2026-11-03", postUpdatesToThread: ptr.To(true), declareSupport: true})
+
+	// field set, old version with declared support
+	f(opts{tag: "v0.34.1", postUpdatesToThread: ptr.To(true), declareSupport: true})
 }

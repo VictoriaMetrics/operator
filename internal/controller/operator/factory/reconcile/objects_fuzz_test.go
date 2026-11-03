@@ -17,6 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/sets"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -105,11 +106,14 @@ func newReconcileTarget[T client.Object](run reconcileFunc[T]) reconcileTarget {
 		if !isNil(in.Existing) {
 			objects = append(objects, in.Existing)
 		}
+		// don't let fuzzer create duplicate pod names
+		podNames := sets.New[string]()
 		for i := range in.Pods {
 			p := &in.Pods[i]
-			if p.Name == "" {
+			if p.Name == "" || podNames.Has(p.Name) {
 				continue
 			}
+			podNames.Insert(p.Name)
 			p.Namespace = "default"
 			p.ResourceVersion = ""
 			p.ManagedFields = nil
@@ -187,9 +191,17 @@ var reconcileTargets = [...]reconcileTarget{
 		return PersistentVolumeClaim(ctx, c, n, p, o)
 	}),
 	deploymentKind: newReconcileTarget(func(ctx context.Context, c client.Client, n, p *appsv1.Deployment, o *metav1.OwnerReference, _ bool) error {
+		// API server rejects nil selector, fake client doesn't
+		if n.Spec.Selector == nil {
+			return nil
+		}
 		return Deployment(ctx, c, n, p, o, &DeploymentOpts{})
 	}),
 	statefulSetKind: newReconcileTarget(func(ctx context.Context, c client.Client, n, p *appsv1.StatefulSet, o *metav1.OwnerReference, flag bool) error {
+		// API server rejects nil selector, fake client doesn't
+		if n.Spec.Selector == nil {
+			return nil
+		}
 		opts := &StatefulSetOpts{}
 		if flag {
 			opts.UpdateBehavior = &vmv1beta1.StatefulSetUpdateStrategyBehavior{MaxUnavailable: ptr.To(intstr.FromInt32(1))}
@@ -197,6 +209,10 @@ var reconcileTargets = [...]reconcileTarget{
 		return StatefulSet(ctx, c, n, p, o, opts)
 	}),
 	daemonSetKind: newReconcileTarget(func(ctx context.Context, c client.Client, n, p *appsv1.DaemonSet, o *metav1.OwnerReference, _ bool) error {
+		// API server rejects nil selector, fake client doesn't
+		if n.Spec.Selector == nil {
+			return nil
+		}
 		return DaemonSet(ctx, c, n, p, o)
 	}),
 	vpaKind: newReconcileTarget(func(ctx context.Context, c client.Client, n, p *vpav1.VerticalPodAutoscaler, o *metav1.OwnerReference, _ bool) error {

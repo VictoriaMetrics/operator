@@ -2057,3 +2057,14 @@ func TestConvertLicense(t *testing.T) {
 	f("victoria-logs-agent", "remoteWrite:\n  - url: http://vlinsert:9481\n")
 	f("victoria-logs-collector", "remoteWrite:\n  - url: http://vlinsert:9481\n")
 }
+
+func TestConvertImageVariant(t *testing.T) {
+	f := func(image ImageValues, want string) {
+		t.Helper()
+		assert.Equal(t, want, convertImage(image, ImageValues{}).Tag)
+	}
+	f(ImageValues{Tag: "v1.0.0", Variant: "cluster"}, "v1.0.0-cluster")
+	f(ImageValues{Tag: "v1.0.0"}, "v1.0.0")
+	f(ImageValues{Variant: "cluster"}, "")
+	f(ImageValues{}, "")
+}

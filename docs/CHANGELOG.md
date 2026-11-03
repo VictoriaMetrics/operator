@@ -13,6 +13,7 @@ aliases:
 
 ## tip
 
+* BUGFIX: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): do not add the image `variant` to an empty `image.tag`. Previously, the generated custom resources got the invalid image tag `-cluster`, which made pods fail with `InvalidImageName`. With an empty tag, the operator default version is used now.
 * BUGFIX: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): pass `-kubernetesCollector.includePodLabels=false` when `spec.k8sCollector.includePodLabels` is set to `false`. Previously, the flag was omitted, so vlagent kept its default and still attached pod labels to log entries. See [#2772](https://github.com/VictoriaMetrics/operator/issues/2772).
 
 ## [v0.75.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.2)

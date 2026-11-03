@@ -8,6 +8,7 @@ import (
 	"maps"
 	"net"
 	"net/http"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -1640,7 +1641,7 @@ func convertService(service *ServiceValues) *vmv1beta1.AdditionalServiceSpec {
 		}
 	}
 
-	if service.Type != "" {
+	if service.Type != "" && service.Type != string(corev1.ServiceTypeClusterIP) {
 		spec.Spec.Type = corev1.ServiceType(service.Type)
 	}
 	if service.ClusterIP != "" {
@@ -1654,6 +1655,10 @@ func convertService(service *ServiceValues) *vmv1beta1.AdditionalServiceSpec {
 	}
 	if len(service.LoadBalancerSourceRanges) > 0 {
 		spec.Spec.LoadBalancerSourceRanges = service.LoadBalancerSourceRanges
+	}
+
+	if reflect.DeepEqual(spec, &vmv1beta1.AdditionalServiceSpec{UseAsDefault: true}) {
+		return nil
 	}
 
 	return spec

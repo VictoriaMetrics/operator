@@ -2352,3 +2352,26 @@ http:
 		wantErr: "contains a comma",
 	})
 }
+
+func TestConvertServiceDefaults(t *testing.T) {
+	f := func(service *ServiceValues, want *vmv1beta1.AdditionalServiceSpec) {
+		t.Helper()
+		assert.Equal(t, want, convertService(service))
+	}
+
+	f(nil, nil)
+	f(&ServiceValues{}, nil)
+	f(&ServiceValues{Type: "ClusterIP"}, nil)
+	f(&ServiceValues{Type: "ClusterIP", ClusterIP: "None"}, &vmv1beta1.AdditionalServiceSpec{
+		UseAsDefault: true,
+		Spec:         corev1.ServiceSpec{ClusterIP: "None"},
+	})
+	f(&ServiceValues{Type: "LoadBalancer"}, &vmv1beta1.AdditionalServiceSpec{
+		UseAsDefault: true,
+		Spec:         corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+	})
+	f(&ServiceValues{Type: "ClusterIP", Annotations: map[string]string{"a": "b"}}, &vmv1beta1.AdditionalServiceSpec{
+		UseAsDefault:           true,
+		EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Annotations: map[string]string{"a": "b"}},
+	})
+}

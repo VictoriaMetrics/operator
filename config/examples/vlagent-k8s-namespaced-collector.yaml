@@ -50,4 +50,4 @@ spec:
       - ts
       - timestamp
   remoteWrite:
-    - url: "http://vlsingle-example-0.default.svc:9428/internal/insert"
+    - url: "http://vlsingle-example-0.default.svc:9428/insert/native"

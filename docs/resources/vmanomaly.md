@@ -209,6 +209,35 @@ spec:
           tz: UTC
 ```
 
+### Serving the UI over HTTPS
+
+`spec.server.tlsConfig` serves the anomaly UI and API over HTTPS. The certificate and key are taken from `cert` and `keySecret` or from pre-mounted `certFile` and `keyFile`. Set `ca` or `caFile` to require client certificates signed by that CA (mTLS). `insecureSkipVerify` and `serverName` are not supported for the server. The vmanomaly version must support the `server.tls_cert_file`, `server.tls_key_file` and `server.mtls_ca_file` options.
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1
+kind: VMAnomaly
+metadata:
+  name: example
+spec:
+  # ...
+  server:
+    tlsConfig:
+      cert:
+        secret:
+          name: vmanomaly-tls
+          key: tls.crt
+      keySecret:
+        name: vmanomaly-tls
+        key: tls.key
+      # optional: require client certificates (mTLS)
+      ca:
+        secret:
+          name: vmanomaly-tls
+          key: ca.crt
+```
+
+Only `spec.server.port` serves HTTPS. Probes and metrics scraping keep using plain HTTP on `spec.monitoring.pull.port`, so the two ports must differ. Clients of the server port, such as Ingress backends, must use HTTPS and, with mTLS, present a client certificate.
+
 ### Using secret
 
 Configuration can be defined in a manually created `Secret`, which must be created before `VMAnomaly` resource.

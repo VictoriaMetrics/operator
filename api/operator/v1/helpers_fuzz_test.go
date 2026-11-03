@@ -3,7 +3,6 @@ package v1
 import (
 	"encoding/json"
 	"reflect"
-	"strings"
 	"testing"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -12,8 +11,6 @@ import (
 	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
-
-const unsupportedKindPanic = "BUG unsupported"
 
 var (
 	clusterComponents = []vmv1beta1.ClusterComponent{
@@ -61,59 +58,16 @@ func helperTargets(selector byte) (any, func(any) []any) {
 	return t.cr, t.parts
 }
 
-// callMethods invokes every exported method of v with fuzzed arguments: UnmarshalJSON, DeepCopy etc
-func callMethods(c *randfill.Filler, v any) {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return
-	}
-
-	for i := range rv.NumMethod() {
-		m := rv.Method(i)
-		args, ok := fuzzArgs(c, m.Type())
-		if !ok {
-			continue
+// clusterComponentArg picks a supported ClusterComponent instead of a random string.
+func clusterComponentArg(c *randfill.Filler) fuzztest.ArgFunc {
+	return func(at reflect.Type) (reflect.Value, bool) {
+		if at != clusterComponentType {
+			return reflect.Value{}, false
 		}
-		callMethod(m, args)
+		var idx uint8
+		c.Fill(&idx)
+		return reflect.ValueOf(clusterComponents[int(idx)%len(clusterComponents)]), true
 	}
-}
-
-// callMethod ignores intentional panics on unsupported cluster components.
-func callMethod(m reflect.Value, args []reflect.Value) {
-	defer func() {
-		if r := recover(); r != nil {
-			if s, ok := r.(string); ok && strings.HasPrefix(s, unsupportedKindPanic) {
-				return
-			}
-			panic(r)
-		}
-	}()
-	m.Call(args)
-}
-
-// fuzzArgs fills method arguments; skips methods taking interfaces, funcs or nil-unsafe pointers.
-func fuzzArgs(c *randfill.Filler, mt reflect.Type) ([]reflect.Value, bool) {
-	args := make([]reflect.Value, mt.NumIn())
-	for i := range args {
-		at := mt.In(i)
-		switch {
-		case at == clusterComponentType:
-			var idx uint8
-			c.Fill(&idx)
-			args[i] = reflect.ValueOf(clusterComponents[int(idx)%len(clusterComponents)])
-		case at.Kind() == reflect.Interface, at.Kind() == reflect.Func, at.Kind() == reflect.Chan:
-			return nil, false
-		case at.Kind() == reflect.Pointer:
-			p := reflect.New(at.Elem())
-			c.Fill(p.Interface())
-			args[i] = p
-		default:
-			p := reflect.New(at)
-			c.Fill(p.Interface())
-			args[i] = p.Elem()
-		}
-	}
-	return args, true
 }
 
 // overHardLimits reports checks Validate enforces even with skip-validation annotation.
@@ -169,12 +123,13 @@ func FuzzCRHelpers(f *testing.F) {
 
 		// fresh filler for method arguments
 		c := fuzztest.New(data)
-		callMethods(c, cr)
+		arg := clusterComponentArg(c)
+		fuzztest.CallMethods(c, cr, arg)
 		if parts == nil {
 			return
 		}
 		for _, p := range parts(cr) {
-			callMethods(c, p)
+			fuzztest.CallMethods(c, p, arg)
 		}
 	})
 }

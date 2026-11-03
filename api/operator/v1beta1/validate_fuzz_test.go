@@ -71,7 +71,7 @@ func FuzzValidateCRs(f *testing.F) {
 			_ = parsed.Validate()
 		}
 		cr := fuzzValidatorFor(data[0])
-		fuzztest.New(data[1:]).Fill(cr)
+		fuzztest.New(data[1:]).MaxDepth(8).Fill(cr)
 		_ = cr.Validate()
 	})
 }

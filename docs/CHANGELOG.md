@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* FEATURE: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): convert the bundled Alertmanager of the `victoria-metrics-alert` chart into a `VMAlertmanager` and add it to the converted `VMAlert` notifiers. Previously, the conversion failed when `alertmanager.enabled` was `true`. See [#2798](https://github.com/VictoriaMetrics/operator/pull/2798).
+
 * BUGFIX: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): pass `-kubernetesCollector.includePodLabels=false` when `spec.k8sCollector.includePodLabels` is set to `false`. Previously, the flag was omitted, so vlagent kept its default and still attached pod labels to log entries. See [#2772](https://github.com/VictoriaMetrics/operator/issues/2772).
 
 ## [v0.75.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.2)

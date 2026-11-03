@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"net"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -124,10 +126,49 @@ type VMAuthConfigUser struct {
 }
 
 type VMAlertHelmValues struct {
-	Global         GlobalValues        `yaml:"global,omitempty" json:"global,omitempty"`
-	Server         VMAlertServerValues `yaml:"server" json:"server"`
-	ServiceAccount *ServiceAccount     `yaml:"serviceAccount,omitempty" json:"serviceAccount,omitempty"`
-	License        *LicenseValues      `yaml:"license,omitempty" json:"license,omitempty"`
+	Global         GlobalValues               `yaml:"global,omitempty" json:"global,omitempty"`
+	Server         VMAlertServerValues        `yaml:"server" json:"server"`
+	ServiceAccount *ServiceAccount            `yaml:"serviceAccount,omitempty" json:"serviceAccount,omitempty"`
+	License        *LicenseValues             `yaml:"license,omitempty" json:"license,omitempty"`
+	Alertmanager   *VMAlertAlertmanagerValues `yaml:"alertmanager,omitempty" json:"alertmanager,omitempty"`
+}
+
+// VMAlertAlertmanagerValues is the victoria-metrics-alert chart's bundled `alertmanager` block.
+type VMAlertAlertmanagerValues struct {
+	Enabled                   bool                              `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+	Image                     ImageValues                       `yaml:"image" json:"image"`
+	ImagePullSecrets          []corev1.LocalObjectReference     `yaml:"imagePullSecrets,omitempty" json:"imagePullSecrets,omitempty"`
+	ReplicaCount              *int32                            `yaml:"replicaCount,omitempty" json:"replicaCount,omitempty"`
+	Retention                 string                            `yaml:"retention,omitempty" json:"retention,omitempty"`
+	ExtraArgs                 map[string]interface{}            `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
+	ExtraVolumes              []corev1.Volume                   `yaml:"extraVolumes,omitempty" json:"extraVolumes,omitempty"`
+	ExtraVolumeMounts         []corev1.VolumeMount              `yaml:"extraVolumeMounts,omitempty" json:"extraVolumeMounts,omitempty"`
+	Resources                 *corev1.ResourceRequirements      `yaml:"resources,omitempty" json:"resources,omitempty"`
+	NodeSelector              map[string]string                 `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
+	Tolerations               []corev1.Toleration               `yaml:"tolerations,omitempty" json:"tolerations,omitempty"`
+	Affinity                  *corev1.Affinity                  `yaml:"affinity,omitempty" json:"affinity,omitempty"`
+	TopologySpreadConstraints []corev1.TopologySpreadConstraint `yaml:"topologySpreadConstraints,omitempty" json:"topologySpreadConstraints,omitempty"`
+	PriorityClassName         string                            `yaml:"priorityClassName,omitempty" json:"priorityClassName,omitempty"`
+	PodAnnotations            map[string]string                 `yaml:"podAnnotations,omitempty" json:"podAnnotations,omitempty"`
+	PodLabels                 map[string]string                 `yaml:"podLabels,omitempty" json:"podLabels,omitempty"`
+	PodSecurityContext        *chartPodSecurityContext          `yaml:"podSecurityContext,omitempty" json:"podSecurityContext,omitempty"`
+	SecurityContext           *chartSecurityContext             `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
+	ListenAddress             string                            `yaml:"listenAddress,omitempty" json:"listenAddress,omitempty"`
+	BaseURL                   string                            `yaml:"baseURL,omitempty" json:"baseURL,omitempty"`
+	BaseURLPrefix             string                            `yaml:"baseURLPrefix,omitempty" json:"baseURLPrefix,omitempty"`
+	ConfigMap                 string                            `yaml:"configMap,omitempty" json:"configMap,omitempty"`
+	ConfigSecret              string                            `yaml:"configSecret,omitempty" json:"configSecret,omitempty"`
+	Config                    map[string]interface{}            `yaml:"config,omitempty" json:"config,omitempty"`
+	Templates                 map[string]string                 `yaml:"templates,omitempty" json:"templates,omitempty"`
+	WebConfig                 map[string]interface{}            `yaml:"webConfig,omitempty" json:"webConfig,omitempty"`
+	ExtraContainers           []interface{}                     `yaml:"extraContainers,omitempty" json:"extraContainers,omitempty"`
+	InitContainers            []interface{}                     `yaml:"initContainers,omitempty" json:"initContainers,omitempty"`
+	ExtraHostPathMounts       []interface{}                     `yaml:"extraHostPathMounts,omitempty" json:"extraHostPathMounts,omitempty"`
+	PersistentVolume          *PersistentVolumeValues           `yaml:"persistentVolume,omitempty" json:"persistentVolume,omitempty"`
+
+	// NotifierWired is set by the legacy values resolution when the chart points vmalert at this
+	// Alertmanager, that is when neither server.notifier.url nor server.extraArgs."notifier.url" is set.
+	NotifierWired bool `yaml:"notifierWired,omitempty" json:"notifierWired,omitempty"`
 }
 
 // LicenseValues is the charts' `license` and `global.license` block.
@@ -322,11 +363,12 @@ func convertHTTPAuth(secretName string, auth chartHTTPAuth) (vmv1beta1.HTTPAuth,
 // into their current form, the way the chart's vmalert.args template does: server.remote.{read,write}
 // into server.remote{Read,Write}, notifier.alertmanager into the notifier itself, nested
 // basicAuth/bearer maps into the flat keys, and a list-valued notifier.url into notifiers.
-func resolveVMAlertLegacyValues(raw map[string]any) error {
+func resolveVMAlertLegacyValues(raw map[string]any) {
 	normalizeHeaderMaps(raw)
 	server, _ := raw["server"].(map[string]any)
 	if server == nil {
-		return nil
+		server = map[string]any{}
+		raw["server"] = server
 	}
 	if ds, ok := server["datasource"].(map[string]any); ok {
 		server["datasource"] = fromLegacyArgs(ds)
@@ -358,19 +400,18 @@ func resolveVMAlertLegacyValues(raw map[string]any) error {
 		server["notifier"] = notifier
 	} else if am, _ := raw["alertmanager"].(map[string]any); am["enabled"] == true {
 		// without server.notifier.url, the chart points vmalert at its bundled alertmanager, in
-		// addition to any server.notifiers. That alertmanager is not converted, so the VMAlert
-		// would silently lose this notifier. server.extraArgs."notifier.url" is the exception:
-		// the chart lets it override the generated -notifier.url flag, so the bundled
-		// alertmanager is never used, and the operator honors it from spec.extraArgs.
+		// addition to any server.notifiers, so the converted VMAlert must point at the generated
+		// VMAlertmanager. server.extraArgs."notifier.url" is the exception: the chart lets it
+		// override the generated -notifier.url flag, so the bundled alertmanager is never used,
+		// and the operator honors it from spec.extraArgs.
 		extraArgs, _ := server["extraArgs"].(map[string]any)
 		if _, ok := extraArgs["notifier.url"]; !ok {
-			return fmt.Errorf("the chart's bundled alertmanager (alertmanager.enabled: true) cannot be converted: set server.notifier.url to the URL of an Alertmanager, e.g. a VMAlertmanager created separately, or set alertmanager.enabled to false. See https://docs.victoriametrics.com/operator/helm-converter/#victoria-metrics-alert")
+			am["notifierWired"] = true
 		}
 	}
 	if notifiers != nil {
 		server["notifiers"] = notifiers
 	}
-	return nil
 }
 
 func resolveLegacyNotifier(notifier map[string]any) map[string]any {
@@ -875,9 +916,7 @@ func UnmarshalValues(data []byte, chart string) (any, error) {
 		if err := k8syaml.Unmarshal(data, &raw); err != nil {
 			return nil, err
 		}
-		if err := resolveVMAlertLegacyValues(raw); err != nil {
-			return nil, err
-		}
+		resolveVMAlertLegacyValues(raw)
 		data, err := k8syaml.Marshal(raw)
 		if err != nil {
 			return nil, err
@@ -2090,6 +2129,13 @@ func ConvertVMAlert(name, namespace string, values *VMAlertHelmValues) (*vmv1bet
 		return nil, nil, err
 	}
 	alert.Spec = *spec
+	if values.Alertmanager != nil && values.Alertmanager.NotifierWired {
+		am, _, err := ConvertVMAlertmanager(name, namespace, values)
+		if err != nil {
+			return nil, nil, err
+		}
+		alert.Spec.Notifiers = append(alert.Spec.Notifiers, vmAlertmanagerNotifiers(am)...)
+	}
 	if values.Server.Config != nil && hasAlertingRules(values.Server.Config.Alerts.Groups) && !alert.HasNotifiersConfigured() {
 		// the operator drops alerting rules of a VMAlert without notifiers, while the chart's
 		// vmalert refuses to start, so fail instead of silently losing the alerts.
@@ -2104,6 +2150,148 @@ func ConvertVMAlert(name, namespace string, values *VMAlertHelmValues) (*vmv1bet
 		s.Namespace = namespace
 	}
 	return alert, secrets, nil
+}
+
+func vmAlertmanagerName(vmalertName string) string {
+	return vmalertName + "-alertmanager"
+}
+
+// ConvertVMAlertmanager converts the victoria-metrics-alert chart's bundled alertmanager into a
+// VMAlertmanager CR, plus a Secret with its generated config. It returns nil if the bundled
+// alertmanager is disabled.
+func ConvertVMAlertmanager(vmalertName, namespace string, values *VMAlertHelmValues) (*vmv1beta1.VMAlertmanager, []*corev1.Secret, error) {
+	am := values.Alertmanager
+	if am == nil || !am.Enabled {
+		return nil, nil, nil
+	}
+	for key, set := range map[string]bool{
+		"alertmanager.configMap":           am.ConfigMap != "",
+		"alertmanager.templates":           len(am.Templates) > 0,
+		"alertmanager.webConfig":           len(am.WebConfig) > 0,
+		"alertmanager.extraContainers":     len(am.ExtraContainers) > 0,
+		"alertmanager.initContainers":      len(am.InitContainers) > 0,
+		"alertmanager.extraHostPathMounts": len(am.ExtraHostPathMounts) > 0,
+	} {
+		if set {
+			return nil, nil, fmt.Errorf("%s cannot be converted into VMAlertmanager: move it to the generated manifest manually and unset it, or set alertmanager.enabled to false", key)
+		}
+	}
+	cfg, err := convertCommonConfig(ServerValues{
+		Image:              am.Image,
+		ImagePullSecrets:   am.ImagePullSecrets,
+		ReplicaCount:       am.ReplicaCount,
+		ExtraVolumes:       am.ExtraVolumes,
+		ExtraVolumeMounts:  am.ExtraVolumeMounts,
+		Resources:          am.Resources,
+		NodeSelector:       am.NodeSelector,
+		Tolerations:        am.Tolerations,
+		Affinity:           am.Affinity,
+		PodAnnotations:     am.PodAnnotations,
+		Labels:             am.PodLabels,
+		PodSecurityContext: am.PodSecurityContext.toCoreV1(),
+		SecurityContext:    am.SecurityContext.toCoreV1(),
+		PersistentVolume:   am.PersistentVolume,
+	}, values.Global)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	name := vmAlertmanagerName(vmalertName)
+	cr := &vmv1beta1.VMAlertmanager{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "operator.victoriametrics.com/v1beta1",
+			Kind:       "VMAlertmanager",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+	}
+	spec := &cr.Spec
+	spec.CommonAppsParams = cfg.CommonAppsParams
+	spec.PodMetadata = cfg.PodMetadata
+	spec.Retention = am.Retention
+	spec.ExternalURL = am.BaseURL
+	spec.RoutePrefix = am.BaseURLPrefix
+	spec.TopologySpreadConstraints = am.TopologySpreadConstraints
+	spec.PriorityClassName = am.PriorityClassName
+	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
+		spec.ServiceAccountName = values.ServiceAccount.Name
+	}
+	if len(am.ExtraArgs) > 0 {
+		spec.ExtraArgs = make(map[string]string, len(am.ExtraArgs))
+		for k, v := range am.ExtraArgs {
+			spec.ExtraArgs[k] = fmt.Sprint(v)
+		}
+	}
+	if prefix, ok := spec.ExtraArgs["web.route-prefix"]; ok {
+		spec.RoutePrefix = prefix
+		delete(spec.ExtraArgs, "web.route-prefix")
+	}
+	if addr := cmp.Or(spec.ExtraArgs["web.listen-address"], am.ListenAddress); addr != "" {
+		host, port, err := net.SplitHostPort(addr)
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot parse alertmanager listen address %q: %w", addr, err)
+		}
+		// the operator always listens on all interfaces
+		switch host {
+		case "", "0.0.0.0", "::":
+		default:
+			return nil, nil, fmt.Errorf("alertmanager listen address %q cannot be converted: VMAlertmanager can listen only on all interfaces, use host-less address, e.g. :%s", addr, port)
+		}
+		if n, err := strconv.ParseUint(port, 10, 16); err != nil || n == 0 {
+			return nil, nil, fmt.Errorf("port of alertmanager listen address %q must be a number between 1 and 65535", addr)
+		}
+		if port != "9093" {
+			spec.Port = port
+		}
+		delete(spec.ExtraArgs, "web.listen-address")
+	}
+	if len(spec.ExtraArgs) == 0 {
+		spec.ExtraArgs = nil
+	}
+	if cfg.Storage != nil {
+		spec.Storage = &vmv1beta1.StorageSpec{
+			VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+				Spec: *cfg.Storage,
+			},
+		}
+	}
+
+	var secrets []*corev1.Secret
+	switch {
+	case am.ConfigSecret != "":
+		spec.ConfigSecret = am.ConfigSecret
+	case len(am.Config) > 0:
+		data, err := k8syaml.Marshal(am.Config)
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot marshal alertmanager.config: %w", err)
+		}
+		spec.ConfigSecret = name + "-user-config"
+		secrets = append(secrets, &corev1.Secret{
+			TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
+			ObjectMeta: metav1.ObjectMeta{Name: spec.ConfigSecret, Namespace: namespace},
+			Data:       map[string][]byte{"alertmanager.yaml": data},
+		})
+	}
+	return cr, secrets, nil
+}
+
+// vmAlertmanagerNotifiers mirrors how the chart points vmalert at its bundled alertmanager:
+// the service URL for a single replica, and one pod FQDN per replica otherwise.
+func vmAlertmanagerNotifiers(cr *vmv1beta1.VMAlertmanager) []vmv1beta1.VMAlertNotifierSpec {
+	var notifiers []vmv1beta1.VMAlertNotifierSpec
+	if cr.Spec.ReplicaCount != nil && *cr.Spec.ReplicaCount > 1 {
+		notifiers = cr.AsNotifiers()
+	} else {
+		notifiers = []vmv1beta1.VMAlertNotifierSpec{{URL: cr.AsURL(false)}}
+	}
+	if prefix := strings.TrimSuffix(cr.Spec.RoutePrefix, "/"); prefix != "" {
+		for i := range notifiers {
+			notifiers[i].URL += prefix
+		}
+	}
+	return notifiers
 }
 
 func vmAlertRuleSelectorLabels(vmalertName string) map[string]string {

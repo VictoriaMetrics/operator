@@ -651,18 +651,18 @@ var utf8MinVersion = semver.MustParse("v0.28.0")
 // slack_configs post_updates_to_thread, see https://github.com/prometheus/alertmanager/pull/5540
 var postUpdatesToThreadMinVersion = semver.MustParse("v0.35.0")
 
-// versionSupported reports whether cr's image version is known to be at least minVersion.
-// The check is skipped if VM_DISABLE_ALERTMANAGER_VERSION_CHECK is set
-// or if the image tag is not a valid semver, since it may be a custom build.
-func versionSupported(cr *vmv1beta1.VMAlertmanager, minVersion *semver.Version) bool {
-	if config.MustGetBaseConfig().DisableAlertmanagerVersionCheck {
+// postUpdatesToThreadSupported reports whether alertmanager at cr.Spec.Image.Tag accepts slack_configs post_updates_to_thread.
+// Tags that are not a version (digest-only `sha256:...`, custom names) are treated as unsupported
+// unless VM_VMALERTMANAGER_SLACK_POST_UPDATES_TO_THREAD_SUPPORT is set.
+func postUpdatesToThreadSupported(cr *vmv1beta1.VMAlertmanager) bool {
+	if config.MustGetBaseConfig().VMAlertmanagerSlackPostUpdatesToThreadSupport {
 		return true
 	}
 	amVersion, err := semver.NewVersion(cr.Spec.Image.Tag)
 	if err != nil {
-		return true
+		return false
 	}
-	return amVersion.GreaterThanEqual(minVersion)
+	return amVersion.GreaterThanEqual(postUpdatesToThreadMinVersion)
 }
 
 // addFeatureFlags adds features based on alertmanager version

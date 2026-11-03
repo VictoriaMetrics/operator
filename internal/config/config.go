@@ -158,9 +158,10 @@ type BaseOperatorConf struct {
 	// remove the pod from rotation before the process shuts down.
 	// Set to false before upgrading the operator to prevent rolling updates on existing resources.
 	EnableDefaultPreStopHook bool `default:"true" env:"VM_ENABLE_DEFAULT_PRESTOP_HOOK"`
-	// Skips checks of the Alertmanager image tag against the minimal version required by configured features.
-	// Useful for custom builds with a release-like tag that already contain the required features.
-	DisableAlertmanagerVersionCheck bool `default:"false" env:"VM_DISABLE_ALERTMANAGER_VERSION_CHECK"`
+	// VMAlertmanagerSlackPostUpdatesToThreadSupport declares that the alertmanager image supports slack_configs post_updates_to_thread regardless of its tag.
+	// By default the field is accepted only when the tag parses as a version >= v0.35.0, where alertmanager added support;
+	// older alertmanager rejects the unknown field. Set to true for digest-only or custom tags that are known to support it.
+	VMAlertmanagerSlackPostUpdatesToThreadSupport bool `default:"false" env:"VM_VMALERTMANAGER_SLACK_POST_UPDATES_TO_THREAD_SUPPORT"`
 	// ConfigDataBudgetBytes sets the maximum number of bytes allowed for compressed data
 	// in a generated Kubernetes Secret or ConfigMap (e.g. scrape-config overflow buckets,
 	// vmalert rule ConfigMaps). When zero the budget is computed automatically from the

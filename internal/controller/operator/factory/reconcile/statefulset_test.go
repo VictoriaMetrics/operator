@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -1749,6 +1750,31 @@ func TestStatefulsetReconcile_NewObjNotStaleAcrossRetries(t *testing.T) {
 	assert.NoError(t, fclient.Get(ctx, nn, &got))
 	assert.Equal(t, 2, updateAttempts)
 	assert.Equal(t, ptr.To[int32](9), got.Spec.Replicas, "must use the live replicas as of the successful retry, not a stale value from the conflicting attempt")
+}
+
+func TestStatefulsetReconcile_OnDeleteNilReplicas(t *testing.T) {
+	newSTS := func() *appsv1.StatefulSet {
+		return &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-nil-replicas", Namespace: "default"},
+			Spec: appsv1.StatefulSetSpec{
+				Selector:       &metav1.LabelSelector{MatchLabels: map[string]string{"label": "value"}},
+				UpdateStrategy: appsv1.StatefulSetUpdateStrategy{Type: appsv1.OnDeleteStatefulSetStrategyType},
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"label": "value"}},
+				},
+			},
+		}
+	}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{newSTS()})
+	opts := &StatefulSetOpts{
+		UpdateBehavior: &vmv1beta1.StatefulSetUpdateStrategyBehavior{MaxUnavailable: ptr.To(intstr.FromInt32(1))},
+	}
+
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+		defer cancel()
+		assert.NotPanics(t, func() { _ = StatefulSet(ctx, fclient, newSTS(), nil, nil, opts) })
+	})
 }
 
 func TestValidateStatefulSetFail(t *testing.T) {

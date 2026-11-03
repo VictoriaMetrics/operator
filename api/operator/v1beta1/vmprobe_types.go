@@ -195,7 +195,7 @@ func (cr *VMProbe) Validate() error {
 		return fmt.Errorf("invalid metricRelabelConfigs: %w", err)
 	}
 	for i, t := range cr.Spec.Targets.Kubernetes {
-		if len(t.Role) == 0 {
+		if t == nil || len(t.Role) == 0 {
 			return fmt.Errorf("spec.targets.kubernetes[%d].role is required", i)
 		}
 		if err := t.validate(fmt.Sprintf("spec.targets.kubernetes[%d]", i)); err != nil {

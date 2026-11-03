@@ -3,6 +3,8 @@ package config
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -291,7 +293,8 @@ func (c *config) build(cr *vmv1.VMAnomaly, pos *ParsedObjects, ac *build.AssetsC
 			return fmt.Errorf("failed to unmarshal config=%s/%s: %w", cfg.Namespace, cfg.Name, err)
 		}
 		prefix := fmt.Sprintf("%s-%s", cfg.Namespace, cfg.Name)
-		for k, v := range cv.Models {
+		for _, k := range slices.Sorted(maps.Keys(cv.Models)) {
+			v := cv.Models[k]
 			name := fmt.Sprintf("%s-%s", prefix, k)
 			if v == nil || v.anomalyModel == nil {
 				return fmt.Errorf("failed to add config=%s/%s, model=%s is empty", cfg.Namespace, cfg.Name, name)
@@ -342,12 +345,14 @@ func (c *config) validate() error {
 	if c.Reader == nil {
 		return fmt.Errorf("reader is required")
 	}
-	for name, s := range c.Schedulers {
+	for _, name := range slices.Sorted(maps.Keys(c.Schedulers)) {
+		s := c.Schedulers[name]
 		if s == nil || s.anomalyScheduler == nil {
 			return fmt.Errorf("scheduler=%q is empty", name)
 		}
 	}
-	for modelName, m := range c.Models {
+	for _, modelName := range slices.Sorted(maps.Keys(c.Models)) {
+		m := c.Models[modelName]
 		if m == nil || m.anomalyModel == nil {
 			return fmt.Errorf("model=%q is empty", modelName)
 		}
@@ -362,12 +367,14 @@ func (c *config) validate() error {
 			}
 		}
 	}
-	for name, s := range c.Schedulers {
+	for _, name := range slices.Sorted(maps.Keys(c.Schedulers)) {
+		s := c.Schedulers[name]
 		if err := s.validate(); err != nil {
 			return fmt.Errorf("failed to validate scheduler=%q: %w", name, err)
 		}
 	}
-	for name, m := range c.Models {
+	for _, name := range slices.Sorted(maps.Keys(c.Models)) {
+		m := c.Models[name]
 		if err := m.validate(); err != nil {
 			return fmt.Errorf("failed to validate model=%q: %w", name, err)
 		}

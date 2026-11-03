@@ -57,6 +57,8 @@ queries:
 settings:
   n_workers: -1
 `, `{}`, ``},
+		// several empty schedulers: error must not depend on map order
+		{"reader:\n  queries:\n   B9:\nmodels:\n x:\n    class: zscore\nschedulers:\n 8:\n Y:", `{"reAder":{},"writer":{"":"0"}}`, ``},
 	} {
 		f.Add([]byte(seed.config), []byte(seed.spec), []byte(seed.child))
 	}

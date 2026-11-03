@@ -27,6 +27,7 @@ Currently, the `helm-converter` tool supports the following Helm charts:
 *   `victoria-logs-single`
 *   `victoria-logs-cluster`
 *   `victoria-logs-collector`
+*   `victoria-traces-agent`
 *   `victoria-traces-single`
 *   `victoria-traces-cluster`
 

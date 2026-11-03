@@ -13,6 +13,7 @@ aliases:
 
 ## tip
 
+* FEATURE: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): add support for the `victoria-traces-agent` chart, which is converted into `VTAgent`. See [#2796](https://github.com/VictoriaMetrics/operator/pull/2796).
 * BUGFIX: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): pass `-kubernetesCollector.includePodLabels=false` when `spec.k8sCollector.includePodLabels` is set to `false`. Previously, the flag was omitted, so vlagent kept its default and still attached pod labels to log entries. See [#2772](https://github.com/VictoriaMetrics/operator/issues/2772).
 
 ## [v0.75.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.2)

@@ -821,6 +821,190 @@ server:
 `,
 	})
 
+	// server TLS and mTLS from secrets
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+models:
+  model_zscore:
+    class: 'zscore'
+    z_threshold: 2.5
+    queries: ['test_query']
+schedulers:
+  scheduler_1m:
+    class: "scheduler.periodic.PeriodicScheduler"
+    infer_every: 1m
+    fit_every: 2m
+    fit_window: 3h
+reader:
+  queries:
+    test_query:
+      expr: vm_metric
+writer:
+  datasource_url: "http://test.com"
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "30s",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+				Server: &vmv1.VMAnomalyServerSpec{
+					TLSConfig: &vmv1beta1.TLSConfig{
+						CA: vmv1beta1.SecretOrConfigMap{
+							Secret: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "server-tls"},
+								Key:                  "ca.crt",
+							},
+						},
+						Cert: vmv1beta1.SecretOrConfigMap{
+							Secret: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "server-tls"},
+								Key:                  "tls.crt",
+							},
+						},
+						KeySecret: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "server-tls"},
+							Key:                  "tls.key",
+						},
+					},
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "server-tls",
+					Namespace: "monitoring",
+				},
+				Data: map[string][]byte{
+					"ca.crt":  []byte("ca"),
+					"tls.crt": []byte("cert"),
+					"tls.key": []byte("key"),
+				},
+			},
+		},
+		expected: `
+models:
+  model_zscore:
+    class: zscore
+    queries:
+    - test_query
+    z_threshold: 2.5
+schedulers:
+  scheduler_1m:
+    class: scheduler.periodic.PeriodicScheduler
+    fit_every: 2m
+    fit_window: 3h
+    infer_every: 1m
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 30s
+  queries:
+    test_query:
+      expr: vm_metric
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+server:
+  port: "8490"
+  tls_cert_file: /test/monitoring_server-tls_tls.crt
+  tls_key_file: /test/monitoring_server-tls_tls.key
+  mtls_ca_file: /test/monitoring_server-tls_ca.crt
+`,
+	})
+
+	// server TLS from pre-mounted files without client certificate verification
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "monitoring",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+models:
+  model_zscore:
+    class: 'zscore'
+    z_threshold: 2.5
+    queries: ['test_query']
+schedulers:
+  scheduler_1m:
+    class: "scheduler.periodic.PeriodicScheduler"
+    infer_every: 1m
+    fit_every: 2m
+    fit_window: 3h
+reader:
+  queries:
+    test_query:
+      expr: vm_metric
+writer:
+  datasource_url: "http://test.com"
+`,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "30s",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+				Server: &vmv1.VMAnomalyServerSpec{
+					TLSConfig: &vmv1beta1.TLSConfig{
+						CertFile: "/etc/vm/secrets/server-tls/tls.crt",
+						KeyFile:  "/etc/vm/secrets/server-tls/tls.key",
+					},
+				},
+			},
+		},
+		expected: `
+models:
+  model_zscore:
+    class: zscore
+    queries:
+    - test_query
+    z_threshold: 2.5
+schedulers:
+  scheduler_1m:
+    class: scheduler.periodic.PeriodicScheduler
+    fit_every: 2m
+    fit_window: 3h
+    infer_every: 1m
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 30s
+  queries:
+    test_query:
+      expr: vm_metric
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+server:
+  port: "8490"
+  tls_cert_file: /etc/vm/secrets/server-tls/tls.crt
+  tls_key_file: /etc/vm/secrets/server-tls/tls.key
+`,
+	})
+
 	// prophet model with scale and args fields
 	f(opts{
 		cr: &vmv1.VMAnomaly{

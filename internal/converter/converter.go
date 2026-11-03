@@ -40,10 +40,11 @@ type VMClusterHelmValues struct {
 	License        *LicenseValues  `yaml:"license,omitempty" json:"license,omitempty"`
 }
 
-type VLogsHelmValues struct {
+type VLSingleHelmValues struct {
 	Global         GlobalValues    `yaml:"global,omitempty" json:"global,omitempty"`
 	Server         ServerValues    `yaml:"server" json:"server"`
 	ServiceAccount *ServiceAccount `yaml:"serviceAccount,omitempty" json:"serviceAccount,omitempty"`
+	License        *LicenseValues  `yaml:"license,omitempty" json:"license,omitempty"`
 }
 
 type VTSingleHelmValues struct {
@@ -912,7 +913,7 @@ func UnmarshalValues(data []byte, chart string) (any, error) {
 		}
 		return &values, nil
 	case "victoria-logs-single":
-		var values VLogsHelmValues
+		var values VLSingleHelmValues
 		if err := k8syaml.Unmarshal(data, &values); err != nil {
 			return nil, err
 		}
@@ -1094,23 +1095,23 @@ func Convert(name, namespace string, values any) (any, error) {
 		agent.Spec = *spec
 		cr = agent
 
-	case *VLogsHelmValues:
-		vlogs := &vmv1beta1.VLogs{
+	case *VLSingleHelmValues:
+		vlsingle := &vmv1.VLSingle{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: "operator.victoriametrics.com/v1beta1",
-				Kind:       "VLogs",
+				APIVersion: "operator.victoriametrics.com/v1",
+				Kind:       "VLSingle",
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
 				Namespace: namespace,
 			},
 		}
-		spec, err := convertVLogsSpec(v)
+		spec, err := convertVLSingleSpec(v)
 		if err != nil {
 			return nil, err
 		}
-		vlogs.Spec = *spec
-		cr = vlogs
+		vlsingle.Spec = *spec
+		cr = vlsingle
 
 	case *VTSingleHelmValues:
 		vtsingle := &vmv1.VTSingle{
@@ -1873,8 +1874,8 @@ func convertVLCollectorSpec(values *VLCollectorHelmValues) (*vmv1.VLAgentSpec, e
 
 	return spec, nil
 }
-func convertVLogsSpec(values *VLogsHelmValues) (*vmv1beta1.VLogsSpec, error) {
-	spec := &vmv1beta1.VLogsSpec{}
+func convertVLSingleSpec(values *VLSingleHelmValues) (*vmv1.VLSingleSpec, error) {
+	spec := &vmv1.VLSingleSpec{}
 	cfg, err := convertCommonConfig(values.Server, values.Global)
 	if err != nil {
 		return nil, err
@@ -1895,6 +1896,8 @@ func convertVLogsSpec(values *VLogsHelmValues) (*vmv1beta1.VLogsSpec, error) {
 	if cfg.Storage != nil {
 		spec.Storage = cfg.Storage
 	}
+
+	spec.License = licenseSpec(values.License, values.Global.License)
 
 	return spec, nil
 }

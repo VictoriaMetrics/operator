@@ -7,6 +7,9 @@ import (
 	"testing"
 	"testing/synctest"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
@@ -18,7 +21,23 @@ import (
 const (
 	fuzzName      = "fuzz"
 	fuzzNamespace = "default"
+
+	// RefName and RefKey name the predefined Secret and ConfigMap seeds can reference.
+	RefName = "ref"
+	RefKey  = "key"
+
+	// refValue is a URL, so URL-typed references parse.
+	refValue = "http://ref"
 )
+
+// RefObjects are predefined objects, so seeds can reach paths reading referenced assets.
+func RefObjects() []runtime.Object {
+	meta := metav1.ObjectMeta{Name: RefName, Namespace: fuzzNamespace}
+	return []runtime.Object{
+		&corev1.Secret{ObjectMeta: meta, Data: map[string][]byte{RefKey: []byte(refValue)}},
+		&corev1.ConfigMap{ObjectMeta: meta, Data: map[string]string{RefKey: refValue}},
+	}
+}
 
 // CreateOrUpdate fuzzes run against an empty fake client, panics are the only failure.
 // Each seed runs with optional APIs (VPA, Gateway API) on and off.
@@ -41,7 +60,7 @@ func CreateOrUpdate[T client.Object](f *testing.F, seeds []string, newCR func() 
 		cfg.GatewayAPIEnabled = optionalAPIs
 		t.Cleanup(func() { *cfg = defaultCfg })
 
-		rclient := k8stools.GetTestClientWithObjects(nil)
+		rclient := k8stools.GetTestClientWithObjects(RefObjects())
 		build.AddDefaults(rclient.Scheme())
 		rclient.Scheme().Default(cr)
 

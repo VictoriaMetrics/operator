@@ -15,6 +15,7 @@ import (
 
 	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/fuzzutil"
 )
 
 func assertStableBuild(t *testing.T, render func() (any, error)) {
@@ -69,35 +70,78 @@ func FuzzBuildRoute(f *testing.F) {
 	})
 }
 
+// fuzzGlobal sets every global receiver default, so receivers without own credentials build.
+var fuzzGlobal = globalConfig{
+	SMTPFrom:          "a@b",
+	SMTPSmarthost:     "h:25",
+	SlackAPIURL:       "http://s",
+	OpsGenieAPIKey:    "k",
+	WechatAPISecret:   "s",
+	WechatAPICorpID:   "c",
+	VictorOpsAPIKey:   "k",
+	JiraAPIURL:        "http://j",
+	RocketchatAPIURL:  "http://r",
+	RocketchatToken:   "t",
+	RocketchatTokenID: "i",
+}
+
 func FuzzBuildReceiver(f *testing.F) {
-	f.Add([]byte(`{"name":"empty"}`))
+	seeds := []string{
+		`{"name":"empty"}`,
+		`{"name":"hook","webhook_configs":[{"url":"https://example.org","http_config":{"follow_redirects":true}}]}`,
+		`{"name":"slack","slack_configs":[{"api_url":"https://example.org","fields":[{"title":"site","value":"prod"}]}]}`,
+		`{"name":"mattermost","mattermost_configs":[{"attachments":[null]}]}`,
+		`{"name":"r","opsgenie_configs":[{"api_key":{"name":"ref","key":"key"},"apiURL":"http://o","message":"m","tags":"t","details":{"a":"b"},"responders":[{"name":"n","type":"team"}],"actions":"a","update_alerts":true,"send_resolved":true,"http_config":{"basic_auth":{"username":{"name":"ref","key":"key"},"password":{"name":"ref","key":"key"}},"tls_config":{"ca":{"secret":{"name":"ref","key":"key"}},"cert":{"configMap":{"name":"ref","key":"key"}},"keySecret":{"name":"ref","key":"key"}}}}]}`,
+		`{"name":"r","email_configs":[{"to":"a@b","from":"c@d","smarthost":"h:25","auth_username":"u","auth_password":{"name":"ref","key":"key"},"auth_secret":{"name":"ref","key":"key"},"headers":{"a":"b"},"html":"h","text":"t","require_tls":true,"tls_config":{"ca":{"secret":{"name":"ref","key":"key"}}},"send_resolved":true}]}`,
+		`{"name":"r","slack_configs":[{"api_url":{"name":"ref","key":"key"},"channel":"c","fields":[{"title":"t","value":"v","short":true}],"actions":[{"type":"button","text":"t","url":"http://a","confirm":{"text":"t"}}],"mrkdwn_in":["text"],"link_names":true,"send_resolved":true,"http_config":{"basic_auth":{"username":{"name":"ref","key":"key"},"password":{"name":"ref","key":"key"}},"tls_config":{"ca":{"secret":{"name":"ref","key":"key"}},"cert":{"configMap":{"name":"ref","key":"key"}},"keySecret":{"name":"ref","key":"key"}}}}]}`,
+		`{"name":"r","pagerduty_configs":[{"routing_key":{"name":"ref","key":"key"},"service_key":{"name":"ref","key":"key"},"url":"http://p","images":[{"href":"h","source":"s","alt":"a"}],"links":[{"href":"h","text":"t"}],"details":{"a":"b"},"severity":"critical","send_resolved":true,"http_config":{"basic_auth":{"username":{"name":"ref","key":"key"},"password":{"name":"ref","key":"key"}},"tls_config":{"ca":{"secret":{"name":"ref","key":"key"}},"cert":{"configMap":{"name":"ref","key":"key"}},"keySecret":{"name":"ref","key":"key"}}}}]}`,
+		`{"name":"r","pushover_configs":[{"user_key":{"name":"ref","key":"key"},"token":{"name":"ref","key":"key"},"title":"t","priority":"1","retry":"1m","expire":"1h","html":true,"send_resolved":true,"http_config":{"basic_auth":{"username":{"name":"ref","key":"key"},"password":{"name":"ref","key":"key"}},"tls_config":{"ca":{"secret":{"name":"ref","key":"key"}},"cert":{"configMap":{"name":"ref","key":"key"}},"keySecret":{"name":"ref","key":"key"}}}}]}`,
+		`{"name":"r","victorops_configs":[{"api_key":{"name":"ref","key":"key"},"api_url":"http://v","routing_key":"r","custom_fields":{"a":"b"},"send_resolved":true,"http_config":{"basic_auth":{"username":{"name":"ref","key":"key"},"password":{"name":"ref","key":"key"}},"tls_config":{"ca":{"secret":{"name":"ref","key":"key"}},"cert":{"configMap":{"name":"ref","key":"key"}},"keySecret":{"name":"ref","key":"key"}}}}]}`,
+		`{"name":"r","wechat_configs":[{"api_secret":{"name":"ref","key":"key"},"api_url":"http://w","corp_id":"c","agent_id":"a","to_user":"u","message_type":"text","send_resolved":true,"http_config":{"basic_auth":{"username":{"name":"ref","key":"key"},"password":{"name":"ref","key":"key"}},"tls_config":{"ca":{"secret":{"name":"ref","key":"key"}},"cert":{"configMap":{"name":"ref","key":"key"}},"keySecret":{"name":"ref","key":"key"}}}}]}`,
+		`{"name":"r","mattermost_configs":[{"url_secret":{"name":"ref","key":"key"},"channel":"c","attachments":[{"title":"t","fields":[{"title":"t","value":"v"}]}],"props":{"card":"c"},"priority":{"priority":"urgent","requested_ack":true},"send_resolved":true,"http_config":{"basic_auth":{"username":{"name":"ref","key":"key"},"password":{"name":"ref","key":"key"}},"tls_config":{"ca":{"secret":{"name":"ref","key":"key"}},"cert":{"configMap":{"name":"ref","key":"key"}},"keySecret":{"name":"ref","key":"key"}}}}]}`,
+		`{"name":"r","webhook_configs":[{"url_secret":{"name":"ref","key":"key"},"max_alerts":5,"timeout":"10s","send_resolved":true,"http_config":{"basic_auth":{"username":{"name":"ref","key":"key"},"password":{"name":"ref","key":"key"}},"tls_config":{"ca":{"secret":{"name":"ref","key":"key"}},"cert":{"configMap":{"name":"ref","key":"key"}},"keySecret":{"name":"ref","key":"key"}}}}]}`,
+		`{"name":"r","telegram_configs":[{"api_url":"http://t","bot_token":{"name":"ref","key":"key"},"chat_id":1,"message_thread_id":2,"parse_mode":"HTML","disable_notifications":true,"send_resolved":true,"http_config":{"basic_auth":{"username":{"name":"ref","key":"key"},"password":{"name":"ref","key":"key"}},"tls_config":{"ca":{"secret":{"name":"ref","key":"key"}},"cert":{"configMap":{"name":"ref","key":"key"}},"keySecret":{"name":"ref","key":"key"}}}}]}`,
+		`{"name":"r","msteams_configs":[{"webhook_url_secret":{"name":"ref","key":"key"},"title":"t","text":"x","send_resolved":true,"http_config":{"basic_auth":{"username":{"name":"ref","key":"key"},"password":{"name":"ref","key":"key"}},"tls_config":{"ca":{"secret":{"name":"ref","key":"key"}},"cert":{"configMap":{"name":"ref","key":"key"}},"keySecret":{"name":"ref","key":"key"}}}}]}`,
+		`{"name":"r","discord_configs":[{"webhook_url_secret":{"name":"ref","key":"key"},"title":"t","message":"m","content":"c","username":"u","avatar_url":"http://a","send_resolved":true,"http_config":{"basic_auth":{"username":{"name":"ref","key":"key"},"password":{"name":"ref","key":"key"}},"tls_config":{"ca":{"secret":{"name":"ref","key":"key"}},"cert":{"configMap":{"name":"ref","key":"key"}},"keySecret":{"name":"ref","key":"key"}}}}]}`,
+		`{"name":"r","sns_configs":[{"api_url":"http://s","sigv4":{"region":"r","access_key":"a","access_key_selector":{"name":"ref","key":"key"},"secret_key_selector":{"name":"ref","key":"key"},"role_arn":"arn"},"topic_arn":"t","subject":"s","attributes":{"a":"b"},"send_resolved":true,"http_config":{"basic_auth":{"username":{"name":"ref","key":"key"},"password":{"name":"ref","key":"key"}},"tls_config":{"ca":{"secret":{"name":"ref","key":"key"}},"cert":{"configMap":{"name":"ref","key":"key"}},"keySecret":{"name":"ref","key":"key"}}}}]}`,
+		`{"name":"r","webex_configs":[{"api_url":"http://w","room_id":"r","message":"m","http_config":{"authorization":{"credentials":{"name":"ref","key":"key"}}},"send_resolved":true,"http_config":{"basic_auth":{"username":{"name":"ref","key":"key"},"password":{"name":"ref","key":"key"}},"tls_config":{"ca":{"secret":{"name":"ref","key":"key"}},"cert":{"configMap":{"name":"ref","key":"key"}},"keySecret":{"name":"ref","key":"key"}}}}]}`,
+		`{"name":"r","jira_configs":[{"api_url":"http://j","project":"p","issue_type":"Bug","labels":["l"],"custom_fields":{"a":"b"},"reopen_duration":"1h","send_resolved":true,"http_config":{"basic_auth":{"username":{"name":"ref","key":"key"},"password":{"name":"ref","key":"key"}},"tls_config":{"ca":{"secret":{"name":"ref","key":"key"}},"cert":{"configMap":{"name":"ref","key":"key"}},"keySecret":{"name":"ref","key":"key"}}}}]}`,
+		`{"name":"r","rocketchat_configs":[{"api_url":"http://r","token_id":{"name":"ref","key":"key"},"token":{"name":"ref","key":"key"},"channel":"c","fields":[{"title":"t","value":"v"}],"actions":[{"type":"button","text":"t","url":"http://a"}],"send_resolved":true,"http_config":{"basic_auth":{"username":{"name":"ref","key":"key"},"password":{"name":"ref","key":"key"}},"tls_config":{"ca":{"secret":{"name":"ref","key":"key"}},"cert":{"configMap":{"name":"ref","key":"key"}},"keySecret":{"name":"ref","key":"key"}}}}]}`,
+		`{"name":"r","incidentio_configs":[{"url":"http://i","alert_source_token":{"name":"ref","key":"key"},"max_alerts":1,"timeout":"5s","send_resolved":true,"http_config":{"basic_auth":{"username":{"name":"ref","key":"key"},"password":{"name":"ref","key":"key"}},"tls_config":{"ca":{"secret":{"name":"ref","key":"key"}},"cert":{"configMap":{"name":"ref","key":"key"}},"keySecret":{"name":"ref","key":"key"}}}}]}`,
+		`{"name":"r","msteamsv2_configs":[{"webhook_url_secret":{"name":"ref","key":"key"},"title":"t","text":"x","send_resolved":true,"http_config":{"basic_auth":{"username":{"name":"ref","key":"key"},"password":{"name":"ref","key":"key"}},"tls_config":{"ca":{"secret":{"name":"ref","key":"key"}},"cert":{"configMap":{"name":"ref","key":"key"}},"keySecret":{"name":"ref","key":"key"}}}}]}`,
+	}
 	for _, field := range []string{
 		"opsgenie_configs", "email_configs", "slack_configs", "pagerduty_configs", "pushover_configs",
 		"victorops_configs", "wechat_configs", "mattermost_configs", "webhook_configs", "telegram_configs",
 		"msteams_configs", "discord_configs", "sns_configs", "webex_configs", "jira_configs",
 		"rocketchat_configs", "incidentio_configs", "msteamsv2_configs",
 	} {
-		f.Add([]byte(fmt.Sprintf(`{"name":"receiver","%s":[{}]}`, field)))
+		seeds = append(seeds, fmt.Sprintf(`{"name":"receiver","%s":[{}]}`, field))
 	}
-	f.Add([]byte(`{"name":"hook","webhook_configs":[{"url":"https://example.org","http_config":{"follow_redirects":true}}]}`))
-	f.Add([]byte(`{"name":"slack","slack_configs":[{"api_url":"https://example.org","fields":[{"title":"site","value":"prod"}]}]}`))
-	f.Add([]byte(`{"name":"mattermost","mattermost_configs":[{"attachments":[null]}]}`))
+	for _, seed := range seeds {
+		f.Add([]byte(seed), false)
+		f.Add([]byte(seed), true)
+	}
 	scheme := runtime.NewScheme()
 	if err := corev1.AddToScheme(scheme); err != nil {
 		f.Fatal(err)
 	}
-	client := fake.NewClientBuilder().WithScheme(scheme).Build()
-	f.Fuzz(func(t *testing.T, data []byte) {
+	client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(fuzzutil.RefObjects()...).Build()
+	f.Fuzz(func(t *testing.T, data []byte, global bool) {
 		var r vmv1beta1.Receiver
 		if err := json.Unmarshal(data, &r); err != nil {
 			fuzztest.New(data).Fill(&r)
+		}
+		gc := &globalConfig{}
+		if global {
+			gc = &fuzzGlobal
 		}
 		cr := &vmv1beta1.VMAlertmanagerConfig{ObjectMeta: metav1.ObjectMeta{Name: "config", Namespace: "default"}}
 		am := fuzzAlertmanager()
 		assertStableBuild(t, func() (any, error) {
 			ac := getAssetsCache(context.Background(), client, am)
 			result := &receiver{Name: buildCRPrefixedName(cr, r.Name)}
-			err := buildReceiver(result, cr, r, &globalConfig{}, ac)
+			err := buildReceiver(result, cr, r, gc, ac)
 			return result, err
 		})
 	})

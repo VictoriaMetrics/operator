@@ -647,6 +647,24 @@ func subPathForStorage(s *vmv1beta1.StorageSpec) string {
 
 var utf8MinVersion = semver.MustParse("v0.28.0")
 
+// postUpdatesToThreadMinVersion is the first Alertmanager release supporting
+// slack_configs post_updates_to_thread, see https://github.com/prometheus/alertmanager/pull/5540
+var postUpdatesToThreadMinVersion = semver.MustParse("v0.35.0")
+
+// versionSupported reports whether cr's image version is known to be at least minVersion.
+// The check is skipped if VM_DISABLE_ALERTMANAGER_VERSION_CHECK is set
+// or if the image tag is not a valid semver, since it may be a custom build.
+func versionSupported(cr *vmv1beta1.VMAlertmanager, minVersion *semver.Version) bool {
+	if config.MustGetBaseConfig().DisableAlertmanagerVersionCheck {
+		return true
+	}
+	amVersion, err := semver.NewVersion(cr.Spec.Image.Tag)
+	if err != nil {
+		return true
+	}
+	return amVersion.GreaterThanEqual(minVersion)
+}
+
 // addFeatureFlags adds features based on alertmanager version
 //
 // https://github.com/prometheus/alertmanager/blob/main/featurecontrol/featurecontrol.go#L23

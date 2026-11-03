@@ -408,6 +408,7 @@ type VMUserAccessLog struct {
 	// Headers lists request header names to include in access log entries.
 	// Requires vmauth v1.153.0 or newer.
 	// +optional
+	// +notes={available_from: "v0.76.0"}
 	Headers []string `json:"headers,omitempty" yaml:"headers,omitempty"`
 }
 

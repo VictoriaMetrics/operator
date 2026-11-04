@@ -13,7 +13,7 @@ aliases:
 
 ## tip
 
-* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): derive the config-reloader container port, probes, scrape targets and the reload wait in `VMAuth` from `spec.configReloaderExtraArgs["http.listenAddr"]` instead of always using `8435`, so multiple `hostNetwork` instances can share a node. See [#2584](https://github.com/VictoriaMetrics/operator/issues/2584) and [#2766](https://github.com/VictoriaMetrics/operator/issues/2766).
+* BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): respect `http.listenAddr` set in `spec.configReloaderExtraArgs` in all config-reloader related configs, such as the container port and health probes. Previously, it was hardcoded to `8435`, which caused config-reloader probes to fail when the listen address was overridden, and multiple `hostNetwork` instances on the same node to conflict. See [#2584](https://github.com/VictoriaMetrics/operator/issues/2584). Thanks to @cesium147.
 * BUGFIX: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): pass `-kubernetesCollector.includePodLabels=false` when `spec.k8sCollector.includePodLabels` is set to `false`. Previously, the flag was omitted, so vlagent kept its default and still attached pod labels to log entries. See [#2772](https://github.com/VictoriaMetrics/operator/issues/2772).
 
 ## [v0.75.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.2)

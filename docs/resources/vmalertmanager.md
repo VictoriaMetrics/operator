@@ -103,7 +103,7 @@ spec:
     - name: 'default'
 ```
 
-If both `configSecret` and `configRawYaml` are defined, only configuration from `configRawYaml` will be used. Values from `configSecret` will be ignored.
+If both `configSecret` and `configRawYaml` are defined, only configuration from `configSecret` is used. `configRawYaml` is ignored.
 
 ### Using VMAlertmanagerConfig
 

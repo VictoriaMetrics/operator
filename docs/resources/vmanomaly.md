@@ -301,7 +301,7 @@ spec:
         decay: 0.99 # forgetting factor; lower values adapt faster to recent data
 ```
 
-If both `configSecret` and `configRawYaml` are defined, only configuration from `configRawYaml` will be used. Values from `configSecret` will be ignored.
+If both `configSecret` and `configRawYaml` are defined, only configuration from `configSecret` is used. `configRawYaml` is ignored.
 
 ### Using with VictoriaLogs
 

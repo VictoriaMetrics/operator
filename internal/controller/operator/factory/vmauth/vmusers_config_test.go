@@ -1043,6 +1043,7 @@ func Test_buildSSOConfig(t *testing.T) {
 							Scopes:             []string{"openid", "profile", "email"},
 							SessionDuration:    "1h",
 							DefaultRedirectURL: "/vmui/",
+							AuthParams:         map[string]string{"prompt": "select_account", "hd": "example.com"},
 						},
 					},
 				},
@@ -1070,6 +1071,9 @@ func Test_buildSSOConfig(t *testing.T) {
     - email
     session_duration: 1h
     default_redirect_url: /vmui/
+    auth_params:
+      hd: example.com
+      prompt: select_account
 `,
 	})
 

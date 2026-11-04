@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -143,10 +144,10 @@ spec:
       oidc:
         issuer: 'https:issuer'
         client_id: sso.example.com
-        clientSecretRef:
+        client_secret_ref:
           name: sso-secrets
           key: clientSecret
-        cookieSecretRef:
+        cookie_secret_ref:
           name: sso-secrets
           key: cookieSecret`,
 		wantErr: "incorrect cr.spec.sso[0]: oidc.issuer must be an absolute URL with a host",
@@ -172,6 +173,17 @@ func TestVMAuthSSOConfigValidate(t *testing.T) {
 		},
 	}
 	assert.NoError(t, c.Validate())
+
+	c.OIDC.AuthParams = map[string]string{"hd": "example.com", "prompt": "select_account"}
+	assert.NoError(t, c.Validate())
+
+	c.OIDC.AuthParams = map[string]string{"": "x"}
+	assert.EqualError(t, c.Validate(), "oidc.auth_params must not contain empty keys")
+
+	for _, k := range reservedSSOAuthParams {
+		c.OIDC.AuthParams = map[string]string{k: "x"}
+		assert.EqualError(t, c.Validate(), fmt.Sprintf("oidc.auth_params must not override %q; it is set by vmauth", k))
+	}
 }
 
 func TestVMAuth_PrefixedName(t *testing.T) {

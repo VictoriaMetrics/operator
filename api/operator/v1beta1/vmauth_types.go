@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -31,24 +32,24 @@ type VMAuthSpec struct {
 	ComponentVersion string `json:"componentVersion,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMAuth pods.
 	// +optional
-	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty" yaml:"podMetadata,omitempty"`
+	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// ManagedMetadata defines metadata that will be added to the all objects
 	// created by operator for the given CustomResource
-	ManagedMetadata *ManagedObjectsMetadata `json:"managedMetadata,omitempty" yaml:"managedMetadata,omitempty"`
+	ManagedMetadata *ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
 	// LogLevel for victoria metrics single to be configured with.
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
-	LogLevel string `json:"logLevel,omitempty" yaml:"logLevel,omitempty"`
+	LogLevel string `json:"logLevel,omitempty"`
 	// LogFormat for VMAuth to be configured with.
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
-	LogFormat string `json:"logFormat,omitempty" yaml:"logFormat,omitempty"`
+	LogFormat string `json:"logFormat,omitempty"`
 	// SelectAllByDefault changes default behavior for empty CRD selectors, such userSelector.
 	// with selectAllByDefault: true and empty userSelector and userNamespaceSelector
 	// Operator selects all exist users
 	// with selectAllByDefault: false - selects nothing
 	// +optional
-	SelectAllByDefault bool `json:"selectAllByDefault,omitempty" yaml:"selectAllByDefault,omitempty"`
+	SelectAllByDefault bool `json:"selectAllByDefault,omitempty"`
 	// ArbitraryFSAccessThroughSMs configures whether configuration
 	// can contain paths to arbitrary files on the file system
 	// e.g bearer token files, basic auth password files, tls certs file paths
@@ -59,30 +60,30 @@ type VMAuthSpec struct {
 	// NamespaceSelector nil - only objects at VMAuth namespace.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
-	UserSelector *metav1.LabelSelector `json:"userSelector,omitempty" yaml:"userSelector,omitempty"`
+	UserSelector *metav1.LabelSelector `json:"userSelector,omitempty"`
 	// UserNamespaceSelector Namespaces to be selected for  VMAuth discovery.
 	// Works in combination with Selector.
 	// NamespaceSelector nil - only objects at VMAuth namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
-	UserNamespaceSelector *metav1.LabelSelector `json:"userNamespaceSelector,omitempty" yaml:"userNamespaceSelector,omitempty"`
+	UserNamespaceSelector *metav1.LabelSelector `json:"userNamespaceSelector,omitempty"`
 
 	// ServiceSpec that will be added to vmsingle service spec
 	// +optional
-	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty" yaml:"serviceSpec,omitempty"`
+	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
 	// ServiceScrapeSpec that will be added to vmauth VMServiceScrape spec
 	// +optional
 	// +kubebuilder:validation:Type=object
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
-	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty" yaml:"serviceScrapeSpec,omitempty"`
+	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
-	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty" yaml:"podDisruptionBudget,omitempty"`
+	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// NetworkPolicy defines network access rules for pods created by this CR.
 	// +optional
-	NetworkPolicy *EmbeddedNetworkPolicy `json:"networkPolicy,omitempty" yaml:"networkPolicy,omitempty"`
+	NetworkPolicy *EmbeddedNetworkPolicy `json:"networkPolicy,omitempty"`
 	// Ingress enables ingress configuration for VMAuth.
 	Ingress *EmbeddedIngress `json:"ingress,omitempty"`
 	// HTTPRoute enables httproute configuration for VMAuth.
@@ -96,9 +97,9 @@ type VMAuthSpec struct {
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +notes={deprecated_in: "v0.51.0", removed_in: "v1.0.0", replacements: {unauthorizedUserAccessSpec}}
-	VMUserConfigOptions `json:",inline" yaml:",inline"`
+	VMUserConfigOptions `json:",inline"`
 	// DefaultTargetRefs list of named targetRefs, which may be referenced by VMUser and at unauthorizedUserAccessSpec.
-	DefaultTargetRefs []TargetRef `json:"defaultTargetRefs,omitempty" yaml:"-"`
+	DefaultTargetRefs []TargetRef `json:"defaultTargetRefs,omitempty"`
 	// UnauthorizedUserAccessSpec defines unauthorized_user config section of vmauth config
 	// +optional
 	UnauthorizedUserAccessSpec *VMAuthUnauthorizedUserAccessSpec `json:"unauthorizedUserAccessSpec,omitempty" yaml:"unauthorizedUserAccessSpec,omitempty"`
@@ -106,7 +107,7 @@ type VMAuthSpec struct {
 	// via OpenID Connect for browser requests matching srcHost.
 	// +optional
 	// +notes={available_from: "v0.76.0"}
-	SSO []VMAuthSSOConfig `json:"sso,omitempty" yaml:"sso,omitempty"`
+	SSO []VMAuthSSOConfig `json:"sso,omitempty"`
 	// IPFilters global access ip filters
 	// supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters)
 	// +optional
@@ -133,13 +134,13 @@ type VMAuthSpec struct {
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
 	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty" yaml:"serviceAccountName,omitempty"`
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	// UseLegacyNaming uses standalone Helm chart naming for managed resources:
 	// the CR name is used directly instead of the default "<type>-<name>" convention.
 	// +optional
 	// +notes={available_from: "v0.73.0"}
-	UseLegacyNaming bool `json:"useLegacyNaming,omitempty" yaml:"useLegacyNaming,omitempty"`
+	UseLegacyNaming bool `json:"useLegacyNaming,omitempty"`
 
 	// WaitForConfigReload instructs the operator to verify, via the config-reloader
 	// sidecar's own reload-confirmation metric, that every replica has actually reloaded
@@ -148,8 +149,8 @@ type VMAuthSpec struct {
 	// +notes={available_from: "v0.74.0"}
 	WaitForConfigReload *bool `json:"waitForConfigReload,omitempty"`
 
-	CommonConfigReloaderParams `json:",inline,omitempty" yaml:",inline"`
-	CommonAppsParams           `json:",inline,omitempty" yaml:",inline"`
+	CommonConfigReloaderParams `json:",inline,omitempty"`
+	CommonAppsParams           `json:",inline,omitempty"`
 	// InternalListenPort instructs vmauth to serve internal routes at given port
 	// available from v1.111.0 vmauth version
 	// related doc https://docs.victoriametrics.com/victoriametrics/vmauth/#security
@@ -190,7 +191,7 @@ type VMAuthUnauthorizedUserAccessSpec struct {
 	URLMap []UnauthorizedAccessConfigURLMap `json:"url_map,omitempty" yaml:"url_map,omitempty"`
 
 	// TargetRefs - reference to endpoints, which user may access.
-	TargetRefs []TargetRef `json:"targetRefs,omitempty" yaml:"-"`
+	TargetRefs []TargetRef `json:"targetRefs,omitempty"`
 
 	// MetricLabels - additional labels for metrics exported by vmauth for given user.
 	// +optional
@@ -248,43 +249,50 @@ type VMAuthSSOConfig struct {
 	SrcHost string `json:"src_host" yaml:"src_host"`
 	// OIDC defines the OpenID Connect provider configuration used for this sso entry.
 	// +required
-	OIDC VMAuthSSOOIDC `json:"oidc" yaml:"oidc"`
+	OIDC VMAuthSSOOIDC `json:"oidc"`
 }
 
 // VMAuthSSOOIDC defines OpenID Connect configuration for a VMAuthSSOConfig entry.
 type VMAuthSSOOIDC struct {
 	// Issuer defines the OIDC issuer URL.
 	// +required
-	Issuer string `json:"issuer" yaml:"issuer"`
+	Issuer string `json:"issuer"`
 	// ClientID defines the OAuth2 client id registered at the issuer.
 	// +required
-	ClientID string `json:"client_id" yaml:"client_id"`
+	ClientID string `json:"client_id"`
 	// ClientSecretRef refers to a Secret key holding the OAuth2 client secret.
 	// +required
-	ClientSecretRef *corev1.SecretKeySelector `json:"clientSecretRef" yaml:"clientSecretRef"`
+	ClientSecretRef *corev1.SecretKeySelector `json:"client_secret_ref"`
 	// CookieSecretRef refers to a Secret key holding the key used to sign the
 	// short-lived CSRF cookie set during the authorization flow. Must be at least
 	// 16 characters. Never shared with the IdP.
 	// +required
-	CookieSecretRef *corev1.SecretKeySelector `json:"cookieSecretRef" yaml:"cookieSecretRef"`
+	CookieSecretRef *corev1.SecretKeySelector `json:"cookie_secret_ref"`
 	// Insecure disables the Secure flag on SSO cookies and uses http:// instead
 	// of https:// for redirect URIs. Defaults to false.
 	// Set to true only when vmauth is accessed over plain HTTP (e.g. local dev).
 	// +optional
-	Insecure bool `json:"insecure,omitempty" yaml:"insecure,omitempty"`
+	Insecure bool `json:"insecure,omitempty"`
 	// Scopes defaults to ["openid"] when not set.
 	// +optional
-	Scopes []string `json:"scopes,omitempty" yaml:"scopes,omitempty"`
+	Scopes []string `json:"scopes,omitempty"`
 	// SessionDuration caps the SSO session cookie lifetime.
 	// The cookie MaxAge is the minimum of this value and the id_token's exp claim.
 	// Defaults to 10m when not set. Must be parsable by Go's time.ParseDuration, e.g. "10m", "1h".
 	// +optional
-	SessionDuration string `json:"session_duration,omitempty" yaml:"session_duration,omitempty"`
+	SessionDuration string `json:"session_duration,omitempty"`
 	// DefaultRedirectURL is the URL users are sent to after SSO login when the
 	// original request URL fails open-redirect validation. Defaults to "/".
 	// +optional
-	DefaultRedirectURL string `json:"default_redirect_url,omitempty" yaml:"default_redirect_url,omitempty"`
+	DefaultRedirectURL string `json:"default_redirect_url,omitempty"`
+	// AuthParams are additional query parameters added to the authentication request
+	// sent to the IdP authorization endpoint, e.g. "hd" or "prompt".
+	// Parameters set by vmauth itself (response_type, client_id, redirect_uri, scope, nonce, state) cannot be overridden.
+	// +optional
+	AuthParams map[string]string `json:"auth_params,omitempty"`
 }
+
+var reservedSSOAuthParams = []string{"response_type", "client_id", "redirect_uri", "scope", "nonce", "state"}
 
 // Validate performs syntax validation of the sso config entry.
 func (c *VMAuthSSOConfig) Validate() error {
@@ -312,10 +320,10 @@ func (c *VMAuthSSOConfig) Validate() error {
 		return fmt.Errorf("oidc.client_id is required")
 	}
 	if oidc.ClientSecretRef == nil || oidc.ClientSecretRef.Name == "" || oidc.ClientSecretRef.Key == "" {
-		return fmt.Errorf("oidc.clientSecretRef.name and oidc.clientSecretRef.key are required")
+		return fmt.Errorf("oidc.client_secret_ref.name and oidc.client_secret_ref.key are required")
 	}
 	if oidc.CookieSecretRef == nil || oidc.CookieSecretRef.Name == "" || oidc.CookieSecretRef.Key == "" {
-		return fmt.Errorf("oidc.cookieSecretRef.name and oidc.cookieSecretRef.key are required")
+		return fmt.Errorf("oidc.cookie_secret_ref.name and oidc.cookie_secret_ref.key are required")
 	}
 	if oidc.SessionDuration != "" {
 		d, err := time.ParseDuration(oidc.SessionDuration)
@@ -324,6 +332,14 @@ func (c *VMAuthSSOConfig) Validate() error {
 		}
 		if d < 0 {
 			return fmt.Errorf("oidc.session_duration must not be negative")
+		}
+	}
+	for k := range oidc.AuthParams {
+		if k == "" {
+			return fmt.Errorf("oidc.auth_params must not contain empty keys")
+		}
+		if slices.Contains(reservedSSOAuthParams, k) {
+			return fmt.Errorf("oidc.auth_params must not override %q; it is set by vmauth", k)
 		}
 	}
 	return nil
@@ -336,7 +352,7 @@ type UnauthorizedAccessConfigURLMap struct {
 	SrcPaths []string `json:"src_paths,omitempty" yaml:"src_paths,omitempty"`
 
 	// SrcHosts is an optional list of regular expressions, which must match the request hostname.
-	SrcHosts []string `json:"src_hosts,omitempty" yaml:"src_hosts,omitempty"`
+	SrcHosts []string `json:"src_hosts,omitempty"`
 
 	// UrlPrefix contains backend url prefixes for the proxied request url.
 	// URLPrefix defines prefix prefix for destination
@@ -344,7 +360,7 @@ type UnauthorizedAccessConfigURLMap struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	URLPrefix StringOrArray `json:"url_prefix,omitempty" yaml:"url_prefix,omitempty"`
 
-	URLMapCommon `json:",omitempty" yaml:",inline"`
+	URLMapCommon `json:",omitempty"`
 }
 
 // Validate performs syntax logic validation
@@ -381,13 +397,13 @@ func validateURLPrefix(urlPrefixStr string) error {
 // URLMapCommon contains common fields for unauthorized user and user in vmuser
 type URLMapCommon struct {
 	// SrcQueryArgs is an optional list of query args, which must match request URL query args.
-	SrcQueryArgs []string `json:"src_query_args,omitempty" yaml:"src_query_args,omitempty"`
+	SrcQueryArgs []string `json:"src_query_args,omitempty"`
 
 	// SrcHeaders is an optional list of headers, which must match request headers.
-	SrcHeaders []string `json:"src_headers,omitempty" yaml:"src_headers,omitempty"`
+	SrcHeaders []string `json:"src_headers,omitempty"`
 
 	// DiscoverBackendIPs instructs discovering URLPrefix backend IPs via DNS.
-	DiscoverBackendIPs *bool `json:"discover_backend_ips,omitempty" yaml:"discover_backend_ips,omitempty"`
+	DiscoverBackendIPs *bool `json:"discover_backend_ips,omitempty"`
 
 	// RequestHeaders represent additional http headers, that vmauth uses
 	// in form of ["header_key: header_value"]
@@ -395,51 +411,51 @@ type URLMapCommon struct {
 	// ["header_key: value1,value2"]
 	// it's available since 1.68.0 version of vmauth
 	// +optional
-	RequestHeaders []string `json:"headers,omitempty" yaml:"headers,omitempty"`
+	RequestHeaders []string `json:"headers,omitempty"`
 	// ResponseHeaders represent additional http headers, that vmauth adds for request response
 	// in form of ["header_key: header_value"]
 	// multiple values for header key:
 	// ["header_key: value1,value2"]
 	// it's available since 1.93.0 version of vmauth
 	// +optional
-	ResponseHeaders []string `json:"response_headers,omitempty" yaml:"response_headers,omitempty"`
+	ResponseHeaders []string `json:"response_headers,omitempty"`
 
 	// RetryStatusCodes defines http status codes in numeric format for request retries
 	// Can be defined per target or at VMUser.spec level
 	// e.g. [429,503]
 	// +optional
-	RetryStatusCodes []int `json:"retry_status_codes,omitempty" yaml:"retry_status_codes,omitempty"`
+	RetryStatusCodes []int `json:"retry_status_codes,omitempty"`
 
 	// LoadBalancingPolicy defines load balancing policy to use for backend urls.
 	// Supported policies: least_loaded, first_available.
 	// See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#load-balancing) for more details (default "least_loaded")
 	// +optional
 	// +kubebuilder:validation:Enum=least_loaded;first_available
-	LoadBalancingPolicy *string `json:"load_balancing_policy,omitempty" yaml:"load_balancing_policy,omitempty"`
+	LoadBalancingPolicy *string `json:"load_balancing_policy,omitempty"`
 
 	// DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
 	// See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#dropping-request-path-prefix) for more details.
 	// +optional
-	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty" yaml:"drop_src_path_prefix_parts,omitempty"`
+	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty"`
 }
 
 // VMUserConfigOptions defines configuration options for VMUser object
 type VMUserConfigOptions struct {
 	// DefaultURLs backend url for non-matching paths filter
 	// usually used for default backend with error message
-	DefaultURLs []string `json:"default_url,omitempty" yaml:"default_url,omitempty"`
+	DefaultURLs []string `json:"default_url,omitempty"`
 
 	// TLSConfig defines tls configuration for the backend connection
 	// +optional
-	TLSConfig *TLSConfig `json:"tlsConfig,omitempty" yaml:"tlsConfig,omitempty"`
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 
 	// IPFilters defines per target src ip filters
 	// supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#ip-filters)
 	// +optional
-	IPFilters VMUserIPFilters `json:"ip_filters,omitempty" yaml:"ip_filters,omitempty"`
+	IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
 
 	// DiscoverBackendIPs instructs discovering URLPrefix backend IPs via DNS.
-	DiscoverBackendIPs *bool `json:"discover_backend_ips,omitempty" yaml:"discover_backend_ips,omitempty"`
+	DiscoverBackendIPs *bool `json:"discover_backend_ips,omitempty"`
 
 	// Headers represent additional http headers, that vmauth uses
 	// in form of ["header_key: header_value"]
@@ -454,29 +470,29 @@ type VMUserConfigOptions struct {
 	// ["header_key: value1,value2"]
 	// it's available since 1.93.0 version of vmauth
 	// +optional
-	ResponseHeaders []string `json:"response_headers,omitempty" yaml:"response_headers,omitempty"`
+	ResponseHeaders []string `json:"response_headers,omitempty"`
 
 	// RetryStatusCodes defines http status codes in numeric format for request retries
 	// e.g. [429,503]
 	// +optional
-	RetryStatusCodes []int `json:"retry_status_codes,omitempty" yaml:"retry_status_codes,omitempty"`
+	RetryStatusCodes []int `json:"retry_status_codes,omitempty"`
 
 	// MaxConcurrentRequests defines max concurrent requests per user
 	// 300 is default value for vmauth
 	// +optional
-	MaxConcurrentRequests *int `json:"max_concurrent_requests,omitempty" yaml:"max_concurrent_requests,omitempty"`
+	MaxConcurrentRequests *int `json:"max_concurrent_requests,omitempty"`
 
 	// LoadBalancingPolicy defines load balancing policy to use for backend urls.
 	// Supported policies: least_loaded, first_available.
 	// See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#load-balancing) for more details (default "least_loaded")
 	// +optional
 	// +kubebuilder:validation:Enum=least_loaded;first_available
-	LoadBalancingPolicy *string `json:"load_balancing_policy,omitempty" yaml:"load_balancing_policy,omitempty"`
+	LoadBalancingPolicy *string `json:"load_balancing_policy,omitempty"`
 
 	// DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
 	// See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#dropping-request-path-prefix) for more details.
 	// +optional
-	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty" yaml:"drop_src_path_prefix_parts,omitempty"`
+	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty"`
 
 	// DumpRequestOnErrors instructs vmauth to return detailed request params to the client
 	// if routing rules don't allow to forward request to the backends.
@@ -501,7 +517,7 @@ type VMUserConfigOptions struct {
 type VMUserAccessLog struct {
 	// Filters defines optional filters that control which requests are logged.
 	// +optional
-	Filters *VMUserAccessLogFilters `json:"filters,omitempty" yaml:"filters,omitempty"`
+	Filters *VMUserAccessLogFilters `json:"filters,omitempty"`
 }
 
 // VMUserAccessLogFilters defines filters for vmauth per-user access log.
@@ -509,7 +525,7 @@ type VMUserAccessLogFilters struct {
 	// SkipStatusCodes lists HTTP status codes whose responses are excluded from the access log.
 	// For example, [200, 204] suppresses logging of successful responses.
 	// +optional
-	SkipStatusCodes []int `json:"skip_status_codes,omitempty" yaml:"skip_status_codes,omitempty"`
+	SkipStatusCodes []int `json:"skip_status_codes,omitempty"`
 }
 
 // Validate performs semantic syntax validation
@@ -656,7 +672,7 @@ type EmbeddedHTTPRoute struct {
 type EmbeddedIngress struct {
 	// ClassName defines ingress class name for VMAuth
 	// +optional
-	ClassName *string `json:"class_name,omitempty" yaml:"class_name,omitempty"`
+	ClassName *string `json:"class_name,omitempty"`
 	//  EmbeddedObjectMetadata adds labels and annotations for object.
 	EmbeddedObjectMetadata `json:",inline"`
 	// TlsHosts configures TLS access for ingress, tlsSecretName must be defined for it.
@@ -664,22 +680,22 @@ type EmbeddedIngress struct {
 	// TlsSecretName defines secretname at the VMAuth namespace with cert and key
 	// https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
 	// +optional
-	TlsSecretName string `json:"tlsSecretName,omitempty" yaml:"tlsSecretName,omitempty"`
+	TlsSecretName string `json:"tlsSecretName,omitempty"`
 	// ExtraRules - additional rules for ingress,
 	// must be checked for correctness by user.
 	// +optional
-	ExtraRules []networkingv1.IngressRule `json:"extraRules,omitempty" yaml:"extraRules,omitempty"`
+	ExtraRules []networkingv1.IngressRule `json:"extraRules,omitempty"`
 	// ExtraTLS - additional TLS configuration for ingress
 	// must be checked for correctness by user.
 	// +optional
-	ExtraTLS []networkingv1.IngressTLS `json:"extraTls,omitempty" yaml:"extraTls,omitempty"`
+	ExtraTLS []networkingv1.IngressTLS `json:"extraTls,omitempty"`
 	// Host defines ingress host parameter for default rule
 	// It will be used, only if TlsHosts is empty
 	// +optional
 	Host string `json:"host,omitempty"`
 	// Paths defines ingress paths parameter for default rule
 	// +optional
-	Paths []string `json:"paths,omitempty" yaml:"paths,omitempty"`
+	Paths []string `json:"paths,omitempty"`
 }
 
 // VMAuthStatus defines the observed state of VMAuth
@@ -689,7 +705,7 @@ type VMAuthStatus struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	LastAppliedSpec *VMAuthSpec `json:"lastAppliedSpec,omitempty"`
 	// ParsingSpecError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingSpecError string `json:"-" yaml:"-"`
+	ParsingSpecError string `json:"-"`
 }
 
 // GetStatusMetadata returns metadata for object status

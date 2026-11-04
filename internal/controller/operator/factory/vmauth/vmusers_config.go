@@ -547,17 +547,17 @@ func buildSSOConfig(cr *vmv1beta1.VMAuth, ac *build.AssetsCache) ([]yaml.MapSlic
 		}
 		clientSecret, err := ac.LoadKeyFromSecret(cr.Namespace, sso.OIDC.ClientSecretRef)
 		if err != nil {
-			return nil, fmt.Errorf("cannot load sso[%d].oidc.clientSecretRef: %w", i, err)
+			return nil, fmt.Errorf("cannot load sso[%d].oidc.client_secret_ref: %w", i, err)
 		}
 		if len(clientSecret) == 0 {
-			return nil, fmt.Errorf("sso[%d].oidc.clientSecretRef value cannot be empty", i)
+			return nil, fmt.Errorf("sso[%d].oidc.client_secret_ref value cannot be empty", i)
 		}
 		cookieSecret, err := ac.LoadKeyFromSecret(cr.Namespace, sso.OIDC.CookieSecretRef)
 		if err != nil {
-			return nil, fmt.Errorf("cannot load sso[%d].oidc.cookieSecretRef: %w", i, err)
+			return nil, fmt.Errorf("cannot load sso[%d].oidc.cookie_secret_ref: %w", i, err)
 		}
 		if len(cookieSecret) < 16 {
-			return nil, fmt.Errorf("sso[%d].oidc.cookieSecretRef value must be at least 16 characters long", i)
+			return nil, fmt.Errorf("sso[%d].oidc.cookie_secret_ref value must be at least 16 characters long", i)
 		}
 		oidc := yaml.MapSlice{
 			{Key: "issuer", Value: sso.OIDC.Issuer},
@@ -574,6 +574,9 @@ func buildSSOConfig(cr *vmv1beta1.VMAuth, ac *build.AssetsCache) ([]yaml.MapSlic
 		}
 		if sso.OIDC.DefaultRedirectURL != "" {
 			oidc = append(oidc, yaml.MapItem{Key: "default_redirect_url", Value: sso.OIDC.DefaultRedirectURL})
+		}
+		if len(sso.OIDC.AuthParams) > 0 {
+			oidc = append(oidc, yaml.MapItem{Key: "auth_params", Value: sso.OIDC.AuthParams})
 		}
 		result = append(result, yaml.MapSlice{
 			{Key: "src_host", Value: sso.SrcHost},

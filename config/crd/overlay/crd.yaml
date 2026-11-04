@@ -11225,11 +11225,19 @@ spec:
                               description: OIDC defines the OpenID Connect provider
                                 configuration used for this sso entry.
                               properties:
+                                auth_params:
+                                  additionalProperties:
+                                    type: string
+                                  description: |-
+                                    AuthParams are additional query parameters added to the authentication request
+                                    sent to the IdP authorization endpoint, e.g. "hd" or "prompt".
+                                    Parameters set by vmauth itself (response_type, client_id, redirect_uri, scope, nonce, state) cannot be overridden.
+                                  type: object
                                 client_id:
                                   description: ClientID defines the OAuth2 client
                                     id registered at the issuer.
                                   type: string
-                                clientSecretRef:
+                                client_secret_ref:
                                   description: ClientSecretRef refers to a Secret
                                     key holding the OAuth2 client secret.
                                   properties:
@@ -11254,7 +11262,7 @@ spec:
                                   - key
                                   type: object
                                   x-kubernetes-map-type: atomic
-                                cookieSecretRef:
+                                cookie_secret_ref:
                                   description: |-
                                     CookieSecretRef refers to a Secret key holding the key used to sign the
                                     short-lived CSRF cookie set during the authorization flow. Must be at least
@@ -11308,9 +11316,9 @@ spec:
                                     Defaults to 10m when not set. Must be parsable by Go's time.ParseDuration, e.g. "10m", "1h".
                                   type: string
                               required:
-                              - clientSecretRef
                               - client_id
-                              - cookieSecretRef
+                              - client_secret_ref
+                              - cookie_secret_ref
                               - issuer
                               type: object
                             src_host:
@@ -43609,11 +43617,19 @@ spec:
                       description: OIDC defines the OpenID Connect provider configuration
                         used for this sso entry.
                       properties:
+                        auth_params:
+                          additionalProperties:
+                            type: string
+                          description: |-
+                            AuthParams are additional query parameters added to the authentication request
+                            sent to the IdP authorization endpoint, e.g. "hd" or "prompt".
+                            Parameters set by vmauth itself (response_type, client_id, redirect_uri, scope, nonce, state) cannot be overridden.
+                          type: object
                         client_id:
                           description: ClientID defines the OAuth2 client id registered
                             at the issuer.
                           type: string
-                        clientSecretRef:
+                        client_secret_ref:
                           description: ClientSecretRef refers to a Secret key holding
                             the OAuth2 client secret.
                           properties:
@@ -43638,7 +43654,7 @@ spec:
                           - key
                           type: object
                           x-kubernetes-map-type: atomic
-                        cookieSecretRef:
+                        cookie_secret_ref:
                           description: |-
                             CookieSecretRef refers to a Secret key holding the key used to sign the
                             short-lived CSRF cookie set during the authorization flow. Must be at least
@@ -43691,9 +43707,9 @@ spec:
                             Defaults to 10m when not set. Must be parsable by Go's time.ParseDuration, e.g. "10m", "1h".
                           type: string
                       required:
-                      - clientSecretRef
                       - client_id
-                      - cookieSecretRef
+                      - client_secret_ref
+                      - cookie_secret_ref
                       - issuer
                       type: object
                     src_host:
@@ -54066,11 +54082,19 @@ spec:
                               description: OIDC defines the OpenID Connect provider
                                 configuration used for this sso entry.
                               properties:
+                                auth_params:
+                                  additionalProperties:
+                                    type: string
+                                  description: |-
+                                    AuthParams are additional query parameters added to the authentication request
+                                    sent to the IdP authorization endpoint, e.g. "hd" or "prompt".
+                                    Parameters set by vmauth itself (response_type, client_id, redirect_uri, scope, nonce, state) cannot be overridden.
+                                  type: object
                                 client_id:
                                   description: ClientID defines the OAuth2 client
                                     id registered at the issuer.
                                   type: string
-                                clientSecretRef:
+                                client_secret_ref:
                                   description: ClientSecretRef refers to a Secret
                                     key holding the OAuth2 client secret.
                                   properties:
@@ -54095,7 +54119,7 @@ spec:
                                   - key
                                   type: object
                                   x-kubernetes-map-type: atomic
-                                cookieSecretRef:
+                                cookie_secret_ref:
                                   description: |-
                                     CookieSecretRef refers to a Secret key holding the key used to sign the
                                     short-lived CSRF cookie set during the authorization flow. Must be at least
@@ -54149,9 +54173,9 @@ spec:
                                     Defaults to 10m when not set. Must be parsable by Go's time.ParseDuration, e.g. "10m", "1h".
                                   type: string
                               required:
-                              - clientSecretRef
                               - client_id
-                              - cookieSecretRef
+                              - client_secret_ref
+                              - cookie_secret_ref
                               - issuer
                               type: object
                             src_host:

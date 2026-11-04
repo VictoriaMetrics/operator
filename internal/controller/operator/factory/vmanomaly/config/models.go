@@ -19,7 +19,7 @@ const (
 var temporalEnvelopeSeasonalities = map[string]struct{}{
 	"hod_smooth": {}, "hod_spiky": {}, "hod_plateau": {},
 	"dow_smooth": {}, "dow_spiky": {}, "dow_plateau": {},
-	"weekpart_plateau": {}, "month_smooth": {}, "month_plateau": {},
+	"weekpart_plateau": {}, "month_smooth": {}, "month_plateau": {}, "calendar_month": {},
 }
 
 type commonModelParams struct {
@@ -434,6 +434,8 @@ func (m *stdModel) validate() error {
 
 type temporalEnvelopeModel struct {
 	commonModelParams `yaml:",inline"`
+	// Keep omission distinct from an explicitly invalid empty version.
+	ModelVersion      *string       `yaml:"model_version,omitempty"`
 	Args              yaml.MapSlice `yaml:"args,omitempty"`
 	Quantiles         *[]float64    `yaml:"quantiles,omitempty"`
 	IQRThreshold      *float64      `yaml:"iqr_threshold,omitempty"`
@@ -445,7 +447,17 @@ type temporalEnvelopeModel struct {
 	Holidays          yaml.MapSlice `yaml:"holidays,omitempty"`
 }
 
+func (m *temporalEnvelopeModel) version() string {
+	if m.ModelVersion == nil {
+		return "v1"
+	}
+	return *m.ModelVersion
+}
+
 func (m *temporalEnvelopeModel) validate() error {
+	if m.version() != "v1" && m.version() != "v2" {
+		return fmt.Errorf("model_version must be v1 or v2, got %q", m.version())
+	}
 	if len(m.Args) > 0 {
 		return fmt.Errorf("temporal_envelope does not accept arbitrary args")
 	}
@@ -472,6 +484,12 @@ func (m *temporalEnvelopeModel) validate() error {
 	}
 	seen := make(map[string]bool, len(*m.Seasonalities))
 	for _, seasonality := range *m.Seasonalities {
+		if seasonality == "calendar_month" && m.version() != "v2" {
+			return fmt.Errorf("calendar_month requires model_version=v2")
+		}
+		if m.version() == "v2" && (seasonality == "month_smooth" || seasonality == "month_plateau") {
+			return fmt.Errorf("%s requires model_version=v1", seasonality)
+		}
 		if _, ok := temporalEnvelopeSeasonalities[seasonality]; !ok {
 			return fmt.Errorf("unsupported temporal_envelope seasonality %q", seasonality)
 		}
@@ -494,6 +512,11 @@ type temporalEnvelopeMultivariateModel struct {
 }
 
 func (m *temporalEnvelopeMultivariateModel) validate() error {
+	for _, output := range m.ProvideSeries {
+		if output == "dependency_strength" && m.version() != "v2" {
+			return fmt.Errorf("dependency_strength requires model_version=v2")
+		}
+	}
 	if err := m.temporalEnvelopeModel.validate(); err != nil {
 		return err
 	}

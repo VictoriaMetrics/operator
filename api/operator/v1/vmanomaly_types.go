@@ -572,6 +572,9 @@ func (s *VMAnomalyServerSpec) validateTLS(port, probePort string) error {
 	if tc == nil {
 		return nil
 	}
+	if err := tc.Validate(); err != nil {
+		return fmt.Errorf("spec.server.tlsConfig: %w", err)
+	}
 	if tc.CertFile == "" && tc.Cert.PrefixedName() == "" {
 		return fmt.Errorf("spec.server.tlsConfig: cert or certFile is required")
 	}

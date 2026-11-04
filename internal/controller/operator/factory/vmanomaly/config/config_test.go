@@ -822,7 +822,7 @@ server:
 	})
 
 	// server TLS and mTLS from secrets
-	f(opts{
+	serverTLS := opts{
 		cr: &vmv1.VMAnomaly{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-anomaly",
@@ -925,7 +925,28 @@ server:
   tls_key_file: /test/monitoring_server-tls_tls.key
   mtls_ca_file: /test/monitoring_server-tls_ca.crt
 `,
-	})
+	}
+	f(serverTLS)
+
+	// Certificate and CA ConfigMap selectors use distinct asset names.
+	configMapTLS := serverTLS
+	configMapTLS.cr = serverTLS.cr.DeepCopy()
+	selector := func(key string) vmv1beta1.SecretOrConfigMap {
+		return vmv1beta1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{Name: "server-tls"}, Key: key,
+		}}
+	}
+	configMapTLS.cr.Spec.Server.TLSConfig.Cert = selector("tls.crt")
+	configMapTLS.cr.Spec.Server.TLSConfig.CA = selector("ca.crt")
+	configMapTLS.predefinedObjects = append([]runtime.Object{&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "server-tls", Namespace: "monitoring"},
+		Data:       map[string]string{"tls.crt": "cert", "ca.crt": "ca"},
+	}}, serverTLS.predefinedObjects...)
+	configMapTLS.expected = strings.NewReplacer(
+		"/test/monitoring_server-tls_tls.crt", "/test/monitoring_configmap_server-tls_tls.crt",
+		"/test/monitoring_server-tls_ca.crt", "/test/monitoring_configmap_server-tls_ca.crt",
+	).Replace(serverTLS.expected)
+	f(configMapTLS)
 
 	// server TLS from pre-mounted files without client certificate verification
 	f(opts{

@@ -80,6 +80,36 @@ func TestVMAnomaly_ServerTLS(t *testing.T) {
 	insecure.InsecureSkipVerify = true
 	f(&VMAnomalyServerSpec{TLSConfig: insecure}, nil, true, "")
 
+	serverName := files()
+	serverName.ServerName = "example.com"
+	f(&VMAnomalyServerSpec{TLSConfig: serverName}, nil, true, "")
+
+	// Reject ambiguous credential sources rather than silently choosing one.
+	configMap := &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls"}, Key: "cert"}
+	for _, tc := range []struct {
+		name    string
+		mutate  func(*vmv1beta1.TLSConfig)
+		wantErr string
+	}{
+		{"certificate file and secret", func(c *vmv1beta1.TLSConfig) { c.Cert.Secret = secret("tls.crt") }, "CertFile and Cert"},
+		{"key file and secret", func(c *vmv1beta1.TLSConfig) { c.KeySecret = secret("tls.key") }, "KeyFile and KeySecret"},
+		{"CA file and configmap", func(c *vmv1beta1.TLSConfig) { c.CAFile = "/tls/ca.crt"; c.CA.ConfigMap = configMap }, "CAFile and CA"},
+		{"certificate secret and configmap", func(c *vmv1beta1.TLSConfig) {
+			c.CertFile = ""
+			c.Cert = vmv1beta1.SecretOrConfigMap{Secret: secret("tls.crt"), ConfigMap: configMap}
+		}, "both Secret and ConfigMap"},
+		{"CA secret and configmap", func(c *vmv1beta1.TLSConfig) {
+			c.CA = vmv1beta1.SecretOrConfigMap{Secret: secret("ca.crt"), ConfigMap: configMap}
+		}, "both Secret and ConfigMap"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			credentials := files()
+			tc.mutate(credentials)
+			server := &VMAnomalyServerSpec{TLSConfig: credentials}
+			assert.ErrorContains(t, server.validateTLS("8490", "8080"), tc.wantErr)
+		})
+	}
+
 	// probes would hit the TLS listener
 	f(&VMAnomalyServerSpec{Port: "8080", TLSConfig: files()}, nil, true, "")
 	f(&VMAnomalyServerSpec{TLSConfig: files()}, &VMAnomalyMonitoringSpec{Pull: &VMAnomalyMonitoringPullSpec{Port: "8490"}}, true, "")

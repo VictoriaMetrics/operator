@@ -211,7 +211,7 @@ spec:
 
 ### Serving the UI over HTTPS
 
-`spec.server.tlsConfig` serves the anomaly UI and API over HTTPS. The certificate and key are taken from `cert` and `keySecret` or from pre-mounted `certFile` and `keyFile`. Set `ca` or `caFile` to require client certificates signed by that CA (mTLS). `insecureSkipVerify` and `serverName` are not supported for the server. The vmanomaly version must support the `server.tls_cert_file`, `server.tls_key_file` and `server.mtls_ca_file` options.
+`spec.server.tlsConfig` serves the anomaly UI and API over HTTPS. The certificate and key are taken from `cert` and `keySecret` or from pre-mounted `certFile` and `keyFile`. Set `ca` or `caFile` to require client certificates signed by that CA (mTLS). `insecureSkipVerify` and `serverName` are not supported for the server. Requires [vmanomaly v1.32.0 or newer](https://docs.victoriametrics.com/anomaly-detection/components/server/#tls-and-mutual-tls).
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1

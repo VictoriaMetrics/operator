@@ -1,7 +1,5 @@
 ##@ E2E testing
 # Targets here require docker, a Kind cluster, or e2e test tooling.
-# Kept in a separate file so changes to e2e tool versions do not retrigger
-# the full CI workflow for ordinary source-code changes.
 # This file is included by the root Makefile.
 
 E2E_TESTS_CONCURRENCY ?= $(shell getconf _NPROCESSORS_ONLN)

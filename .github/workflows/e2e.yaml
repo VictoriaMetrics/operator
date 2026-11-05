@@ -3,7 +3,8 @@ name: E2E
 # - on pushes to master;
 # - on pull requests targeting master or release-* branches, when the PR is approved
 #   or when the run-e2e label is added. To run them again, e.g. after new commits or a rebase,
-#   comment /run-e2e (see e2e-command.yaml), re-add the run-e2e label, or approve the PR again.
+#   comment /run-e2e (see e2e-command.yaml) or re-add the run-e2e label.
+#   An approval doesn't run them if they already passed or are running for the latest commit.
 #
 # Draft PRs are skipped. e2e is also skipped when only these paths change:
 # - docs/**, *.md, config/examples/**, config/samples/**, codespell/**, .github/**
@@ -39,11 +40,40 @@ jobs:
         github.event.label.name == 'run-e2e'))
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       pull-requests: read
     outputs:
-      run_e2e: ${{ steps.changes.outputs.src == 'true' || steps.changes.outputs.ci == 'true' || (github.event_name == 'push' && steps.changes.outputs.deps == 'true') }}
+      run_e2e: >-
+        ${{ steps.previous.outputs.covered != 'true' &&
+            (steps.changes.outputs.src == 'true' || steps.changes.outputs.ci == 'true' ||
+             (github.event_name == 'push' && steps.changes.outputs.deps == 'true')) }}
     steps:
+      # an approval doesn't run e2e if it already passed or is running for the PR's latest commit,
+      # e.g. when a second maintainer approves; the run-e2e label and /run-e2e always run it
+      - name: Check previous e2e runs
+        id: previous
+        if: github.event_name == 'pull_request_review'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          runs=$(gh api "repos/$REPO/actions/workflows/e2e.yaml/runs?head_sha=$SHA&per_page=100" \
+            --jq ".workflow_runs[] | select(.id != $RUN_ID) | .id")
+          for id in $runs; do
+            # both e2e jobs of a run are running or passed
+            ok=$(gh api "repos/$REPO/actions/runs/$id/jobs" \
+              --jq '[.jobs[] | select(.name == "E2E / main" or .name == "E2E / upgrade")
+                     | select(.status != "completed" or .conclusion == "success")] | length')
+            if [ "$ok" -eq 2 ]; then
+              echo "e2e already passed or is running for $SHA in run $id, skipping"
+              echo "covered=true" >> "$GITHUB_OUTPUT"
+              break
+            fi
+          done
+
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -94,6 +124,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # the job names "E2E / main" and "E2E / upgrade" are also used by the "Check previous e2e runs" step
           # every suite under test/e2e, except upgrade, which runs in its own job
           - name: main
             e2e_target: --skip-package=upgrade ./test/e2e/...
@@ -111,7 +142,7 @@ jobs:
           LICENSE_KEY: ${{ secrets.ENTERPRISE_COMPONENTS_LICENSE_KEY }}
           E2E_TARGET: ${{ matrix.e2e_target }}
         run: |
-          TAG=${GITHUB_SHA:0:7} BASE_REF=origin/${{ github.event.pull_request.base.ref || 'master' }} make test-e2e
+          TAG=${GITHUB_SHA:0:7} make test-e2e
       - name: Save Go cache
         if: ${{ github.ref == 'refs/heads/master' }}
         uses: ./.github/actions/save-go-cache

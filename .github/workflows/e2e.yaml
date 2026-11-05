@@ -3,7 +3,7 @@ name: E2E
 # - on pushes to master;
 # - on pull requests targeting master or release-* branches, when the PR is approved
 #   or when the run-e2e label is added. To run them again, e.g. after new commits or a rebase,
-#   remove and re-add the run-e2e label, or approve the PR again.
+#   comment /run-e2e (see e2e-command.yaml), re-add the run-e2e label, or approve the PR again.
 #
 # Draft PRs are skipped. e2e is also skipped when only these paths change:
 # - docs/**, *.md, config/examples/**, config/samples/**, codespell/**, .github/**

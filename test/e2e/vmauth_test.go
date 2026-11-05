@@ -441,7 +441,7 @@ var _ = Describe("test vmauth Controller", Label("vm", "auth"), func() {
 							Expect(k8sClient.Get(ctx, nsn, &vmss)).ToNot(HaveOccurred())
 							Expect(vmss.Spec.Endpoints).To(HaveLen(2))
 							Expect(vmss.Spec.Endpoints[0].Port).To(Equal("internal"))
-							Expect(vmss.Spec.Endpoints[1].TargetPort).To(Equal(ptr.To(intstr.FromInt32(int32(build.ConfigReloaderDefaultPort)))))
+							Expect(vmss.Spec.Endpoints[1].TargetPort).To(Equal(ptr.To(intstr.FromString(build.ConfigReloaderPortName))))
 						},
 					},
 				),

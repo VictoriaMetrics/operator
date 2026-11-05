@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default version for VMAnomaly to [v1.32.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1320).
+
 * FEATURE: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): add support for the `victoria-traces-agent` chart, which is converted into `VTAgent`. See [#2796](https://github.com/VictoriaMetrics/operator/pull/2796).
 * FEATURE: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): the `victoria-logs-single` chart is now converted into `VLSingle` instead of the deprecated `VLogs`, including its `license` settings. See [#2797](https://github.com/VictoriaMetrics/operator/pull/2797).
 

@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/#temporal-envelope-versions): preserve Temporal Envelope `model_version` and support v2 seasonality and multivariate output settings. Requires vmanomaly v1.32.0 or newer; omitted versions retain v1. See [#2801](https://github.com/VictoriaMetrics/operator/pull/2801).
+
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): respect `http.listenAddr` set in `spec.configReloaderExtraArgs` in all config-reloader related configs, such as the container port and health probes. Previously, it was hardcoded to `8435`, which caused config-reloader probes to fail when the listen address was overridden, and multiple `hostNetwork` instances on the same node to conflict. See [#2584](https://github.com/VictoriaMetrics/operator/issues/2584). Thanks to @cesium147.
 * BUGFIX: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): pass `-kubernetesCollector.includePodLabels=false` when `spec.k8sCollector.includePodLabels` is set to `false`. Previously, the flag was omitted, so vlagent kept its default and still attached pod labels to log entries. See [#2772](https://github.com/VictoriaMetrics/operator/issues/2772).
 

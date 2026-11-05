@@ -1359,8 +1359,8 @@ func TestConvertVLCollector(t *testing.T) {
 		},
 	)
 }
-func TestConvertVLogs(t *testing.T) {
-	f := func(values *VLogsHelmValues, expected func() *vmv1beta1.VLogs) {
+func TestConvertVLSingle(t *testing.T) {
+	f := func(values *VLSingleHelmValues, expected func() *vmv1.VLSingle) {
 		t.Helper()
 		actual, err := Convert("test-name", "test-ns", values)
 		assert.NoError(t, err)
@@ -1369,7 +1369,7 @@ func TestConvertVLogs(t *testing.T) {
 
 	// Basic conversion
 	f(
-		&VLogsHelmValues{
+		&VLSingleHelmValues{
 			Server: ServerValues{
 				Image: ImageValues{
 					Repository: "victoriametrics/victoria-logs",
@@ -1379,17 +1379,17 @@ func TestConvertVLogs(t *testing.T) {
 				RetentionPeriod: "14d",
 			},
 		},
-		func() *vmv1beta1.VLogs {
-			return &vmv1beta1.VLogs{
+		func() *vmv1.VLSingle {
+			return &vmv1.VLSingle{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "operator.victoriametrics.com/v1beta1",
-					Kind:       "VLogs",
+					APIVersion: "operator.victoriametrics.com/v1",
+					Kind:       "VLSingle",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-name",
 					Namespace: "test-ns",
 				},
-				Spec: vmv1beta1.VLogsSpec{
+				Spec: vmv1.VLSingleSpec{
 					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						Image: vmv1beta1.Image{
 							Repository: "victoriametrics/victoria-logs",
@@ -2161,6 +2161,18 @@ func TestConvertLicense(t *testing.T) {
 	f("victoria-metrics-auth", "")
 	f("victoria-metrics-anomaly", "")
 	f("victoria-logs-cluster", "")
+	f("victoria-logs-single", "")
 	f("victoria-logs-agent", "remoteWrite:\n  - url: http://vlinsert:9481\n")
 	f("victoria-logs-collector", "remoteWrite:\n  - url: http://vlinsert:9481\n")
+}
+
+func TestConvertImageVariant(t *testing.T) {
+	f := func(image ImageValues, want string) {
+		t.Helper()
+		assert.Equal(t, want, convertImage(image, ImageValues{}).Tag)
+	}
+	f(ImageValues{Tag: "v1.0.0", Variant: "cluster"}, "v1.0.0-cluster")
+	f(ImageValues{Tag: "v1.0.0"}, "v1.0.0")
+	f(ImageValues{Variant: "cluster"}, "")
+	f(ImageValues{}, "")
 }

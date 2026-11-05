@@ -38,7 +38,7 @@ func BindFlags(f *flag.FlagSet) {
 
 var (
 	cacheSyncTimeout = ptr.To(3 * time.Minute)
-	maxConcurrency   = ptr.To(15)
+	maxConcurrency   = ptr.To(16)
 )
 
 // childReconcileConcurrencyLimit bounds concurrent errgroup fan-out over sibling CRs within a single parent reconcile.

@@ -86,7 +86,7 @@ The tool maps the majority of critical parameters, including Replicas, Images, R
 
 ### License
 
-**Supported CRs.** The charts' `license` and `global.license` blocks become `spec.license` of every CR that supports it. `victoria-logs-single` is converted into the deprecated `VLogs` CR, so its license is currently not converted.
+**Supported CRs.** The charts' `license` and `global.license` blocks become `spec.license` of every CR that supports it.
 
 **Precedence.** The license is resolved the same way the charts do:
 

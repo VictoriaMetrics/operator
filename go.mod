@@ -5,7 +5,7 @@ go 1.27.3
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/VictoriaMetrics/VictoriaMetrics v1.155.0
-	github.com/VictoriaMetrics/metrics v1.44.1
+	github.com/VictoriaMetrics/metrics v1.45.0
 	github.com/VictoriaMetrics/metricsql v0.87.6
 	github.com/VictoriaMetrics/operator/api v0.75.2
 	github.com/caarlos0/env/v11 v11.4.2

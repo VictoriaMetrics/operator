@@ -33,8 +33,8 @@ For each `VMAlert` resource, the Operator deploys a properly configured `Deploym
 The VMAlert `Pod`s are configured to mount a list of `ConfigMap`s named `vm-<VMAlert-name>-rulefiles-<number>`
 containing the alerting and recording rules.
 
-For each `VMAlert` resource, the Operator adds `Service` and `VMServiceScrape` in the same namespace named
-`vmalert-<VMAlert-name>`, or `<VMAlert-name>` if `useLegacyNaming` is set.
+For each `VMAlert` resource, the Operator adds a `Service` in the same namespace named
+`vmalert-<VMAlert-name>`, or `<VMAlert-name>` if `useLegacyNaming` is set. Unless `disableSelfServiceScrape` is set, it also adds a `VMServiceScrape` with the same name.
 
 ## Specification
 

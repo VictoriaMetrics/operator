@@ -11,6 +11,11 @@ import (
 	"k8s.io/utils/ptr"
 )
 
+func TestStatefulSetUpdateStrategyBehaviorValidateMissingMaxUnavailable(t *testing.T) {
+	behavior := &StatefulSetUpdateStrategyBehavior{}
+	assert.EqualError(t, behavior.Validate(), "maxUnavailable is required")
+}
+
 func Test_buildPathWithPrefixFlag(t *testing.T) {
 	type opts struct {
 		flags       map[string]string

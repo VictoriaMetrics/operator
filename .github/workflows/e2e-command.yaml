@@ -1,0 +1,34 @@
+name: E2E command
+# Comment /run-e2e on a pull request to run e2e tests, or to run them again:
+# re-adds the run-e2e label, which triggers e2e.yaml.
+# Maintainers can use it on any pull request, other users only on their own pull requests.
+# For first-time contributors, the triggered e2e run still waits for a maintainer to approve it,
+# like all their workflow runs.
+# It runs with a token that can write to this repo, so it must never check out or run PR code.
+on:
+  issue_comment:
+    types:
+      - created
+
+permissions: {}
+
+jobs:
+  relabel:
+    name: Re-add run-e2e label
+    if: >-
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/run-e2e') &&
+      (contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association) ||
+       github.event.comment.user.login == github.event.issue.user.login)
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.VM_BOT_GH_TOKEN }}
+      REPO: ${{ github.repository }}
+      PR: ${{ github.event.issue.number }}
+      COMMENT_ID: ${{ github.event.comment.id }}
+    steps:
+      - name: Re-add run-e2e label
+        run: |
+          gh api -X DELETE "repos/$REPO/issues/$PR/labels/run-e2e" || true
+          gh api "repos/$REPO/issues/$PR/labels" -f 'labels[]=run-e2e'
+          gh api "repos/$REPO/issues/comments/$COMMENT_ID/reactions" -f content=rocket

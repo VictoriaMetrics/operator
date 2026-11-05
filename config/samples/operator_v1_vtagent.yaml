@@ -7,4 +7,4 @@ metadata:
   name: vtagent-sample
 spec:
   remoteWrite:
-    - url: "http://vtsingle-dev:10428/insert/native"
+    - url: "http://vtsingle-dev:10428/insert/opentelemetry/v1/traces"

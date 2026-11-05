@@ -20,5 +20,5 @@ spec:
           requests:
             storage: 10Gi
   remoteWrite:
-    - url: "http://vtsingle-example:10428/insert/native"
+    - url: "http://vtsingle-example:10428/insert/opentelemetry/v1/traces"
       maxDiskUsage: 5GB

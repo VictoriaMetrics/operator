@@ -33,7 +33,7 @@ metadata:
   name: example
 spec:
   remoteWrite:
-    - url: "http://vtsingle-example:10428/insert/native"
+    - url: "http://vtsingle-example:10428/insert/opentelemetry/v1/traces"
 ```
 
 For each `VTAgent` resource, the Operator deploys a properly configured `StatefulSet` in the same namespace,
@@ -60,7 +60,7 @@ metadata:
   name: example
 spec:
   remoteWrite:
-    - url: "http://vtsingle-example:10428/insert/native"
+    - url: "http://vtsingle-example:10428/insert/opentelemetry/v1/traces"
   grpcSpec:
     listenPort: 4317
 ```
@@ -75,7 +75,7 @@ metadata:
   name: example
 spec:
   remoteWrite:
-    - url: "http://vtsingle-example:10428/insert/native"
+    - url: "http://vtsingle-example:10428/insert/opentelemetry/v1/traces"
   grpcSpec:
     listenPort: 4317
     tlsConfig:
@@ -100,8 +100,8 @@ metadata:
   name: example
 spec:
   remoteWrite:
-    - url: "http://vtsingle-a:10428/insert/native"
-    - url: "http://vtsingle-b:10428/insert/native"
+    - url: "http://vtsingle-a:10428/insert/opentelemetry/v1/traces"
+    - url: "http://vtsingle-b:10428/insert/opentelemetry/v1/traces"
 ```
 
 ## Specification
@@ -123,10 +123,10 @@ metadata:
 spec:
   image:
     repository: victoriametrics/vtagent
-    tag: v0.11.0
+    tag: v0.13.0
     pullPolicy: Always
   remoteWrite:
-    - url: "http://vtsingle-example:10428/insert/native"
+    - url: "http://vtsingle-example:10428/insert/opentelemetry/v1/traces"
 ```
 
 Also, you can specify `imagePullSecrets` if you are pulling images from private repo:
@@ -139,12 +139,12 @@ metadata:
 spec:
   image:
     repository: victoriametrics/vtagent
-    tag: v0.11.0
+    tag: v0.13.0
     pullPolicy: Always
   imagePullSecrets:
     - name: my-repo-secret
   remoteWrite:
-    - url: "http://vtsingle-example:10428/insert/native"
+    - url: "http://vtsingle-example:10428/insert/opentelemetry/v1/traces"
 ```
 
 ## Resource management
@@ -158,7 +158,7 @@ metadata:
   name: resources-example
 spec:
   remoteWrite:
-    - url: "http://vtsingle-example:10428/insert/native"
+    - url: "http://vtsingle-example:10428/insert/opentelemetry/v1/traces"
   resources:
     requests:
       memory: "64Mi"
@@ -216,6 +216,6 @@ spec:
           requests:
             storage: 10Gi
   remoteWrite:
-    - url: "http://vtsingle-example:10428/insert/native"
+    - url: "http://vtsingle-example:10428/insert/opentelemetry/v1/traces"
       maxDiskUsage: 5GB
 ```

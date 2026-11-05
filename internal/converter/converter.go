@@ -1304,7 +1304,7 @@ func convertImage(image ImageValues, globalImage ImageValues) vmv1beta1.Image {
 	result.Repository = repo
 
 	tag := image.Tag
-	if image.Variant != "" {
+	if tag != "" && image.Variant != "" {
 		tag = fmt.Sprintf("%s-%s", tag, image.Variant)
 	}
 	result.Tag = tag

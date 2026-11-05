@@ -1,6 +1,10 @@
 name: E2E command
 # Comment /run-e2e on a pull request to run e2e tests, or to run them again:
 # re-adds the run-e2e label, which triggers e2e.yaml.
+# Maintainers can use it on any pull request. Other users can use it only on their own pull requests,
+# once workflows are allowed to run for the latest commit:
+# - returning contributors: right after the push;
+# - first-time contributors: after a maintainer approves the workflows.
 # It runs with a token that can write to this repo, so it must never check out or run PR code.
 on:
   issue_comment:
@@ -15,15 +19,32 @@ jobs:
     if: >-
       github.event.issue.pull_request &&
       startsWith(github.event.comment.body, '/run-e2e') &&
-      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+      (contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association) ||
+       github.event.comment.user.login == github.event.issue.user.login)
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      pull-requests: read
     env:
-      GH_TOKEN: ${{ secrets.VM_BOT_GH_TOKEN }}
       REPO: ${{ github.repository }}
       PR: ${{ github.event.issue.number }}
       COMMENT_ID: ${{ github.event.comment.id }}
     steps:
+      - name: Check workflows are allowed to run for the latest commit
+        if: ${{ !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association) }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(gh api "repos/$REPO/pulls/$PR" --jq .head.sha)
+          approved=$(gh api "repos/$REPO/actions/workflows/main.yaml/runs?head_sha=$sha&event=pull_request" \
+            --jq '[.workflow_runs[] | select(.status != "action_required" and .conclusion != "action_required")] | length')
+          if [ "$approved" -eq 0 ]; then
+            echo "::error::Build and Test hasn't started for $sha yet, wait for it to start or for a maintainer to approve it"
+            exit 1
+          fi
       - name: Re-add run-e2e label
+        env:
+          GH_TOKEN: ${{ secrets.VM_BOT_GH_TOKEN }}
         run: |
           gh api -X DELETE "repos/$REPO/issues/$PR/labels/run-e2e" || true
           gh api "repos/$REPO/issues/$PR/labels" -f 'labels[]=run-e2e'

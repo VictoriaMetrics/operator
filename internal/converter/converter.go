@@ -42,10 +42,11 @@ type VMClusterHelmValues struct {
 	License        *LicenseValues  `yaml:"license,omitempty" json:"license,omitempty"`
 }
 
-type VLogsHelmValues struct {
+type VLSingleHelmValues struct {
 	Global         GlobalValues    `yaml:"global,omitempty" json:"global,omitempty"`
 	Server         ServerValues    `yaml:"server" json:"server"`
 	ServiceAccount *ServiceAccount `yaml:"serviceAccount,omitempty" json:"serviceAccount,omitempty"`
+	License        *LicenseValues  `yaml:"license,omitempty" json:"license,omitempty"`
 }
 
 type VTSingleHelmValues struct {
@@ -549,6 +550,40 @@ type VLAgentHelmValues struct {
 	PersistentVolume          *PersistentVolumeValues           `yaml:"persistentVolume,omitempty" json:"persistentVolume,omitempty"`
 }
 
+type VTAgentHelmValues struct {
+	Image                     ImageValues                       `yaml:"image" json:"image"`
+	Global                    GlobalValues                      `yaml:"global,omitempty" json:"global,omitempty"`
+	ReplicaCount              *int32                            `yaml:"replicaCount,omitempty" json:"replicaCount,omitempty"`
+	Annotations               map[string]string                 `yaml:"annotations,omitempty" json:"annotations,omitempty"`
+	PodAnnotations            map[string]string                 `yaml:"podAnnotations,omitempty" json:"podAnnotations,omitempty"`
+	PodLabels                 map[string]string                 `yaml:"podLabels,omitempty" json:"podLabels,omitempty"`
+	NodeSelector              map[string]string                 `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
+	Tolerations               []corev1.Toleration               `yaml:"tolerations,omitempty" json:"tolerations,omitempty"`
+	Affinity                  *corev1.Affinity                  `yaml:"affinity,omitempty" json:"affinity,omitempty"`
+	TopologySpreadConstraints []corev1.TopologySpreadConstraint `yaml:"topologySpreadConstraints,omitempty" json:"topologySpreadConstraints,omitempty"`
+	SecurityContext           *corev1.SecurityContext           `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
+	PodSecurityContext        *corev1.PodSecurityContext        `yaml:"podSecurityContext,omitempty" json:"podSecurityContext,omitempty"`
+	PriorityClassName         string                            `yaml:"priorityClassName,omitempty" json:"priorityClassName,omitempty"`
+	ExtraArgs                 map[string]string                 `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
+	Env                       []corev1.EnvVar                   `yaml:"env,omitempty" json:"env,omitempty"`
+	ExtraVolumes              []corev1.Volume                   `yaml:"extraVolumes,omitempty" json:"extraVolumes,omitempty"`
+	ExtraVolumeMounts         []corev1.VolumeMount              `yaml:"extraVolumeMounts,omitempty" json:"extraVolumeMounts,omitempty"`
+	Resources                 *corev1.ResourceRequirements      `yaml:"resources,omitempty" json:"resources,omitempty"`
+	RemoteWrite               []VTAgentRemoteWriteValues        `yaml:"remoteWrite" json:"remoteWrite"`
+	MaxDiskUsagePerURL        string                            `yaml:"maxDiskUsagePerURL,omitempty" json:"maxDiskUsagePerURL,omitempty"`
+	PersistentVolume          *PersistentVolumeValues           `yaml:"persistentVolume,omitempty" json:"persistentVolume,omitempty"`
+	ServiceAccount            *ServiceAccount                   `yaml:"serviceAccount,omitempty" json:"serviceAccount,omitempty"`
+	OTLPGRPC                  *VTAgentOTLPGRPCValues            `yaml:"otlpGRPC,omitempty" json:"otlpGRPC,omitempty"`
+}
+
+type VTAgentOTLPGRPCValues struct {
+	ListenAddr    string `yaml:"listenAddr,omitempty" json:"listenAddr,omitempty"`
+	TLS           bool   `yaml:"tls,omitempty" json:"tls,omitempty"`
+	TLSCertFile   string `yaml:"tlsCertFile,omitempty" json:"tlsCertFile,omitempty"`
+	TLSKeyFile    string `yaml:"tlsKeyFile,omitempty" json:"tlsKeyFile,omitempty"`
+	TLSMinVersion string `yaml:"tlsMinVersion,omitempty" json:"tlsMinVersion,omitempty"`
+}
+
 type VLCollectorHelmValues struct {
 	Image                     ImageValues                       `yaml:"image" json:"image"`
 	Global                    GlobalValues                      `yaml:"global,omitempty" json:"global,omitempty"`
@@ -708,6 +743,20 @@ func (v VLAgentRemoteWriteValues) asSpec() vmv1.VLAgentRemoteWriteSpec {
 	return rw
 }
 
+type VTAgentRemoteWriteValues struct {
+	vmv1.VTAgentRemoteWriteSpec `yaml:",inline" json:",inline"`
+	remoteWriteTLSValues        `yaml:",inline" json:",inline"`
+}
+
+// asSpec merges the flat tls* keys into TLSConfig, unless it was already set explicitly.
+func (v VTAgentRemoteWriteValues) asSpec() vmv1.VTAgentRemoteWriteSpec {
+	rw := v.VTAgentRemoteWriteSpec
+	if rw.TLSConfig == nil {
+		rw.TLSConfig = v.asVLTLSConfig()
+	}
+	return rw
+}
+
 // VMAlertRemoteWriteValues is singular, unlike VMAgent/VLAgent's list-based remoteWrite.
 type VMAlertRemoteWriteValues struct {
 	vmv1beta1.VMAlertRemoteWriteSpec `yaml:",inline" json:",inline"`
@@ -740,6 +789,17 @@ func convertVLAgentRemoteWrite(items []VLAgentRemoteWriteValues) []vmv1.VLAgentR
 		return nil
 	}
 	result := make([]vmv1.VLAgentRemoteWriteSpec, 0, len(items))
+	for _, item := range items {
+		result = append(result, item.asSpec())
+	}
+	return result
+}
+
+func convertVTAgentRemoteWrite(items []VTAgentRemoteWriteValues) []vmv1.VTAgentRemoteWriteSpec {
+	if items == nil {
+		return nil
+	}
+	result := make([]vmv1.VTAgentRemoteWriteSpec, 0, len(items))
 	for _, item := range items {
 		result = append(result, item.asSpec())
 	}
@@ -951,7 +1011,13 @@ func UnmarshalValues(data []byte, chart string) (any, error) {
 		}
 		return &values, nil
 	case "victoria-logs-single":
-		var values VLogsHelmValues
+		var values VLSingleHelmValues
+		if err := k8syaml.Unmarshal(data, &values); err != nil {
+			return nil, err
+		}
+		return &values, nil
+	case "victoria-traces-agent":
+		var values VTAgentHelmValues
 		if err := k8syaml.Unmarshal(data, &values); err != nil {
 			return nil, err
 		}
@@ -1133,23 +1199,41 @@ func Convert(name, namespace string, values any) (any, error) {
 		agent.Spec = *spec
 		cr = agent
 
-	case *VLogsHelmValues:
-		vlogs := &vmv1beta1.VLogs{
+	case *VLSingleHelmValues:
+		vlsingle := &vmv1.VLSingle{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: "operator.victoriametrics.com/v1beta1",
-				Kind:       "VLogs",
+				APIVersion: "operator.victoriametrics.com/v1",
+				Kind:       "VLSingle",
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
 				Namespace: namespace,
 			},
 		}
-		spec, err := convertVLogsSpec(v)
+		spec, err := convertVLSingleSpec(v)
 		if err != nil {
 			return nil, err
 		}
-		vlogs.Spec = *spec
-		cr = vlogs
+		vlsingle.Spec = *spec
+		cr = vlsingle
+
+	case *VTAgentHelmValues:
+		agent := &vmv1.VTAgent{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "operator.victoriametrics.com/v1",
+				Kind:       "VTAgent",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+		}
+		spec, err := convertVTAgentSpec(v)
+		if err != nil {
+			return nil, err
+		}
+		agent.Spec = *spec
+		cr = agent
 
 	case *VTSingleHelmValues:
 		vtsingle := &vmv1.VTSingle{
@@ -1343,7 +1427,7 @@ func convertImage(image ImageValues, globalImage ImageValues) vmv1beta1.Image {
 	result.Repository = repo
 
 	tag := image.Tag
-	if image.Variant != "" {
+	if tag != "" && image.Variant != "" {
 		tag = fmt.Sprintf("%s-%s", tag, image.Variant)
 	}
 	result.Tag = tag
@@ -1800,6 +1884,106 @@ func convertVLAgentSpec(values *VLAgentHelmValues) (*vmv1.VLAgentSpec, error) {
 
 	return spec, nil
 }
+func convertVTAgentSpec(values *VTAgentHelmValues) (*vmv1.VTAgentSpec, error) {
+	spec := &vmv1.VTAgentSpec{}
+
+	cfg, err := convertCommonConfig(ServerValues{
+		Image:              values.Image,
+		ReplicaCount:       values.ReplicaCount,
+		ExtraEnvs:          values.Env,
+		Resources:          values.Resources,
+		NodeSelector:       values.NodeSelector,
+		Tolerations:        values.Tolerations,
+		Affinity:           values.Affinity,
+		PodAnnotations:     values.PodAnnotations,
+		Labels:             values.PodLabels,
+		PodSecurityContext: values.PodSecurityContext,
+		SecurityContext:    values.SecurityContext,
+		PersistentVolume:   values.PersistentVolume,
+	}, values.Global)
+	if err != nil {
+		return nil, err
+	}
+
+	if values.ServiceAccount != nil && values.ServiceAccount.Name != "" {
+		spec.ServiceAccountName = values.ServiceAccount.Name
+	}
+
+	spec.Image = cfg.Image
+	spec.ReplicaCount = cfg.ReplicaCount
+	spec.ExtraArgs = values.ExtraArgs
+	spec.ExtraEnvs = cfg.ExtraEnvs
+	spec.Resources = cfg.Resources
+	spec.NodeSelector = cfg.NodeSelector
+	spec.Tolerations = cfg.Tolerations
+	spec.Affinity = cfg.Affinity
+	if len(values.Annotations) > 0 {
+		spec.ManagedMetadata = &vmv1beta1.ManagedObjectsMetadata{Annotations: values.Annotations}
+	}
+	spec.PodMetadata = cfg.PodMetadata
+	spec.ServiceSpec = cfg.ServiceSpec
+	spec.RemoteWrite = convertVTAgentRemoteWrite(values.RemoteWrite)
+	spec.SecurityContext = cfg.SecurityContext
+	if cfg.Storage != nil {
+		spec.Storage = &vmv1beta1.StorageSpec{
+			VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+				Spec: *cfg.Storage,
+			},
+		}
+	}
+
+	if values.MaxDiskUsagePerURL != "" {
+		maxDiskUsage := vmv1beta1.BytesString(values.MaxDiskUsagePerURL)
+		spec.RemoteWriteSettings = &vmv1.VTAgentRemoteWriteSettings{MaxDiskUsagePerURL: &maxDiskUsage}
+	}
+
+	grpcSpec, err := convertVTAgentOTLPGRPC(values.OTLPGRPC)
+	if err != nil {
+		return nil, err
+	}
+	spec.GRPCSpec = grpcSpec
+
+	spec.TopologySpreadConstraints = values.TopologySpreadConstraints
+	spec.PriorityClassName = values.PriorityClassName
+	spec.Volumes = values.ExtraVolumes
+	spec.VolumeMounts = values.ExtraVolumeMounts
+
+	return spec, nil
+}
+
+// convertVTAgentOTLPGRPC maps the chart's otlpGRPC listener to spec.grpcSpec, or nil if the listener is disabled.
+func convertVTAgentOTLPGRPC(values *VTAgentOTLPGRPCValues) (*vmv1.OTLPGRPCSpec, error) {
+	if values == nil || values.ListenAddr == "" {
+		return nil, nil
+	}
+	host, portStr, err := net.SplitHostPort(values.ListenAddr)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse otlpGRPC.listenAddr=%q: %w", values.ListenAddr, err)
+	}
+	// the operator always listens on all interfaces
+	switch host {
+	case "", "0.0.0.0", "::":
+	default:
+		return nil, fmt.Errorf("otlpGRPC.listenAddr=%q cannot be converted: VTAgent can listen only on all interfaces, use host-less address, e.g. :%s", values.ListenAddr, portStr)
+	}
+	port, err := strconv.ParseInt(portStr, 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse port of otlpGRPC.listenAddr=%q: %w", values.ListenAddr, err)
+	}
+	if port < 1 || port > 65535 {
+		return nil, fmt.Errorf("port of otlpGRPC.listenAddr=%q must be between 1 and 65535", values.ListenAddr)
+	}
+	spec := &vmv1.OTLPGRPCSpec{ListenPort: int32(port)}
+	if values.TLS {
+		spec.TLSConfig = &vmv1.TLSServerConfig{
+			CertFile:   values.TLSCertFile,
+			KeyFile:    values.TLSKeyFile,
+			MinVersion: values.TLSMinVersion,
+		}
+	}
+	return spec, nil
+}
+
 func convertVLClusterSpec(values *VLClusterHelmValues) (*vmv1.VLClusterSpec, error) {
 	spec := &vmv1.VLClusterSpec{}
 
@@ -1912,8 +2096,8 @@ func convertVLCollectorSpec(values *VLCollectorHelmValues) (*vmv1.VLAgentSpec, e
 
 	return spec, nil
 }
-func convertVLogsSpec(values *VLogsHelmValues) (*vmv1beta1.VLogsSpec, error) {
-	spec := &vmv1beta1.VLogsSpec{}
+func convertVLSingleSpec(values *VLSingleHelmValues) (*vmv1.VLSingleSpec, error) {
+	spec := &vmv1.VLSingleSpec{}
 	cfg, err := convertCommonConfig(values.Server, values.Global)
 	if err != nil {
 		return nil, err
@@ -1934,6 +2118,8 @@ func convertVLogsSpec(values *VLogsHelmValues) (*vmv1beta1.VLogsSpec, error) {
 	if cfg.Storage != nil {
 		spec.Storage = cfg.Storage
 	}
+
+	spec.License = licenseSpec(values.License, values.Global.License)
 
 	return spec, nil
 }

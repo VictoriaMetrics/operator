@@ -1047,6 +1047,113 @@ func TestConvertVLAgent(t *testing.T) {
 		},
 	)
 }
+func TestConvertVTAgent(t *testing.T) {
+	f := func(values *VTAgentHelmValues, expected func() *vmv1.VTAgent) {
+		t.Helper()
+		actual, err := Convert("test-name", "test-ns", values)
+		assert.NoError(t, err)
+		assert.Equal(t, expected(), actual)
+	}
+
+	// Basic conversion
+	f(
+		&VTAgentHelmValues{
+			Image: ImageValues{
+				Repository: "victoriametrics/vtagent",
+				Tag:        "v0.12.1",
+			},
+			ReplicaCount: ptr.To(int32(1)),
+			RemoteWrite: []VTAgentRemoteWriteValues{
+				{VTAgentRemoteWriteSpec: vmv1.VTAgentRemoteWriteSpec{URL: "http://victoria-traces:10428/insert/native"}},
+			},
+			MaxDiskUsagePerURL: "1GiB",
+			OTLPGRPC: &VTAgentOTLPGRPCValues{
+				ListenAddr:  ":4317",
+				TLS:         true,
+				TLSCertFile: "/tls/tls.crt",
+				TLSKeyFile:  "/tls/tls.key",
+			},
+		},
+		func() *vmv1.VTAgent {
+			return &vmv1.VTAgent{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "operator.victoriametrics.com/v1",
+					Kind:       "VTAgent",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-name",
+					Namespace: "test-ns",
+				},
+				Spec: vmv1.VTAgentSpec{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{
+						Image: vmv1beta1.Image{
+							Repository: "victoriametrics/vtagent",
+							Tag:        "v0.12.1",
+						},
+						ReplicaCount: ptr.To(int32(1)),
+					},
+					RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
+						{URL: "http://victoria-traces:10428/insert/native"},
+					},
+					RemoteWriteSettings: &vmv1.VTAgentRemoteWriteSettings{
+						MaxDiskUsagePerURL: ptr.To(vmv1beta1.BytesString("1GiB")),
+					},
+					GRPCSpec: &vmv1.OTLPGRPCSpec{
+						ListenPort: 4317,
+						TLSConfig: &vmv1.TLSServerConfig{
+							CertFile: "/tls/tls.crt",
+							KeyFile:  "/tls/tls.key",
+						},
+					},
+				},
+			}
+		},
+	)
+}
+
+func TestConvertVTAgentOTLPGRPCErrors(t *testing.T) {
+	f := func(addr string) {
+		t.Helper()
+		_, err := Convert("test-name", "test-ns", &VTAgentHelmValues{OTLPGRPC: &VTAgentOTLPGRPCValues{ListenAddr: addr}})
+		assert.Error(t, err, addr)
+	}
+	f("127.0.0.1:4317")
+	f(":0")
+	f(":70000")
+	f("4317")
+
+	cr, err := Convert("test-name", "test-ns", &VTAgentHelmValues{OTLPGRPC: &VTAgentOTLPGRPCValues{ListenAddr: "0.0.0.0:4317"}})
+	require.NoError(t, err)
+	assert.Equal(t, int32(4317), cr.(*vmv1.VTAgent).Spec.GRPCSpec.ListenPort)
+}
+
+func TestConvertVTAgentAnnotations(t *testing.T) {
+	cr, err := Convert("test-name", "test-ns", &VTAgentHelmValues{Annotations: map[string]string{"a": "b"}})
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{"a": "b"}, cr.(*vmv1.VTAgent).Spec.ManagedMetadata.Annotations)
+}
+
+// TestUnmarshalValuesSupportsRemoteWriteTLSForVTAgent covers the vtagent chart's flat tls* keys.
+func TestUnmarshalValuesSupportsRemoteWriteTLSForVTAgent(t *testing.T) {
+	values, err := UnmarshalValues([]byte(`
+image:
+  repository: victoriametrics/vtagent
+remoteWrite:
+  - url: https://victoria-traces:10428/insert/native
+    tlsCAFile: /etc/tls/ca.crt
+    tlsInsecureSkipVerify: true
+`), "victoria-traces-agent")
+	require.NoError(t, err)
+
+	cr, err := Convert("test-name", "test-ns", values)
+	require.NoError(t, err)
+	agent := cr.(*vmv1.VTAgent)
+	require.Len(t, agent.Spec.RemoteWrite, 1)
+	require.NotNil(t, agent.Spec.RemoteWrite[0].TLSConfig)
+	assert.Equal(t, "/etc/tls/ca.crt", agent.Spec.RemoteWrite[0].TLSConfig.CAFile)
+	assert.True(t, agent.Spec.RemoteWrite[0].TLSConfig.InsecureSkipVerify)
+}
+
 func TestConvertVLCluster(t *testing.T) {
 	f := func(values *VLClusterHelmValues, expected func() *vmv1.VLCluster) {
 		t.Helper()

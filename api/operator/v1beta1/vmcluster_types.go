@@ -764,6 +764,17 @@ func (cr *VMCluster) GetRemoteWriteURL() string {
 }
 
 func (cr *VMCluster) Validate() error {
+	if storage := cr.Spec.VMStorage; storage != nil {
+		if storage.ReplicaCount != nil && *storage.ReplicaCount > MaxReplicaCount {
+			return fmt.Errorf("vmstorage replicaCount cannot exceed %d", MaxReplicaCount)
+		}
+		if storage.HPA != nil && storage.HPA.GetMinReplicas() > MaxReplicaCount {
+			return fmt.Errorf("vmstorage hpa.minReplicas cannot exceed %d", MaxReplicaCount)
+		}
+		if storage.HPA != nil && storage.HPA.MaxReplicas > MaxReplicaCount {
+			return fmt.Errorf("vmstorage hpa.maxReplicas cannot exceed %d", MaxReplicaCount)
+		}
+	}
 	if MustSkipCRValidation(cr) {
 		return nil
 	}

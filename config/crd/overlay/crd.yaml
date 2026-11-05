@@ -1803,6 +1803,7 @@ spec:
               replicaCount:
                 description: ReplicaCount is the expected size of the Application.
                 format: int32
+                maximum: 100
                 type: integer
               resources:
                 description: |-
@@ -4162,6 +4163,7 @@ spec:
                   replicaCount:
                     description: ReplicaCount is the expected size of the Application.
                     format: int32
+                    maximum: 100
                     type: integer
                   resources:
                     description: |-
@@ -5735,6 +5737,7 @@ spec:
                   replicaCount:
                     description: ReplicaCount is the expected size of the Application.
                     format: int32
+                    maximum: 100
                     type: integer
                   resources:
                     description: |-
@@ -7819,6 +7822,7 @@ spec:
                   replicaCount:
                     description: ReplicaCount is the expected size of the Application.
                     format: int32
+                    maximum: 100
                     type: integer
                   resources:
                     description: |-
@@ -11042,6 +11046,7 @@ spec:
                       replicaCount:
                         description: ReplicaCount is the expected size of the Application.
                         format: int32
+                        maximum: 100
                         type: integer
                       resources:
                         description: |-
@@ -13435,6 +13440,7 @@ spec:
                             description: ReplicaCount is the expected size of the
                               Application.
                             format: int32
+                            maximum: 100
                             type: integer
                           resources:
                             description: |-
@@ -15585,6 +15591,7 @@ spec:
                               description: ReplicaCount is the expected size of the
                                 Application.
                               format: int32
+                              maximum: 100
                               type: integer
                             resources:
                               description: |-
@@ -17809,6 +17816,7 @@ spec:
               replicaCount:
                 description: ReplicaCount is the expected size of the Application.
                 format: int32
+                maximum: 100
                 type: integer
               resources:
                 description: |-
@@ -23169,6 +23177,7 @@ spec:
               replicaCount:
                 description: ReplicaCount is the expected size of the Application.
                 format: int32
+                maximum: 100
                 type: integer
               resources:
                 description: |-
@@ -32971,6 +32980,7 @@ spec:
               replicaCount:
                 description: ReplicaCount is the expected size of the Application.
                 format: int32
+                maximum: 100
                 type: integer
               resources:
                 description: |-
@@ -36356,6 +36366,7 @@ spec:
               replicaCount:
                 description: ReplicaCount is the expected size of the Application.
                 format: int32
+                maximum: 100
                 type: integer
               resources:
                 description: |-
@@ -39335,6 +39346,7 @@ spec:
               replicaCount:
                 description: ReplicaCount is the expected size of the Application.
                 format: int32
+                maximum: 100
                 type: integer
               resources:
                 description: |-
@@ -43362,6 +43374,7 @@ spec:
               replicaCount:
                 description: ReplicaCount is the expected size of the Application.
                 format: int32
+                maximum: 100
                 type: integer
               resources:
                 description: |-
@@ -45939,6 +45952,7 @@ spec:
                   replicaCount:
                     description: ReplicaCount is the expected size of the Application.
                     format: int32
+                    maximum: 100
                     type: integer
                   resources:
                     description: |-
@@ -47412,6 +47426,7 @@ spec:
                   replicaCount:
                     description: ReplicaCount is the expected size of the Application.
                     format: int32
+                    maximum: 100
                     type: integer
                   resources:
                     description: |-
@@ -50000,6 +50015,7 @@ spec:
                   replicaCount:
                     description: ReplicaCount is the expected size of the Application.
                     format: int32
+                    maximum: 100
                     type: integer
                   resources:
                     description: |-
@@ -53726,6 +53742,7 @@ spec:
                       replicaCount:
                         description: ReplicaCount is the expected size of the Application.
                         format: int32
+                        maximum: 100
                         type: integer
                       resources:
                         description: |-
@@ -56770,6 +56787,7 @@ spec:
                             description: ReplicaCount is the expected size of the
                               Application.
                             format: int32
+                            maximum: 100
                             type: integer
                           resources:
                             description: |-
@@ -59398,6 +59416,7 @@ spec:
                               description: ReplicaCount is the expected size of the
                                 Application.
                               format: int32
+                              maximum: 100
                               type: integer
                             resources:
                               description: |-
@@ -80412,6 +80431,7 @@ spec:
               replicaCount:
                 description: ReplicaCount is the expected size of the Application.
                 format: int32
+                maximum: 100
                 type: integer
               resources:
                 description: |-
@@ -87029,6 +87049,7 @@ spec:
               replicaCount:
                 description: ReplicaCount is the expected size of the Application.
                 format: int32
+                maximum: 100
                 type: integer
               resources:
                 description: |-
@@ -90256,6 +90277,7 @@ spec:
                   replicaCount:
                     description: ReplicaCount is the expected size of the Application.
                     format: int32
+                    maximum: 100
                     type: integer
                   resources:
                     description: |-
@@ -91708,6 +91730,7 @@ spec:
                   replicaCount:
                     description: ReplicaCount is the expected size of the Application.
                     format: int32
+                    maximum: 100
                     type: integer
                   resources:
                     description: |-
@@ -93799,6 +93822,7 @@ spec:
                   replicaCount:
                     description: ReplicaCount is the expected size of the Application.
                     format: int32
+                    maximum: 100
                     type: integer
                   resources:
                     description: |-
@@ -95465,6 +95489,7 @@ spec:
               replicaCount:
                 description: ReplicaCount is the expected size of the Application.
                 format: int32
+                maximum: 100
                 type: integer
               resources:
                 description: |-

@@ -14,21 +14,27 @@ tags:
   - metrics
   - logs
 ---
-`VMAlert` - executes a list of given [alerting](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/) 
-or [recording](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/) rules against configured address. 
+`VMAlert` - executes a list of given [alerting](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/)
+or [recording](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/) rules against the configured datasource.
 
 The `VMAlert` CRD declaratively defines a desired [VMAlert](https://docs.victoriametrics.com/victoriametrics/vmalert/)
 setup to run in a Kubernetes cluster.
 
-It has few required config options - `datasource` and `notifier` are required, for other config parameters
-check [doc](https://docs.victoriametrics.com/operator/api/#v1beta1-vmalert).
+Only `datasource` is required. Alerting rules also need a notifier, configured with `notifier`, `notifiers`,
+`notifierConfigRef`, or the `notifier.url`, `notifier.config` or `notifier.blackhole` flags in `extraArgs`.
+If no notifier is configured:
+
+- alerting rules from `VMRule`s are skipped, and only their recording rules are loaded;
+- `VMAlert` with `rulePath` fails to reconcile, since the operator can't check whether these files contain alerting rules.
+
+For other config parameters check [doc](https://docs.victoriametrics.com/operator/api/#v1beta1-vmalert).
 
 For each `VMAlert` resource, the Operator deploys a properly configured `Deployment` in the same namespace.
-The VMAlert `Pod`s are configured to mount a list of `Configmaps` prefixed with `<VMAlert-name>-number` containing
-the configuration for alerting rules.
+The VMAlert `Pod`s are configured to mount a list of `ConfigMap`s named `vm-<VMAlert-name>-rulefiles-<number>`
+containing the alerting and recording rules.
 
-For each `VMAlert` resource, the Operator adds `Service` and `VMServiceScrape` in the same namespace prefixed with
-name `<VMAlert-name>`.
+For each `VMAlert` resource, the Operator adds `Service` and `VMServiceScrape` in the same namespace named
+`vmalert-<VMAlert-name>`, or `<VMAlert-name>` if `useLegacyNaming` is set.
 
 ## Specification
 
@@ -41,39 +47,20 @@ Also, you can check out the [examples](https://docs.victoriametrics.com/operator
 
 ## Rules
 
-The CRD specifies which `VMRule`s should be covered by the deployed `VMAlert` instances based on label selection.
-The Operator then generates a configuration based on the included `VMRule`s and updates the `Configmaps` containing
-the configuration. It continuously does so for all changes that are made to `VMRule`s or to the `VMAlert` resource itself.
+`VMAlert` loads alerting and recording rules from [VMRule](https://docs.victoriametrics.com/operator/resources/vmrule/) objects.
+The Operator renders the selected `VMRule`s into the rule `ConfigMap`s and updates them whenever a `VMRule`
+or the `VMAlert` itself changes.
 
-Alerting rules are filtered by selectors `ruleNamespaceSelector` and `ruleSelector` in `VMAlert` CRD definition. 
-For selecting rules from all namespaces you must specify it to empty value:
+`VMRule`s are selected by two [label selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors)
+in the `VMAlert` spec:
 
-```yaml
-spec:
-  ruleNamespaceSelector: {}
-```
+- `ruleNamespaceSelector` selects the namespaces to look for `VMRule`s in;
+- `ruleSelector` selects `VMRule`s by their labels.
 
-[VMRule](https://docs.victoriametrics.com/operator/resources/vmrule/) objects generate part of `VMAlert` configuration.
+They control which rules each `VMAlert` loads, for example per team or environment. The result also depends on
+`spec.selectAllByDefault` and on the operator's `WATCH_NAMESPACE` environment variable:
 
-For filtering rules `VMAlert` uses selectors `ruleNamespaceSelector` and `ruleSelector`.
-It allows configuring rules access control across namespaces and different environments.
-Specification of selectors you can see in [this doc](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#labelselector-v1-meta).
-
-In addition to the above selectors, the filtering of objects in a cluster is affected by the field `selectAllByDefault` of `VMAlert` spec and environment variable `WATCH_NAMESPACE` for operator.
-
-Following rules are applied:
-
-- If `ruleNamespaceSelector` and `ruleSelector` are both undefined, nothing is selected. Setting `spec.selectAllByDefault: true` selects all VMRules.
-- If `ruleNamespaceSelector` is defined and `ruleSelector` is undefined, all VMRules in the namespaces matched by `ruleNamespaceSelector` are selected.
-- If `ruleNamespaceSelector` is undefined and `ruleSelector` is defined, VMRules matching `ruleSelector` in the `VMAlert` namespace are selected.
-- If `ruleNamespaceSelector` and `ruleSelector` are both defined, VMRules matching `ruleSelector` in the namespaces matched by `ruleNamespaceSelector` are selected.
-- `selectAllByDefault` has an effect only when both `ruleNamespaceSelector` and `ruleSelector` are undefined.
-- An empty `ruleNamespaceSelector` (`{}`) matches all namespaces. If `ruleNamespaceSelector` matches no namespaces, nothing is selected.
-- If the operator's `WATCH_NAMESPACE` is set, `ruleNamespaceSelector` is ignored and VMRules are selected from all watched namespaces, not only from the `VMAlert` namespace. This also applies when only `ruleSelector` is defined.
-
-Below is a more visual and detailed view:
-
-| `ruleNamespaceSelector` | `ruleSelector` | `selectAllByDefault` | `WATCH_NAMESPACE` | Selected objects                                                                     |
+| `ruleNamespaceSelector` | `ruleSelector` | `selectAllByDefault` | `WATCH_NAMESPACE` | Selected VMRules                                                                     |
 |-------------------------|----------------|----------------------|-------------------|--------------------------------------------------------------------------------------|
 | undefined               | undefined      | false                | *any*             | nothing                                                                              |
 | undefined               | undefined      | **true**             | undefined         | all VMRules in the cluster                                                           |
@@ -84,12 +71,18 @@ Below is a more visual and detailed view:
 | **defined**             | undefined      | *any*                | **defined**       | all VMRules in the watched namespaces                                                |
 | *any*                   | **defined**    | *any*                | **defined**       | VMRules matching `ruleSelector` in the watched namespaces                            |
 
-More details about `WATCH_NAMESPACE` variable you can read in [this doc](https://docs.victoriametrics.com/operator/configuration/#namespaced-mode).
+Notes:
 
-Here are some examples of `VMAlert` configuration with selectors:
+- `selectAllByDefault` has an effect only when both selectors are undefined.
+- An empty selector (`{}`) matches everything, e.g. `ruleNamespaceSelector: {}` matches all namespaces.
+  A `ruleNamespaceSelector` that matches no namespaces selects nothing.
+- When `WATCH_NAMESPACE` is set, `ruleNamespaceSelector` is ignored and `VMRule`s are selected from all watched
+  namespaces, even when only `ruleSelector` is defined. See [namespaced mode](https://docs.victoriametrics.com/operator/configuration/#namespaced-mode).
+
+Examples:
 
 ```yaml
-# select all rule objects in the cluster
+# select all VMRules in the cluster
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlert
 metadata:
@@ -100,24 +93,63 @@ spec:
 
 ---
 
-# select all rule objects in specific namespace (my-namespace)
+# select all VMRules in my-namespace
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlert
 metadata:
   name: select-ns
 spec:
   # ...
-  ruleNamespaceSelector: 
+  ruleNamespaceSelector:
     matchLabels:
       kubernetes.io/metadata.name: my-namespace
+
+---
+
+# select VMRules labeled team: payments in all namespaces
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: select-team
+spec:
+  # ...
+  ruleNamespaceSelector: {}
+  ruleSelector:
+    matchLabels:
+      team: payments
 ```
+
+### Rule files
+
+Besides `VMRule`s, `VMAlert` can load rules from files listed in `spec.rulePath`. Each path is passed to `vmalert`
+as an additional `-rule` command-line argument, next to the rules from `VMRule`s. For example, rules from a `ConfigMap`
+mounted with `spec.configMaps`:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: example
+spec:
+  # ...
+  configMaps:
+    - extra-rules
+  rulePath:
+    - /etc/vm/configs/extra-rules/*.yaml
+```
+
+With [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/operator/resources/vmalert/#reading-rules-from-object-storage),
+`rulePath` can also point to `s3://` or `gs://` paths.
+
+Don't set `rule` in [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-arguments): it replaces all `-rule`
+arguments set by the operator, so rules from `VMRule`s and `spec.rulePath` are no longer loaded.
 
 ## High availability
 
-`VMAlert` can be launched with multiple replicas without an additional configuration as far [alertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/) is responsible for alert deduplication.
+`VMAlert` can be launched with multiple replicas without an additional configuration as long as [alertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager/) is responsible for alert deduplication.
 
-Note, if you want to use `VMAlert` with high-available [`VMAlertmanager`](https://docs.victoriametrics.com/operator/resources/vmalertmanager/), which has more than 1 replica. 
-You have to specify all pod fqdns  at `VMAlert.spec.notifiers.[url]`. Or you can use service discovery for notifier, examples:
+If [`VMAlertmanager`](https://docs.victoriametrics.com/operator/resources/vmalertmanager/) has more than one replica,
+list every pod's FQDN in `VMAlert.spec.notifiers[].url`, or use notifier service discovery. Examples:
 
 - alertmanager:
     ```yaml
@@ -143,16 +175,16 @@ You have to specify all pod fqdns  at `VMAlert.spec.notifiers.[url]`. Or you can
             webhook_configs:
               - url: 'http://alertmanagerwh:30500/'
       # ...
-    
+
     ---
-    
+
     apiVersion: operator.victoriametrics.com/v1beta1
     kind: VMAlertmanager
     metadata:
       name: example
       namespace: default
       labels:
-       usage: dedicated
+        usage: dedicated
     spec:
       replicaCount: 2
       configSecret: vmalertmanager-example
@@ -188,20 +220,20 @@ You have to specify all pod fqdns  at `VMAlert.spec.notifiers.[url]`. Or you can
     spec:
       replicaCount: 2
       datasource:
-       url: http://vmsingle-example.default.svc:8428
+        url: http://vmsingle-example.default.svc:8428
       notifiers:
         - selector:
             namespaceSelector:
-              matchNames: 
+              matchNames:
                 - default
             labelSelector:
               matchLabels:
-                  usage: dedicated
+                usage: dedicated
       evaluationInterval: "10s"
       ruleSelector: {}
       # ...
     ```
-  
+
 In addition, you need to specify `remoteWrite` and `remoteRead` urls for restoring alert states after restarts:
 
 ```yaml
@@ -271,36 +303,37 @@ kind: VMAlert
 metadata:
   name: resources-example
 spec:
-    # ...
-    resources:
-        requests:
-          memory: "64Mi"
-          cpu: "250m"
-        limits:
-          memory: "128Mi"
-          cpu: "500m"
-    # ...
+  # ...
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "250m"
+    limits:
+      memory: "128Mi"
+      cpu: "500m"
+  # ...
 ```
 
 If these parameters are not specified, then,
 by default all `VMAlert` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration/):
 
-- `VM_VMALERTDEFAULT_RESOURCE_LIMIT_MEM` - default memory limit for `VMAlert` pods,
-- `VM_VMALERTDEFAULT_RESOURCE_LIMIT_CPU` - default memory limit for `VMAlert` pods,
-- `VM_VMALERTDEFAULT_RESOURCE_REQUEST_MEM` - default memory limit for `VMAlert` pods,
-- `VM_VMALERTDEFAULT_RESOURCE_REQUEST_CPU` - default memory limit for `VMAlert` pods.
+- `VM_VMALERTDEFAULT_RESOURCE_LIMIT_MEM` - default memory limit for `VMAlert` pods, `500Mi`,
+- `VM_VMALERTDEFAULT_RESOURCE_LIMIT_CPU` - default CPU limit for `VMAlert` pods, `200m`,
+- `VM_VMALERTDEFAULT_RESOURCE_REQUEST_MEM` - default memory request for `VMAlert` pods, `200Mi`,
+- `VM_VMALERTDEFAULT_RESOURCE_REQUEST_CPU` - default CPU request for `VMAlert` pods, `50m`.
 
 These default parameters will be used if:
 
 - `VM_VMALERTDEFAULT_USEDEFAULTRESOURCES` is set to `true` (default value),
 - `VMAlert` CR doesn't have `resources` field in `spec` section.
 
-Field `resources` in `VMAlert` spec have higher priority than operator parameters.
+Field `resources` in `VMAlert` spec has higher priority than operator parameters.
 
 If you set `VM_VMALERTDEFAULT_USEDEFAULTRESOURCES` to `false` and don't specify `resources` in `VMAlert` CRD,
 then `VMAlert` pods will be created without resource requests and limits.
 
-Also, you can specify requests without limits - in this case default values for limits will not be used.
+Defaults are applied per resource: setting a request or a limit for CPU disables both default CPU values,
+and the same goes for memory. For example, you can specify requests without limits, and default limits will not be added.
 
 ## Enterprise features
 
@@ -308,18 +341,18 @@ VMAlert supports features [Reading rules from object storage](https://docs.victo
 and [Multitenancy](https://docs.victoriametrics.com/victoriametrics/vmalert/#multitenancy)
 from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/#victoriametrics-enterprise-features).
 
-For using Enterprise version of [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) you need to
- - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-keyref).
- - change version of `vmalert` to version with `-enterprise` suffix using [Version management](https://docs.victoriametrics.com/operator/resources/vmalert/#version-management).
+For using Enterprise version of [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) you need to:
+
+- specify license at either [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-key) or [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-keyref);
+- change version of `vmalert` to version with `-enterprise` suffix using [Version management](https://docs.victoriametrics.com/operator/resources/vmalert/#version-management).
 
 ### Reading rules from object storage
 
-After that you can pass `-rule` command-line argument with `s3://` or `gs://`
-to `VMAlert` with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-arguments).
+After that you can add `s3://` or `gs://` paths to [`spec.rulePath`](https://docs.victoriametrics.com/operator/resources/vmalert/#rule-files).
 
 More details about reading rules from object storage you can read in [vmalert docs](https://docs.victoriametrics.com/victoriametrics/vmalert/#reading-rules-from-object-storage).
 
-Here are complete example for [Reading rules from object storage](https://docs.victoriametrics.com/victoriametrics/vmalert/#reading-rules-from-object-storage):
+Here is a complete example for [Reading rules from object storage](https://docs.victoriametrics.com/victoriametrics/vmalert/#reading-rules-from-object-storage):
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -334,11 +367,10 @@ spec:
       key: key-in-a-secret-that-contains-license
   image:
     tag: v1.110.13-enterprise
-  extraArgs:
-    # using enterprise features: Reading rules from object storage
-    # more details about reading rules from object storage you can read on https://docs.victoriametrics.com/victoriametrics/vmalert/#reading-rules-from-object-storage
-    rule: s3://bucket/dir/alert.rules
-    
+  # using enterprise features: Reading rules from object storage
+  # more details about reading rules from object storage you can read on https://docs.victoriametrics.com/victoriametrics/vmalert/#reading-rules-from-object-storage
+  rulePath:
+    - s3://bucket/dir/alert.rules
   # ...other fields...
 ```
 
@@ -347,9 +379,9 @@ spec:
 After enabling enterprise version you can use [Multitenancy](https://docs.victoriametrics.com/victoriametrics/vmalert/#multitenancy)
 feature in `VMAlert`.
 
-For that you need to set `clusterMode` command-line flag 
+For that you need to set `clusterMode` command-line flag
 with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-arguments)
-and specify `tenant` field for groups 
+and specify `tenant` field for groups
 in [VMRule](https://docs.victoriametrics.com/operator/resources/vmrule/#enterprise-features):
 
 ```yaml
@@ -368,7 +400,7 @@ spec:
   extraArgs:
     # using enterprise features: multitenancy,
     # read more in https://docs.victoriametrics.com/victoriametrics/vmalert/#multitenancy
-    clusterMode: true 
+    clusterMode: "true"
 
   # ...other fields...
 
@@ -381,8 +413,8 @@ metadata:
 spec:
   groups:
     - name: vmalert-1
-    # using enterprise features: multitenancy,
-    # read more in https://docs.victoriametrics.com/victoriametrics/vmalert/#multitenancy
+      # using enterprise features: multitenancy,
+      # read more in https://docs.victoriametrics.com/victoriametrics/vmalert/#multitenancy
       tenant: 1
       rules:
         - alert: vmalert config reload error

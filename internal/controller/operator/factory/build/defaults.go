@@ -1,6 +1,7 @@
 package build
 
 import (
+	"slices"
 	"strings"
 	"time"
 
@@ -614,7 +615,11 @@ func addDefaultsToCommonParams(common *vmv1beta1.CommonAppsParams, cp *commonPar
 		}
 	}
 	if cp != nil {
-		common.ImagePullSecrets = append(common.ImagePullSecrets, cp.imagePullSecrets...)
+		for _, secret := range cp.imagePullSecrets {
+			if !slices.Contains(common.ImagePullSecrets, secret) {
+				common.ImagePullSecrets = append(common.ImagePullSecrets, secret)
+			}
+		}
 		if cp.useStrictSecurity != nil {
 			useStrictSecurity = *cp.useStrictSecurity
 		}

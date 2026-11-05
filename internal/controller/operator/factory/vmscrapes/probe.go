@@ -118,6 +118,9 @@ func generateProbeConfig(
 		})
 		// Add configured relabelings.
 		for _, r := range staticTarget.RelabelConfigs {
+			if r == nil {
+				continue
+			}
 			targetRelabelings = append(targetRelabelings, generateRelabelConfig(r))
 		}
 	}
@@ -172,6 +175,9 @@ func generateProbeConfig(
 			},
 		}...)
 		for _, r := range t.RelabelConfigs {
+			if r == nil {
+				continue
+			}
 			targetRelabelings = append(targetRelabelings, generateRelabelConfig(r))
 		}
 	}
@@ -193,6 +199,9 @@ func generateProbeConfig(
 
 	if scrapeClass != nil {
 		for _, r := range scrapeClass.RelabelConfigs {
+			if r == nil {
+				continue
+			}
 			relabelings = append(relabelings, generateRelabelConfig(r))
 		}
 	}
@@ -211,6 +220,9 @@ func generateProbeConfig(
 	}...)
 
 	for _, trc := range sp.ProbeScrapeRelabelTemplate {
+		if trc == nil {
+			continue
+		}
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the

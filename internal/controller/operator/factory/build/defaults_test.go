@@ -680,6 +680,63 @@ func TestClusterComponentVersionDefaults(t *testing.T) {
 	}
 }
 
+func TestClusterImagePullSecretsDefaultsAreIdempotent(t *testing.T) {
+	clusterSecrets := []corev1.LocalObjectReference{{Name: "shared"}, {Name: "cluster"}}
+	component := vmv1beta1.CommonAppsParams{
+		ImagePullSecrets: []corev1.LocalObjectReference{{Name: "component"}, {Name: "shared"}},
+	}
+	want := []corev1.LocalObjectReference{{Name: "component"}, {Name: "shared"}, {Name: "cluster"}}
+	check := func(t *testing.T, defaultCluster func(), components map[string]*vmv1beta1.CommonAppsParams) {
+		t.Helper()
+		for i := 0; i < 2; i++ {
+			defaultCluster()
+			for name, params := range components {
+				assert.Equalf(t, want, params.ImagePullSecrets, "%s after pass %d", name, i+1)
+			}
+		}
+	}
+
+	t.Run("VLCluster", func(t *testing.T) {
+		cr := &vmv1.VLCluster{Spec: vmv1.VLClusterSpec{
+			ImagePullSecrets: clusterSecrets,
+			VLStorage:        &vmv1.VLStorage{CommonAppsParams: *component.DeepCopy()},
+			VLInsert:         &vmv1.VLInsert{CommonAppsParams: *component.DeepCopy()},
+			VLSelect:         &vmv1.VLSelect{CommonAppsParams: *component.DeepCopy()},
+		}}
+		check(t, func() { addVLClusterDefaults(cr) }, map[string]*vmv1beta1.CommonAppsParams{
+			"storage": &cr.Spec.VLStorage.CommonAppsParams,
+			"insert":  &cr.Spec.VLInsert.CommonAppsParams,
+			"select":  &cr.Spec.VLSelect.CommonAppsParams,
+		})
+	})
+	t.Run("VTCluster", func(t *testing.T) {
+		cr := &vmv1.VTCluster{Spec: vmv1.VTClusterSpec{
+			ImagePullSecrets: clusterSecrets,
+			Storage:          &vmv1.VTStorage{CommonAppsParams: *component.DeepCopy()},
+			Insert:           &vmv1.VTInsert{CommonAppsParams: *component.DeepCopy()},
+			Select:           &vmv1.VTSelect{CommonAppsParams: *component.DeepCopy()},
+		}}
+		check(t, func() { addVTClusterDefaults(cr) }, map[string]*vmv1beta1.CommonAppsParams{
+			"storage": &cr.Spec.Storage.CommonAppsParams,
+			"insert":  &cr.Spec.Insert.CommonAppsParams,
+			"select":  &cr.Spec.Select.CommonAppsParams,
+		})
+	})
+	t.Run("VMCluster", func(t *testing.T) {
+		cr := &vmv1beta1.VMCluster{Spec: vmv1beta1.VMClusterSpec{
+			ImagePullSecrets: clusterSecrets,
+			VMStorage:        &vmv1beta1.VMStorage{CommonAppsParams: *component.DeepCopy()},
+			VMInsert:         &vmv1beta1.VMInsert{CommonAppsParams: *component.DeepCopy()},
+			VMSelect:         &vmv1beta1.VMSelect{CommonAppsParams: *component.DeepCopy()},
+		}}
+		check(t, func() { addVMClusterDefaults(cr) }, map[string]*vmv1beta1.CommonAppsParams{
+			"storage": &cr.Spec.VMStorage.CommonAppsParams,
+			"insert":  &cr.Spec.VMInsert.CommonAppsParams,
+			"select":  &cr.Spec.VMSelect.CommonAppsParams,
+		})
+	})
+}
+
 func TestAddDefaultMetadata(t *testing.T) {
 	cfg := config.MustGetBaseConfig()
 	defaultCfg := *cfg

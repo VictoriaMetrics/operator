@@ -71,6 +71,17 @@ func main() {
 		for _, s := range secrets {
 			objects = append(objects, s)
 		}
+		alertmanager, amSecrets, err := converter.ConvertVMAlertmanager(*name, *namespace, alertValues)
+		if err != nil {
+			fmt.Printf("cannot convert alertmanager: %v\n", err)
+			os.Exit(1)
+		}
+		if alertmanager != nil {
+			objects = append(objects, alertmanager)
+			for _, s := range amSecrets {
+				objects = append(objects, s)
+			}
+		}
 		rule, err := converter.ConvertVMAlertRules(*name, *namespace, alertValues)
 		if err != nil {
 			fmt.Printf("cannot convert config.alerts.groups: %v\n", err)

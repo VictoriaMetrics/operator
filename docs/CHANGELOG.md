@@ -13,6 +13,7 @@ aliases:
 
 ## tip
 
+* FEATURE: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): convert the bundled Alertmanager of the `victoria-metrics-alert` chart into a `VMAlertmanager` and add it to the converted `VMAlert` notifiers. Previously, the conversion failed when `alertmanager.enabled` was `true`. See [#2798](https://github.com/VictoriaMetrics/operator/pull/2798).
 * FEATURE: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): add support for the `victoria-traces-agent` chart, which is converted into `VTAgent`. See [#2796](https://github.com/VictoriaMetrics/operator/pull/2796).
 * FEATURE: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): the `victoria-logs-single` chart is now converted into `VLSingle` instead of the deprecated `VLogs`, including its `license` settings. See [#2797](https://github.com/VictoriaMetrics/operator/pull/2797).
 

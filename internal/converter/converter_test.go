@@ -2049,19 +2049,109 @@ func TestUnmarshalValuesVMAlertNotifierShapes(t *testing.T) {
 		{URL: "http://am-1:9093", HTTPAuth: vmv1beta1.HTTPAuth{BearerAuth: &vmv1beta1.BearerAuth{TokenFilePath: "/t"}}},
 	}, alert.Spec.Notifiers)
 
-	// the chart's fallback to its bundled alertmanager cannot be converted.
-	_, err = convert("server:\n  notifier: {}\nalertmanager:\n  enabled: true\n")
-	require.ErrorContains(t, err, "alertmanager.enabled")
-	_, err = convert("server:\n  notifier:\n    url: []\nalertmanager:\n  enabled: true\n")
-	require.ErrorContains(t, err, "alertmanager.enabled")
+	// the chart's fallback to its bundled alertmanager points vmalert at the generated VMAlertmanager.
+	alert, err = convert("server:\n  notifier: {}\nalertmanager:\n  enabled: true\n")
+	require.NoError(t, err)
+	assert.Nil(t, alert.Spec.Notifier)
+	assert.Equal(t, []vmv1beta1.VMAlertNotifierSpec{{URL: "http://vmalertmanager-test-name-alertmanager.test-ns.svc:9093"}}, alert.Spec.Notifiers)
+	alert, err = convert("server:\n  notifier:\n    url: []\nalertmanager:\n  enabled: true\n")
+	require.NoError(t, err)
+	assert.Len(t, alert.Spec.Notifiers, 1)
 	// the chart adds its bundled alertmanager to server.notifiers too.
-	_, err = convert("server:\n  notifiers:\n    - url: http://am-0:9093\nalertmanager:\n  enabled: true\n")
-	require.ErrorContains(t, err, "alertmanager.enabled")
+	alert, err = convert("server:\n  notifiers:\n    - url: http://am-0:9093\nalertmanager:\n  enabled: true\n")
+	require.NoError(t, err)
+	assert.Equal(t, []vmv1beta1.VMAlertNotifierSpec{
+		{URL: "http://am-0:9093"},
+		{URL: "http://vmalertmanager-test-name-alertmanager.test-ns.svc:9093"},
+	}, alert.Spec.Notifiers)
 	// server.extraArgs overrides the chart's -notifier.url, so the bundled alertmanager is not used.
 	alert, err = convert("server:\n  extraArgs:\n    notifier.url: http://am-0:9093\nalertmanager:\n  enabled: true\n")
 	require.NoError(t, err)
 	assert.Nil(t, alert.Spec.Notifier)
 	assert.Equal(t, "http://am-0:9093", alert.Spec.ExtraArgs["notifier.url"])
+}
+
+func TestConvertVMAlertmanager(t *testing.T) {
+	convert := func(input string) (*vmv1beta1.VMAlert, *vmv1beta1.VMAlertmanager, []*corev1.Secret, error) {
+		values, err := UnmarshalValues([]byte(input), "victoria-metrics-alert")
+		require.NoError(t, err)
+		v := values.(*VMAlertHelmValues)
+		alert, _, err := ConvertVMAlert("test-name", "test-ns", v)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		am, secrets, err := ConvertVMAlertmanager("test-name", "test-ns", v)
+		return alert, am, secrets, err
+	}
+
+	// disabled by default
+	_, am, _, err := convert("server: {}\n")
+	require.NoError(t, err)
+	assert.Nil(t, am)
+
+	alert, am, secrets, err := convert(`
+alertmanager:
+  enabled: true
+  replicaCount: 2
+  retention: 48h
+  baseURLPrefix: /am
+  image:
+    repository: prom/alertmanager
+    tag: v0.34.2
+  config:
+    route:
+      receiver: devnull
+    receivers:
+      - name: devnull
+`)
+	require.NoError(t, err)
+	require.NotNil(t, am)
+	assert.Equal(t, "test-name-alertmanager", am.Name)
+	assert.Equal(t, "test-ns", am.Namespace)
+	assert.Equal(t, "48h", am.Spec.Retention)
+	assert.Equal(t, "/am", am.Spec.RoutePrefix)
+	assert.Equal(t, ptr.To(int32(2)), am.Spec.ReplicaCount)
+	assert.Equal(t, "test-name-alertmanager-user-config", am.Spec.ConfigSecret)
+	require.Len(t, secrets, 1)
+	assert.Equal(t, am.Spec.ConfigSecret, secrets[0].Name)
+	assert.Contains(t, string(secrets[0].Data["alertmanager.yaml"]), "receiver: devnull")
+	assert.Equal(t, []vmv1beta1.VMAlertNotifierSpec{
+		{URL: "http://vmalertmanager-test-name-alertmanager-0.vmalertmanager-test-name-alertmanager.test-ns.svc:9093/am"},
+		{URL: "http://vmalertmanager-test-name-alertmanager-1.vmalertmanager-test-name-alertmanager.test-ns.svc:9093/am"},
+	}, alert.Spec.Notifiers)
+
+	// an existing config Secret is referenced as is
+	_, am, secrets, err = convert("alertmanager:\n  enabled: true\n  configSecret: my-am-config\n")
+	require.NoError(t, err)
+	assert.Equal(t, "my-am-config", am.Spec.ConfigSecret)
+	assert.Empty(t, secrets)
+
+	// the VMAlertmanager is still generated, but not wired, when notifier.url overrides it
+	alert, am, _, err = convert("server:\n  notifier:\n    url: http://am-0:9093\nalertmanager:\n  enabled: true\n")
+	require.NoError(t, err)
+	assert.NotNil(t, am)
+	assert.Equal(t, "http://am-0:9093", alert.Spec.Notifier.URL)
+	assert.Empty(t, alert.Spec.Notifiers)
+
+	// listen address: wildcard hosts are accepted, others rejected instead of being widened
+	_, am, _, err = convert("alertmanager:\n  enabled: true\n  listenAddress: 0.0.0.0:9095\n")
+	require.NoError(t, err)
+	assert.Equal(t, "9095", am.Spec.Port)
+	_, _, _, err = convert("alertmanager:\n  enabled: true\n  listenAddress: 127.0.0.1:9093\n")
+	require.ErrorContains(t, err, "listen address")
+	_, _, _, err = convert("alertmanager:\n  enabled: true\n  extraArgs:\n    web.listen-address: 127.0.0.1:9093\n")
+	require.ErrorContains(t, err, "listen address")
+
+	for _, addr := range []string{":http", ":0", ":70000"} {
+		_, _, _, err = convert("alertmanager:\n  enabled: true\n  listenAddress: \"" + addr + "\"\n")
+		require.ErrorContains(t, err, "between 1 and 65535", addr)
+	}
+
+	// values the operator cannot represent fail instead of being dropped
+	_, _, _, err = convert("alertmanager:\n  enabled: true\n  templates:\n    a.tmpl: x\n")
+	require.ErrorContains(t, err, "alertmanager.templates")
+	_, _, _, err = convert("alertmanager:\n  enabled: true\n  webConfig:\n    tls_server_config: {}\n")
+	require.ErrorContains(t, err, "alertmanager.webConfig")
 }
 
 // Alerting rules without a notifier must fail the conversion: the operator would silently drop

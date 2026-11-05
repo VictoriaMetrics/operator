@@ -344,6 +344,7 @@ type VMAnomalyServerSpec struct {
 	// If ca or caFile is set, clients must present a certificate signed by this CA (mTLS).
 	// insecureSkipVerify and serverName are not supported.
 	// Probes and metrics scraping use the separate monitoring.pull port, which must differ from the server port.
+	// +notes={available_from: "v0.76.0"}
 	// +optional
 	TLSConfig *vmv1beta1.TLSConfig `json:"tlsConfig,omitempty" yaml:"-"`
 }

@@ -16,6 +16,7 @@ func FuzzValidators(f *testing.F) {
 			`{"spec":{"route":{"routes":[1]}}}`),
 		fuzzutil.NewValidator(func() *promv1alpha1.ScrapeConfig { return &promv1alpha1.ScrapeConfig{} }, &ScrapeConfigCustomValidator{},
 			`{"spec":{"staticConfigs":[{"targets":["a:80"]}],"relabelings":[{"action":"drop","sourceLabels":["a"]}]}}`,
-			`{"spec":{"kubernetesSDConfigs":[{"role":"Pod","selectors":[{"role":"Pod","label":"a"}]}]}}`),
+			`{"spec":{"kubernetesSDConfigs":[{"role":"Pod","selectors":[{"role":"Pod","label":"a"}]}]}}`,
+			`{"spec":{"sampleLimit":18446744073709551615}}`),
 	)
 }

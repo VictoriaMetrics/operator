@@ -31,14 +31,17 @@ func NewValidator[T client.Object](newObj func() T, v admission.Validator[T], se
 	return ValidatorTarget{
 		seeds: slices.Concat(validatorSeeds, seeds),
 		run: func(t *testing.T, data []byte) {
-			obj := newObj()
+			obj, old := newObj(), newObj()
 			if err := json.Unmarshal(data, obj); err != nil {
-				fuzztest.New(data).Fill(obj)
+				fuzztest.New(data).MaxDepth(8).Fill(obj)
 			}
+
+			// old object differs from new one, so update compares real specs
+			fuzztest.New(data).MaxDepth(8).Fill(old)
 
 			ctx := t.Context()
 			_, _ = v.ValidateCreate(ctx, obj)
-			_, _ = v.ValidateUpdate(ctx, newObj(), obj)
+			_, _ = v.ValidateUpdate(ctx, old, obj)
 			_, _ = v.ValidateDelete(ctx, obj)
 		},
 	}

@@ -45,7 +45,7 @@ Common internal cluster URLs (replace `<name>` and `<namespace>` with your value
 
 | Use case | URL |
 |---|---|
-| VLAgent remoteWrite | `http://vlinsert-<name>.<namespace>.svc:9481/internal/insert` |
+| VLAgent remoteWrite | `http://vlinsert-<name>.<namespace>.svc:9481/insert/native` |
 | LogsQL query API | `http://vlselect-<name>.<namespace>.svc:9471/select/logsql/query` |
 | Grafana datasource URL | `http://vlselect-<name>.<namespace>.svc:9471/select` |
 | VMUI (built-in web UI) | `http://vlselect-<name>.<namespace>.svc:9471/select/vmui/` |
@@ -63,7 +63,7 @@ metadata:
   namespace: default
 spec:
   remoteWrite:
-    - url: "http://vlinsert-<name>.default.svc:9481/internal/insert"
+    - url: "http://vlinsert-<name>.default.svc:9481/insert/native"
 ```
 
 ### Customizing service type or port

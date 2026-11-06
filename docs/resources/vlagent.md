@@ -32,8 +32,8 @@ metadata:
   name: example
 spec:
   remoteWrite:
-    - url: "http://victorialogs-1:9428/internal/insert"
-    - url: "http://victorialogs-2:9428/internal/insert"
+    - url: "http://victorialogs-1:9428/insert/native"
+    - url: "http://victorialogs-2:9428/insert/native"
 ```
 
 This will allow you to start VLAgent so it can receive logs from [all supported sources](https://docs.victoriametrics.com/victorialogs/data-ingestion/),
@@ -265,7 +265,7 @@ spec:
   extraArgs:
     insert.maxLineSizeBytes: 1MiB
   remoteWrite:
-    - url: "http://VictoriaLogs:9428/internal/insert"
+    - url: "http://VictoriaLogs:9428/insert/native"
 ```
 
 To see all vlagent flags follow [this documentation](https://docs.victoriametrics.com/victorialogs/vlagent/#advanced-usage).
@@ -282,7 +282,7 @@ metadata:
   name: example
 spec:
   remoteWrite:
-    - url: "https://VictoriaLogs:9428/internal/insert"
+    - url: "https://VictoriaLogs:9428/insert/native"
       tlsConfig:
         caFile: /etc/tls/ca.crt
   volumes:

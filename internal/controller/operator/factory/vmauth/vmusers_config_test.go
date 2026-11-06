@@ -768,56 +768,6 @@ bearer_token: secret-token
 `,
 	})
 
-	// default paths of vlinsert and vtinsert include internal RPC endpoints
-	f(opts{
-		user: &vmv1beta1.VMUser{
-			Spec: vmv1beta1.VMUserSpec{
-				Name:        ptr.To("user1"),
-				BearerToken: ptr.To("secret-token"),
-				TargetRefs: []vmv1beta1.TargetRef{
-					{
-						CRD: &vmv1beta1.CRDRef{
-							Kind: "VLCluster/vlinsert",
-							NamespacedName: vmv1beta1.NamespacedName{
-								Name:      "main-cluster",
-								Namespace: "monitoring",
-							},
-						},
-					},
-					{
-						CRD: &vmv1beta1.CRDRef{
-							Kind: "VTCluster/vtinsert",
-							NamespacedName: vmv1beta1.NamespacedName{
-								Name:      "main-cluster",
-								Namespace: "monitoring",
-							},
-						},
-					},
-				},
-			},
-		},
-		objURLs: map[string]string{
-			"VLCluster/vlinsert/monitoring/main-cluster": "http://vlinsert-main-cluster.monitoring.svc:9401",
-			"VTCluster/vtinsert/monitoring/main-cluster": "http://vtinsert-main-cluster.monitoring.svc:10401",
-		},
-		want: `url_map:
-- url_prefix:
-  - http://vlinsert-main-cluster.monitoring.svc:9401
-  src_paths:
-  - /insert/.*
-  - /internal/rpc/insert
-  - /internal/rpc/force_flush
-- url_prefix:
-  - http://vtinsert-main-cluster.monitoring.svc:10401
-  src_paths:
-  - /insert/.*
-  - /internal/rpc/insert
-  - /internal/rpc/force_flush
-name: user1
-bearer_token: secret-token
-`,
-	})
-
 	// access_log enabled with no filters
 	f(opts{
 		user: &vmv1beta1.VMUser{

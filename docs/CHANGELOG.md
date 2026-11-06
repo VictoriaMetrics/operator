@@ -13,8 +13,6 @@ aliases:
 
 ## tip
 
-* FEATURE: [vlcluster](https://docs.victoriametrics.com/operator/resources/vlcluster/), [vtcluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): route `/internal/rpc/insert` and `/internal/rpc/force_flush` requests to `vlinsert`/`vtinsert` at `requestsLoadBalancer` and in default `VMUser` `targetRefs` paths, in addition to `/internal/insert`. See [VictoriaLogs#1748](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1748).
-
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.13.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.13.0).
 
 * FEATURE: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): add support for the `victoria-traces-agent` chart, which is converted into `VTAgent`. See [#2796](https://github.com/VictoriaMetrics/operator/pull/2796).

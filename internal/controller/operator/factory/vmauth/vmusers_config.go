@@ -759,7 +759,7 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 				}
 				return addVMSelectPaths(paths)
 			case "VLCluster/vlinsert", "VTCluster/vtinsert":
-				return append(paths, "/insert/.*", "/internal/rpc/insert", "/internal/rpc/force_flush")
+				return append(paths, "/insert/.*")
 			case "VLCluster/vlselect", "VTCluster/vtselect":
 				return append(paths, "/select/.*")
 			}

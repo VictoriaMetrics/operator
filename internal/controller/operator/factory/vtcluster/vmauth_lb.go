@@ -144,8 +144,6 @@ unauthorized_user:
   - src_paths:
     - "/insert/.*"
     - "/internal/insert"
-    - "/internal/rpc/insert"
-    - "/internal/rpc/force_flush"
     url_prefix: %q
     discover_backend_ips: true
   - src_paths:

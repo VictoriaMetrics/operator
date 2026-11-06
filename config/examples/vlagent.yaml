@@ -20,7 +20,7 @@ spec:
           requests:
             storage: 50Gi
   remoteWrite:
-    - url: "http://vlsingle-example-0.default.svc:9428/insert/native"
+    - url: "http://vlsingle-example-0.default.svc:9428/internal/insert"
       maxDiskUsage: 10GB
   remoteWriteSettings:
     # ~ 5GB in bytes

@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+* FEATURE: [vmanomaly](https://docs.victoriametrics.com/operator/resources/vmanomaly/): add `spec.server.tlsConfig` to serve the anomaly UI and API over HTTPS, with optional client certificate verification (mTLS) when `ca` or `caFile` is set. Probes and scraping keep using the plain HTTP `spec.monitoring.pull.port`. Requires vmanomaly v1.32.0 or newer. The `VMAnomaly` CRD must be updated to use this field. See [these docs](https://docs.victoriametrics.com/operator/resources/vmanomaly/#serving-the-ui-over-https) and [#2794](https://github.com/VictoriaMetrics/operator/pull/2794).
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.13.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.13.0).
 
 * FEATURE: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): add support for the `victoria-traces-agent` chart, which is converted into `VTAgent`. See [#2796](https://github.com/VictoriaMetrics/operator/pull/2796).
@@ -20,6 +22,7 @@ aliases:
 
 * BUGFIX: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): do not add the image `variant` to an empty `image.tag`. Previously, the generated custom resources got the invalid image tag `-cluster`, which made pods fail with `InvalidImageName`. With an empty tag, the operator default version is used now. See [#2799](https://github.com/VictoriaMetrics/operator/pull/2799).
 * BUGFIX: [vmoperator](https://docs.victoriametrics.com/operator/): respect `http.listenAddr` set in `spec.configReloaderExtraArgs` in all config-reloader related configs, such as the container port and health probes. Previously, it was hardcoded to `8435`, which caused config-reloader probes to fail when the listen address was overridden, and multiple `hostNetwork` instances on the same node to conflict. See [#2584](https://github.com/VictoriaMetrics/operator/issues/2584). Thanks to @cesium147.
+
 * BUGFIX: [vlagent](https://docs.victoriametrics.com/operator/resources/vlagent/): pass `-kubernetesCollector.includePodLabels=false` when `spec.k8sCollector.includePodLabels` is set to `false`. Previously, the flag was omitted, so vlagent kept its default and still attached pod labels to log entries. See [#2772](https://github.com/VictoriaMetrics/operator/issues/2772).
 
 ## [v0.75.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.75.2)

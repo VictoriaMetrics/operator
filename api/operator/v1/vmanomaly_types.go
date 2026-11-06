@@ -339,6 +339,14 @@ type VMAnomalyServerSpec struct {
 	// (credentials, TLS, etc.) from the reader configuration to connect to datasources
 	// +optional
 	UseReaderConnectionSettings bool `json:"useReaderConnectionSettings,omitempty" yaml:"use_reader_connection_settings,omitempty"`
+	// TLSConfig enables HTTPS for the anomaly UI and API.
+	// cert and keySecret (or certFile and keyFile) define the server certificate.
+	// If ca or caFile is set, clients must present a certificate signed by this CA (mTLS).
+	// insecureSkipVerify and serverName are not supported.
+	// Probes and metrics scraping use the separate monitoring.pull port, which must differ from the server port.
+	// +notes={available_from: "v0.76.0"}
+	// +optional
+	TLSConfig *vmv1beta1.TLSConfig `json:"tlsConfig,omitempty" yaml:"-"`
 }
 
 // AsOwner returns owner references with current object as owner
@@ -529,7 +537,11 @@ func (*VMAnomaly) ProbeNeedLiveness() bool {
 // Returns empty string if spec.server.port is not configured.
 func (cr *VMAnomaly) AsURL(isExtra bool) string {
 	svcName, port := vmv1beta1.ResolveServiceURL(cr.PrefixedName(), cr.Port(), "http", nil, isExtra)
-	return fmt.Sprintf("http://%s.%s.svc:%s", svcName, cr.Namespace, port)
+	scheme := "http"
+	if cr.Spec.Server != nil && cr.Spec.Server.TLSConfig != nil {
+		scheme = "https"
+	}
+	return fmt.Sprintf("%s://%s.%s.svc:%s", scheme, svcName, cr.Namespace, port)
 }
 
 // Validate performs semantic validation for component
@@ -547,6 +559,34 @@ func (cr *VMAnomaly) Validate() error {
 	}
 	if err := cr.Spec.Validate(); err != nil {
 		return err
+	}
+	if cr.Spec.Server != nil {
+		if err := cr.Spec.Server.validateTLS(cr.Port(), cr.ProbePort()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *VMAnomalyServerSpec) validateTLS(port, probePort string) error {
+	tc := s.TLSConfig
+	if tc == nil {
+		return nil
+	}
+	if err := tc.Validate(); err != nil {
+		return fmt.Errorf("spec.server.tlsConfig: %w", err)
+	}
+	if tc.CertFile == "" && tc.Cert.PrefixedName() == "" {
+		return fmt.Errorf("spec.server.tlsConfig: cert or certFile is required")
+	}
+	if tc.KeyFile == "" && tc.KeySecret == nil {
+		return fmt.Errorf("spec.server.tlsConfig: keySecret or keyFile is required")
+	}
+	if tc.InsecureSkipVerify || tc.ServerName != "" {
+		return fmt.Errorf("spec.server.tlsConfig: insecureSkipVerify and serverName are not supported for the server")
+	}
+	if port == probePort {
+		return fmt.Errorf("spec.server.tlsConfig: spec.monitoring.pull.port must differ from spec.server.port, probes and scraping use plain HTTP on the pull port")
 	}
 	return nil
 }

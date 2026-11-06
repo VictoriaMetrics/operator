@@ -89,17 +89,28 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return result, newGetError(err)
 	}
 
-	if !instance.IsUnmanaged() {
-		authSync.RLock()
-		defer authSync.RUnlock()
-	}
-
 	RegisterObjectStat(&instance, r.name)
 	if !instance.DeletionTimestamp.IsZero() {
-		if err = finalize.OnVMAuthDelete(ctx, r, &instance); err != nil {
+		// Deletion is handled before the IsUnmanaged lock guard below, so the release does
+		// not depend on how IsUnmanaged treats a deleting object. The lock serializes the
+		// release with the controller that writes the same Applied condition.
+		authSync.RLock()
+		releaseErr := vmauth.ReleaseAppliedConditions(ctx, r.Client, &instance)
+		authSync.RUnlock()
+		if releaseErr != nil {
+			err = fmt.Errorf("cannot release status conditions for vmauth: %w", releaseErr)
+			return
+		}
+		err = finalize.OnVMAuthDelete(ctx, r, &instance)
+		if err != nil {
 			err = fmt.Errorf("cannot remove finalizer from vmauth: %w", err)
 		}
 		return
+	}
+
+	if !instance.IsUnmanaged() {
+		authSync.RLock()
+		defer authSync.RUnlock()
 	}
 	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {
 		err = newParsingError(instance.Status.ParsingSpecError)

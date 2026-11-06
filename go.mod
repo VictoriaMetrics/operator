@@ -5,7 +5,7 @@ go 1.27.3
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/VictoriaMetrics/VictoriaMetrics v1.155.0
-	github.com/VictoriaMetrics/metrics v1.44.1
+	github.com/VictoriaMetrics/metrics v1.45.0
 	github.com/VictoriaMetrics/metricsql v0.87.6
 	github.com/VictoriaMetrics/operator/api v0.75.2
 	github.com/caarlos0/env/v11 v11.4.2
@@ -17,7 +17,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.34.0
 	github.com/onsi/gomega v1.44.0
 	github.com/pires/go-proxyproto v0.16.0
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.94.2
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.95.0
 	github.com/prometheus/client_golang v1.25.0
 	github.com/stretchr/testify v1.12.1
 	go.uber.org/zap v1.28.0

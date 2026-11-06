@@ -177,6 +177,37 @@ In this example every user can access `/metrics` route and get vmsingle metrics 
 In addition, `unauthorizedUserAccessSpec` in [Enterprise version](https://docs.victoriametrics.com/operator/resources/vmauth/#enterprise-features) supports [IP Filters](https://docs.victoriametrics.com/operator/resources/vmauth/#ip-filters) 
 with `ip_filters` field.
 
+## External configuration
+
+By default, the operator generates the `vmauth` config and keeps it up to date.
+To manage the config yourself, set `spec.externalConfig`:
+
+- `secretRef` - a key of a Secret in the `VMAuth` namespace, which contains the config. The operator mounts the Secret into the `vmauth` container.
+  `vmauth` doesn't re-read the file by default, so set `-configCheckInterval` in `spec.extraArgs` to apply Secret changes without a pod restart.
+- `localPath` - a path to the config file inside the `vmauth` container, e.g. a file written by a Vault sidecar.
+  The operator sets `-configCheckInterval=1m`, so `vmauth` re-reads the file every minute.
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAuth
+metadata:
+  name: external-config
+spec:
+  externalConfig:
+    secretRef:
+      name: vmauth-config
+      key: config.yaml
+  extraArgs:
+    configCheckInterval: 1m
+```
+
+With `spec.externalConfig`, the operator doesn't generate the config, so the following fields have no effect:
+
+- `userSelector`, `userNamespaceSelector` and `selectAllByDefault` - [VMUser](https://docs.victoriametrics.com/operator/resources/vmuser/) objects are not added to the config;
+- `defaultTargetRefs` - see [Predefined backends](https://docs.victoriametrics.com/operator/resources/vmauth/#predefined-backends);
+- `unauthorizedUserAccessSpec` - see [Unauthorized access](https://docs.victoriametrics.com/operator/resources/vmauth/#unauthorized-access);
+- `waitForConfigReload`, `configReloaderImage`, `configReloaderImageTag`, `configReloaderResources` and `configReloaderExtraArgs` - the operator doesn't add the config-reloader container.
+
 ## High availability
 
 The `VMAuth` resource is stateless, so it can be scaled horizontally by increasing the number of replicas:

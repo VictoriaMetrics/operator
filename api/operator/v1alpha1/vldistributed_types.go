@@ -147,6 +147,18 @@ func (z *VLDistributedZone) VLAgentName(cr *VLDistributed) string {
 	}
 }
 
+// VLAgentEnabled returns false when the zone's (or zoneCommon's) VLAgent replicaCount is explicitly 0.
+func (z *VLDistributedZone) VLAgentEnabled(cr *VLDistributed) bool {
+	switch {
+	case z.VLAgent.Spec.ReplicaCount != nil:
+		return *z.VLAgent.Spec.ReplicaCount != 0
+	case cr.Spec.ZoneCommon.VLAgent.Spec.ReplicaCount != nil:
+		return *cr.Spec.ZoneCommon.VLAgent.Spec.ReplicaCount != 0
+	default:
+		return true
+	}
+}
+
 // VLClusterName return cluster name for zone
 func (z *VLDistributedZone) VLClusterName(cr *VLDistributed) string {
 	switch {

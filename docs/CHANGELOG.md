@@ -14,6 +14,7 @@ aliases:
 ## tip
 
 * FEATURE: [vlcluster](https://docs.victoriametrics.com/operator/resources/vlcluster/), [vtcluster](https://docs.victoriametrics.com/operator/resources/vtcluster/): route `/internal/rpc/insert` and `/internal/rpc/force_flush` requests to `vlinsert`/`vtinsert` at `requestsLoadBalancer` and in default `VMUser` `targetRefs` paths, in addition to `/internal/insert`. See [VictoriaLogs#1748](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1748).
+* FEATURE: [vmdistributed](https://docs.victoriametrics.com/operator/resources/vmdistributed/), [vldistributed](https://docs.victoriametrics.com/operator/resources/vldistributed/): setting `zoneCommon.vmagent.spec.replicaCount`/`zones[].vmagent.spec.replicaCount` (and `vlagent` equivalents) to `0` now disables the per-zone agent or all agents. Previously, `replicaCount: 0` created an agent resource with no pods; now the operator does not create it. The operator now removes the vmagent from the pipeline only. See [#2566](https://github.com/VictoriaMetrics/operator/issues/2566).
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.13.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.13.0).
 

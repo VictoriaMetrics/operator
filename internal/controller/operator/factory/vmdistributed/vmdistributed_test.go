@@ -155,6 +155,14 @@ type action struct {
 	key  string
 }
 
+func backendNames(objs []vmv1beta1.NamespacedName) []string {
+	names := make([]string, len(objs))
+	for i, o := range objs {
+		names[i] = o.Name
+	}
+	return names
+}
+
 func TestCreateOrUpdate(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
@@ -496,6 +504,43 @@ func TestCreateOrUpdate(t *testing.T) {
 				{Name: "test-vdc-vmcluster-2", Namespace: d.cr.Namespace},
 				{Name: "test-vdc-vmcluster-1", Namespace: d.cr.Namespace},
 			}, got.Spec.DefaultTargetRefs[1].CRD.Objects)
+		},
+	})
+
+	// VMAgent disabled for one zone: that zone's VMAgent is excluded from the
+	// write targetRef, but the read targetRef (backends) is unaffected and no
+	// nil-pointer panic occurs while building VMAuth.
+	f(opts{
+		prepare: func(d *testData) {
+			d.cr.Spec.VMAuth.Name = "vmauth-lb"
+			d.cr.Spec.Zones[0].VMAgent.Spec.ReplicaCount = ptr.To(int32(0))
+		},
+		validate: func(ctx context.Context, rclient client.Client, d *testData) {
+			zs, err := getZones(ctx, rclient, d.cr)
+			assert.NoError(t, err)
+			assert.Nil(t, zs.vmagents[0], "disabled zone must not have a VMAgent built")
+
+			vmAuth := buildVMAuthLB(d.cr, zs)
+			owner := d.cr.AsOwner()
+			assert.NoError(t, reconcile.VMAuth(ctx, rclient, vmAuth, nil, &owner))
+
+			var got vmv1beta1.VMAuth
+			nsn := types.NamespacedName{Name: vmAuth.Name, Namespace: vmAuth.Namespace}
+			assert.NoError(t, rclient.Get(ctx, nsn, &got))
+			assert.Len(t, got.Spec.DefaultTargetRefs, 2)
+
+			writeRef := got.Spec.DefaultTargetRefs[0]
+			assert.Equal(t, "write", writeRef.Name)
+			assert.Len(t, writeRef.CRD.Objects, 2, "only enabled zones' VMAgents should be targeted")
+			for _, obj := range writeRef.CRD.Objects {
+				assert.NotEqual(t, "vmcluster-1", obj.Name, "disabled zone's VMAgent must be excluded from write targetRef")
+			}
+
+			readRef := got.Spec.DefaultTargetRefs[1]
+			assert.Equal(t, "read", readRef.Name)
+			assert.Equal(t, "VMCluster/vmselect", readRef.CRD.Kind)
+			assert.Len(t, readRef.CRD.Objects, 3, "disabled VMAgent must not affect read targetRef backends")
+			assert.ElementsMatch(t, []string{"vmcluster-1", "vmcluster-2", "vmcluster-3"}, backendNames(readRef.CRD.Objects))
 		},
 	})
 

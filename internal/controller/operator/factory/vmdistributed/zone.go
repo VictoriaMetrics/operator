@@ -137,6 +137,12 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 			Name:      vmAgentName,
 			Namespace: cr.Namespace,
 		}
+		if !z.VMAgentEnabled(cr) {
+			if err := disownVMAgent(ctx, rclient, cr, nsn); err != nil {
+				return nil, fmt.Errorf("spec.zones[%d]: failed to disown VMAgent: %w", i, err)
+			}
+			continue
+		}
 		var vmAgent vmv1beta1.VMAgent
 		if err := rclient.Get(ctx, nsn, &vmAgent); err != nil {
 			if !k8serrors.IsNotFound(err) {
@@ -201,6 +207,44 @@ func getZones(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistr
 
 	sort.Sort(zs)
 	return zs, nil
+}
+
+// disownVMAgent drops cr's owner reference from a disabled zone's VMAgent, leaving it running.
+func disownVMAgent(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributed, nsn types.NamespacedName) error {
+	var objToDisown vmv1beta1.VMAgent
+	err := wait.PollUntilContextTimeout(ctx, time.Second, 5*time.Second, true, func(ctx context.Context) (done bool, err error) {
+		if err := rclient.Get(ctx, nsn, &objToDisown); err != nil {
+			if k8serrors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, fmt.Errorf("unexpected error during attempt to get VMAgent=%s: %w", nsn.String(), err)
+		}
+
+		// remove cr's owner reference from the agent's owner references
+		owner := cr.AsOwner()
+		ownerReferences := objToDisown.GetOwnerReferences()
+		refs := ownerReferences[:0]
+		for _, ref := range ownerReferences {
+			if ref.APIVersion == owner.APIVersion && ref.Name == owner.Name && ref.Kind == owner.Kind {
+				continue
+			}
+			refs = append(refs, ref)
+		}
+
+		objToDisown.SetOwnerReferences(refs)
+		logger.WithContext(ctx).Info("disowning disabled VMAgent", "name", nsn.String())
+		if err := rclient.Update(ctx, &objToDisown); err != nil {
+			if k8serrors.IsConflict(err) {
+				return false, fmt.Errorf("failed to disown VMAgent=%s: %w", nsn.String(), err)
+			}
+			return false, fmt.Errorf("error on update VMAgent=%s: %w", nsn.String(), err)
+		}
+		return true, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to disown object %T=%s: %w", objToDisown, nsn.String(), err)
+	}
+	return nil
 }
 
 func buildVMClusterBackend(ctx context.Context, rclient client.Client, cr *vmv1alpha1.VMDistributed, z *vmv1alpha1.VMDistributedZone) (vmBackend, bool, error) {
@@ -294,15 +338,16 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 	item := fmt.Sprintf("%d/%d", i+1, len(cr.Spec.Zones))
 
 	backendCreated := !backend.obj.GetCreationTimestamp().Time.IsZero()
-	// backend or vmAgent have been created
-	needsLBUpdate := backendCreated && !vmAgent.CreationTimestamp.IsZero()
+	// backend or vmAgent have been created; a disabled VMAgent counts as already created
+	agentCreated := vmAgent == nil || !vmAgent.CreationTimestamp.IsZero()
+	needsLBUpdate := backendCreated && agentCreated
 	// No backend or vmagent spec changes required
 	if !zs.hasChanges[i] {
 		needsLBUpdate = false
 	}
 
 	if needsLBUpdate {
-		if backend.prevAccepts {
+		if backend.prevAccepts && vmAgent != nil {
 			// wait for empty persistent queue before excluding from LB
 			zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
 			if ctx.Err() != nil {
@@ -336,13 +381,15 @@ func (zs *zones) upgrade(ctx context.Context, rclient client.Client, cr *vmv1alp
 		}
 	}
 
-	// reconcile VMAgent
-	nsnAgent := types.NamespacedName{Name: vmAgent.Name, Namespace: vmAgent.Namespace}
-	if err := reconcile.VMAgent(ctx, rclient, vmAgent, nil, &owner); err != nil {
-		return fmt.Errorf("zone=%s: failed to reconcile VMAgent=%s: %w", item, nsnAgent.String(), err)
+	// reconcile VMAgent, if enabled for this zone
+	if vmAgent != nil {
+		nsnAgent := types.NamespacedName{Name: vmAgent.Name, Namespace: vmAgent.Namespace}
+		if err := reconcile.VMAgent(ctx, rclient, vmAgent, nil, &owner); err != nil {
+			return fmt.Errorf("zone=%s: failed to reconcile VMAgent=%s: %w", item, nsnAgent.String(), err)
+		}
 	}
 
-	if newAcceptsWrites {
+	if newAcceptsWrites && vmAgent != nil {
 		// wait for empty persistent queue before restoring in LB
 		zs.waitForEmptyPQ(ctx, rclient, defaultMetricsCheckInterval, i)
 		if ctx.Err() != nil {
@@ -407,7 +454,7 @@ func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, inte
 	var wg sync.WaitGroup
 	for i := range zs.vmagents {
 		vmAgent := zs.vmagents[i]
-		if vmAgent.CreationTimestamp.IsZero() {
+		if vmAgent == nil || vmAgent.CreationTimestamp.IsZero() {
 			continue
 		}
 		nsn := types.NamespacedName{

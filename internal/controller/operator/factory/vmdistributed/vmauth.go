@@ -23,9 +23,12 @@ func vmBackendTargetRef(backends []vmBackend, kind string, paths []string, owner
 }
 
 func vmAgentTargetRef(vmAgents []*vmv1beta1.VMAgent, owner *metav1.OwnerReference, excludeIds ...int) vmv1beta1.TargetRef {
-	objects := make([]metav1.Object, 0, len(vmAgents))
+	// keep positional alignment with zone indices; disabled zones keep a nil entry, skipped by podutil.
+	objects := make([]metav1.Object, len(vmAgents))
 	for i := range vmAgents {
-		objects = append(objects, vmAgents[i])
+		if vmAgents[i] != nil {
+			objects[i] = vmAgents[i]
+		}
 	}
 	return podutil.VMAuthWriteTargetRef(objects, "VMAgent", []string{"/insert/.+", "/api/v1/write"}, owner, excludeIds...)
 }

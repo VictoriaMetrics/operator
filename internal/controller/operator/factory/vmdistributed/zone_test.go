@@ -17,6 +17,7 @@ import (
 	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
@@ -198,6 +199,85 @@ func TestGetZones(t *testing.T) {
 			assert.Equal(t, singles[1].GetRemoteWriteURL(), zs.vmagents[0].Spec.RemoteWrite[1].URL)
 		},
 	})
+
+	// zone with VMAgent disabled has no VMAgent built, but its backend still
+	// receives replicated writes from the other zone's VMAgent
+	f(opts{
+		cr: &vmv1alpha1.VMDistributed{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "dist",
+				Namespace: "ns",
+			},
+			Spec: vmv1alpha1.VMDistributedSpec{
+				BackendType: vmv1alpha1.VMDistributedBackendTypeVMSingle,
+				Zones: []vmv1alpha1.VMDistributedZone{
+					{
+						Name: "zone-a",
+						VMAgent: vmv1alpha1.VMDistributedZoneAgent{Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+						}},
+					},
+					{
+						Name: "zone-b",
+					},
+				},
+			},
+		},
+		validate: func(cr *vmv1alpha1.VMDistributed, zs *zones) {
+			singles := zs.singleObjects()
+			var zoneAIdx, zoneBIdx int
+			if singles[0].Name == "dist-zone-a" {
+				zoneAIdx, zoneBIdx = 0, 1
+			} else {
+				zoneAIdx, zoneBIdx = 1, 0
+			}
+			assert.Nil(t, zs.vmagents[zoneAIdx], "disabled zone must not have a VMAgent built")
+			assert.NotNil(t, zs.vmagents[zoneBIdx], "enabled zone must have a VMAgent built")
+			assert.Contains(t, remoteWriteURLs(zs.vmagents[zoneBIdx]), singles[zoneAIdx].GetRemoteWriteURL(),
+				"other zone's VMAgent must still replicate writes into the disabled zone's backend")
+		},
+	})
+}
+
+// Disabling a zone's VMAgent drops cr's owner reference but keeps the VMAgent and other owners.
+func TestGetZones_DisownsDisabledVMAgent(t *testing.T) {
+	cr := &vmv1alpha1.VMDistributed{
+		TypeMeta:   metav1.TypeMeta{APIVersion: vmv1alpha1.SchemeGroupVersion.String(), Kind: "VMDistributed"},
+		ObjectMeta: metav1.ObjectMeta{Name: "dist", Namespace: "ns", UID: "dist-uid"},
+		Spec: vmv1alpha1.VMDistributedSpec{
+			BackendType: vmv1alpha1.VMDistributedBackendTypeVMSingle,
+			Zones: []vmv1alpha1.VMDistributedZone{{
+				Name: "zone-a",
+				VMAgent: vmv1alpha1.VMDistributedZoneAgent{Spec: vmv1alpha1.VMDistributedZoneAgentSpec{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+				}},
+			}},
+		},
+	}
+	other := metav1.OwnerReference{APIVersion: "v1", Kind: "ConfigMap", Name: "other", UID: "other-uid"}
+	agent := &vmv1beta1.VMAgent{ObjectMeta: metav1.ObjectMeta{
+		Name:            "dist-zone-a",
+		Namespace:       "ns",
+		OwnerReferences: []metav1.OwnerReference{cr.AsOwner(), other},
+	}}
+	rclient := k8stools.GetTestClientWithObjects([]runtime.Object{agent})
+	ctx := context.Background()
+
+	zs, err := getZones(ctx, rclient, cr)
+	assert.NoError(t, err)
+	assert.Nil(t, zs.vmagents[0])
+
+	var got vmv1beta1.VMAgent
+	assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: agent.Name, Namespace: agent.Namespace}, &got))
+	assert.Equal(t, []metav1.OwnerReference{other}, got.OwnerReferences)
+}
+
+func remoteWriteURLs(vmAgent *vmv1beta1.VMAgent) []string {
+	urls := make([]string, len(vmAgent.Spec.RemoteWrite))
+	for i, rw := range vmAgent.Spec.RemoteWrite {
+		urls[i] = rw.URL
+	}
+	return urls
 }
 
 // A VMAgent whose shardCount was server-defaulted must not be perpetually reported as changed.

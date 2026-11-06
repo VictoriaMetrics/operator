@@ -17,6 +17,7 @@ import (
 	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
@@ -199,6 +200,39 @@ func TestGetZones(t *testing.T) {
 			assert.Equal(t, singles[1].GetRemoteWriteURL(), zs.vlagents[0].Spec.RemoteWrite[1].URL)
 		},
 	})
+}
+
+// Disabling a zone's VLAgent drops cr's owner reference but keeps the VLAgent and other owners.
+func TestGetZones_DisownsDisabledVLAgent(t *testing.T) {
+	cr := &vmv1alpha1.VLDistributed{
+		TypeMeta:   metav1.TypeMeta{APIVersion: vmv1alpha1.SchemeGroupVersion.String(), Kind: "VLDistributed"},
+		ObjectMeta: metav1.ObjectMeta{Name: "dist", Namespace: "ns", UID: "dist-uid"},
+		Spec: vmv1alpha1.VLDistributedSpec{
+			BackendType: vmv1alpha1.VLDistributedBackendTypeVLSingle,
+			Zones: []vmv1alpha1.VLDistributedZone{{
+				Name: "zone-a",
+				VLAgent: vmv1alpha1.VLDistributedZoneAgent{Spec: vmv1alpha1.VLDistributedZoneAgentSpec{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+				}},
+			}},
+		},
+	}
+	other := metav1.OwnerReference{APIVersion: "v1", Kind: "ConfigMap", Name: "other", UID: "other-uid"}
+	agent := &vmv1.VLAgent{ObjectMeta: metav1.ObjectMeta{
+		Name:            "dist-zone-a",
+		Namespace:       "ns",
+		OwnerReferences: []metav1.OwnerReference{cr.AsOwner(), other},
+	}}
+	rclient := k8stools.GetTestClientWithObjects([]runtime.Object{agent})
+	ctx := context.Background()
+
+	zs, err := getZones(ctx, rclient, cr)
+	assert.NoError(t, err)
+	assert.Nil(t, zs.vlagents[0])
+
+	var got vmv1.VLAgent
+	assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: agent.Name, Namespace: agent.Namespace}, &got))
+	assert.Equal(t, []metav1.OwnerReference{other}, got.OwnerReferences)
 }
 
 func TestWaitForEmptyPQ(t *testing.T) {

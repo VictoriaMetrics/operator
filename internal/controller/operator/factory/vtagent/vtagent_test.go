@@ -1416,15 +1416,15 @@ serviceaccountname: vtagent-agent
 			},
 			RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
 				{
-					URL:          "http://some-url/insert/native",
+					URL:          "http://some-url/insert/opentelemetry/v1/traces",
 					MaxDiskUsage: ptr.To(vmv1beta1.BytesString("10GB")),
 				},
 				{
-					URL:          "http://some-url-2/insert/native",
+					URL:          "http://some-url-2/insert/opentelemetry/v1/traces",
 					MaxDiskUsage: ptr.To(vmv1beta1.BytesString("10GB")),
 				},
 				{
-					URL: "http://some-url-3/insert/native",
+					URL: "http://some-url-3/insert/opentelemetry/v1/traces",
 				},
 			},
 		},
@@ -1435,7 +1435,7 @@ containers:
     args:
       - -httpListenAddr=:10429
       - -remoteWrite.maxDiskUsagePerURL=10GB,10GB,
-      - -remoteWrite.url=http://some-url/insert/native,http://some-url-2/insert/native,http://some-url-3/insert/native
+      - -remoteWrite.url=http://some-url/insert/opentelemetry/v1/traces,http://some-url-2/insert/opentelemetry/v1/traces,http://some-url-3/insert/opentelemetry/v1/traces
       - -tmpDataPath=/vtagent-data
     ports:
       - name: http

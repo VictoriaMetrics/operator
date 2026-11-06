@@ -56,8 +56,8 @@ type VTAgentSpec struct {
 	LogFormat string `json:"logFormat,omitempty"`
 
 	// RemoteWrite list of VictoriaTraces endpoints to replicate ingested trace spans to.
-	// The url must point to the `/insert/native` API of a VictoriaTraces instance, e.g.
-	// http://vtsingle-example:10428/insert/native
+	// The url must point to the OTLP/HTTP traces API of a VictoriaTraces instance, e.g.
+	// http://vtsingle-example:10428/insert/opentelemetry/v1/traces
 	// See https://docs.victoriametrics.com/victoriatraces/vtagent/
 	RemoteWrite []VTAgentRemoteWriteSpec `json:"remoteWrite"`
 	// RemoteWriteSettings defines global settings for all remoteWrite urls.
@@ -188,9 +188,13 @@ type VTAgentRemoteWriteSettings struct {
 // VTAgentRemoteWriteSpec defines the remote storage configuration for VTAgent
 // +k8s:openapi-gen=true
 type VTAgentRemoteWriteSpec struct {
-	// URL of the VictoriaTraces `/insert/native` endpoint to send trace spans to.
+	// URL of the OTLP/HTTP traces endpoint (`/insert/opentelemetry/v1/traces`) to send trace spans to.
+	// VictoriaTraces versions older than v0.13.0 use the `/insert/native` endpoint instead.
 	URL string `json:"url"`
 	// Format defines the wire format used to send data to the given url.
+	// Supported only by VictoriaTraces versions older than v0.13.0, which need the url path matching the chosen format,
+	// e.g. /insert/native for native. Must be unset for v0.13.0 and newer, since they always send data in OTLP
+	// and fail to start with the removed -remoteWrite.format flag.
 	// +optional
 	// +kubebuilder:validation:Enum=native;jsonline
 	Format *string `json:"format,omitempty"`

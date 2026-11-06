@@ -97,7 +97,7 @@ func beforeEach(o opts) *testData {
 	zonesCount := 3
 	zs := &zones{
 		backends: make([]vmBackend, 0, zonesCount),
-		vmagents: make([]vmAgentRef, 0, zonesCount),
+		vmagents: make([]*vmv1beta1.VMAgent, 0, zonesCount),
 	}
 	namespace := "default"
 	cr := &vmv1alpha1.VMDistributed{
@@ -124,7 +124,7 @@ func beforeEach(o opts) *testData {
 		vmCluster := newVMCluster(name, namespace, "v1.0.0", owner)
 		vmAgent := newVMAgent(name, namespace, owner)
 		zs.backends = append(zs.backends, vmBackend{obj: vmCluster})
-		zs.vmagents = append(zs.vmagents, vmAgentRef{obj: vmAgent})
+		zs.vmagents = append(zs.vmagents, vmAgent)
 		vmclusters = append(vmclusters, vmCluster)
 		predefinedObjects = append(predefinedObjects, vmAgent, vmCluster)
 		cr.Spec.Zones[i] = vmv1alpha1.VMDistributedZone{
@@ -228,9 +228,9 @@ func TestCreateOrUpdate(t *testing.T) {
 	// check existing remote write urls order
 	f(opts{
 		prepare: func(d *testData) {
-			for _, agentRef := range d.zones.vmagents {
+			for _, vmAgent := range d.zones.vmagents {
 				for _, vmCluster := range d.vmclusters {
-					agentRef.obj.Spec.RemoteWrite = append(agentRef.obj.Spec.RemoteWrite, vmv1beta1.VMAgentRemoteWriteSpec{
+					vmAgent.Spec.RemoteWrite = append(vmAgent.Spec.RemoteWrite, vmv1beta1.VMAgentRemoteWriteSpec{
 						URL: vmCluster.GetRemoteWriteURL(),
 					})
 				}
@@ -242,9 +242,9 @@ func TestCreateOrUpdate(t *testing.T) {
 
 			// Verify urls order is preserved
 			for i, vmCluster := range d.vmclusters {
-				for _, agentRef := range zs.vmagents {
-					assert.Len(t, agentRef.obj.Spec.RemoteWrite, len(d.vmclusters))
-					assert.Equal(t, vmCluster.GetRemoteWriteURL(), agentRef.obj.Spec.RemoteWrite[i].URL)
+				for _, vmAgent := range zs.vmagents {
+					assert.Len(t, vmAgent.Spec.RemoteWrite, len(d.vmclusters))
+					assert.Equal(t, vmCluster.GetRemoteWriteURL(), vmAgent.Spec.RemoteWrite[i].URL)
 				}
 			}
 		},
@@ -253,9 +253,9 @@ func TestCreateOrUpdate(t *testing.T) {
 	// validate remote write urls is appended to vmagent in a valid order
 	f(opts{
 		prepare: func(d *testData) {
-			for _, agentRef := range d.zones.vmagents {
+			for _, vmAgent := range d.zones.vmagents {
 				vmCluster := d.vmclusters[2]
-				agentRef.obj.Spec.RemoteWrite = []vmv1beta1.VMAgentRemoteWriteSpec{
+				vmAgent.Spec.RemoteWrite = []vmv1beta1.VMAgentRemoteWriteSpec{
 					{URL: vmCluster.GetRemoteWriteURL()},
 				}
 			}
@@ -265,8 +265,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Verify urls order is preserved
-			for _, agentRef := range zs.vmagents {
-				vmAgent := agentRef.obj
+			for _, vmAgent := range zs.vmagents {
 				assert.Len(t, vmAgent.Spec.RemoteWrite, 3)
 				vmCluster0 := d.vmclusters[0]
 				vmCluster1 := d.vmclusters[1]
@@ -420,8 +419,8 @@ func TestCreateOrUpdate(t *testing.T) {
 			var vmClusterObjs, vmAgentObjs []vmv1beta1.NamespacedName
 			for i := range d.zones.vmagents {
 				vmAgentObjs = append(vmAgentObjs, vmv1beta1.NamespacedName{
-					Name:      d.zones.vmagents[i].obj.Name,
-					Namespace: d.zones.vmagents[i].obj.Namespace,
+					Name:      d.zones.vmagents[i].Name,
+					Namespace: d.zones.vmagents[i].Namespace,
 				})
 			}
 			for i := range d.vmclusters {
@@ -519,7 +518,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		validate: func(ctx context.Context, rclient client.Client, d *testData) {
 			zs, err := getZones(ctx, rclient, d.cr)
 			assert.NoError(t, err)
-			assert.True(t, zs.vmagents[0].delete, "disabled zone's leftover VMAgent must be marked for deletion")
+			assert.Nil(t, zs.vmagents[0], "disabled zone must not have a VMAgent built")
 
 			vmAuth := buildVMAuthLB(d.cr, zs)
 			owner := d.cr.AsOwner()
@@ -635,8 +634,8 @@ func TestCreateOrUpdate(t *testing.T) {
 			var vmClusterObjs, vmAgentObjs []vmv1beta1.NamespacedName
 			for i := range d.zones.vmagents {
 				vmAgentObjs = append(vmAgentObjs, vmv1beta1.NamespacedName{
-					Name:      d.zones.vmagents[i].obj.Name,
-					Namespace: d.zones.vmagents[i].obj.Namespace,
+					Name:      d.zones.vmagents[i].Name,
+					Namespace: d.zones.vmagents[i].Namespace,
 				})
 			}
 			for i := range d.vmclusters {

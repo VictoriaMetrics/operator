@@ -10,25 +10,20 @@ import (
 	"sort"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/go-logr/logr/funcr"
 	"github.com/stretchr/testify/assert"
 	discoveryv1 "k8s.io/api/discovery/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 func TestGetZones(t *testing.T) {
@@ -202,251 +197,42 @@ func TestGetZones(t *testing.T) {
 			assert.Equal(t, "dist-zone-a", singles[0].Name)
 			assert.Equal(t, "dist-zone-b", singles[1].Name)
 			assert.Equal(t, "14d", singles[1].Spec.RetentionPeriod)
-			assert.Equal(t, singles[1].GetRemoteWriteURL(), zs.vlagents[0].obj.Spec.RemoteWrite[1].URL)
-		},
-	})
-
-	// zone's VLAgent disabled after it already existed: getZones must pick up the
-	// leftover CR as staleAgents so upgrade can delete it instead of leaving it running.
-	f(opts{
-		cr: &vmv1alpha1.VLDistributed{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "dist",
-				Namespace: "ns",
-				UID:       "dist-uid",
-			},
-			Spec: vmv1alpha1.VLDistributedSpec{
-				BackendType: vmv1alpha1.VLDistributedBackendTypeVLSingle,
-				Zones: []vmv1alpha1.VLDistributedZone{
-					{
-						Name: "zone-a",
-						VLAgent: vmv1alpha1.VLDistributedZoneAgent{Spec: vmv1alpha1.VLDistributedZoneAgentSpec{
-							CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
-						}},
-					},
-				},
-			},
-		},
-		predefinedObjects: []runtime.Object{
-			&vmv1.VLAgent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "dist-zone-a",
-					Namespace:         "ns",
-					CreationTimestamp: metav1.Now(),
-					OwnerReferences:   []metav1.OwnerReference{{UID: "dist-uid", Controller: ptr.To(true)}},
-				},
-				Spec: vmv1.VLAgentSpec{
-					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(1))},
-				},
-			},
-		},
-		validate: func(cr *vmv1alpha1.VLDistributed, zs *zones) {
-			assert.True(t, zs.vlagents[0].delete, "leftover VLAgent CR must be marked for deletion")
-			if assert.NotNil(t, zs.vlagents[0].obj, "leftover VLAgent CR must be picked up for cleanup") {
-				assert.Equal(t, "dist-zone-a", zs.vlagents[0].obj.Name)
-			}
-			assert.True(t, zs.hasChanges[0], "stale VLAgent cleanup must trigger an upgrade pass")
-		},
-	})
-
-	// Disabled zones must not delete VLAgents owned outside this distribution.
-	f(opts{
-		cr: &vmv1alpha1.VLDistributed{
-			ObjectMeta: metav1.ObjectMeta{Name: "dist", Namespace: "ns", UID: "dist-uid"},
-			Spec: vmv1alpha1.VLDistributedSpec{
-				BackendType: vmv1alpha1.VLDistributedBackendTypeVLSingle,
-				Zones: []vmv1alpha1.VLDistributedZone{{
-					Name: "zone-a",
-					VLAgent: vmv1alpha1.VLDistributedZoneAgent{Spec: vmv1alpha1.VLDistributedZoneAgentSpec{
-						CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
-					}},
-				}},
-			},
-		},
-		predefinedObjects: []runtime.Object{
-			&vmv1.VLAgent{ObjectMeta: metav1.ObjectMeta{Name: "dist-zone-a", Namespace: "ns"}},
-		},
-		validate: func(cr *vmv1alpha1.VLDistributed, zs *zones) {
-			assert.Nil(t, zs.vlagents[0].obj)
-			assert.False(t, zs.vlagents[0].delete)
+			assert.Equal(t, singles[1].GetRemoteWriteURL(), zs.vlagents[0].Spec.RemoteWrite[1].URL)
 		},
 	})
 }
 
-func TestUpgradeDisabledAgentWaitsForPQ(t *testing.T) {
-	backend := &vmv1.VLSingle{ObjectMeta: metav1.ObjectMeta{
-		Name: "target", Namespace: "default", CreationTimestamp: metav1.Now(),
-	}}
-	agent := &vmv1.VLAgent{ObjectMeta: metav1.ObjectMeta{
-		Name: "source", Namespace: "default", CreationTimestamp: metav1.Now(),
-	}}
-	zs := &zones{
-		httpClient:   &http.Client{Timeout: httpTimeout},
-		vlagents:     []vlAgentRef{{}, {obj: agent}},
-		backends:     []vlBackend{{obj: backend}, {obj: &vmv1.VLSingle{ObjectMeta: metav1.ObjectMeta{Name: "other", Namespace: "default"}}}},
-		hasChanges:   []bool{false, false},
-		trafficModes: []vmv1alpha1.VLDistributedTrafficMode{"", ""},
-	}
+// Disabling a zone's VLAgent drops cr's owner reference but keeps the VLAgent and other owners.
+func TestGetZones_DisownsDisabledVLAgent(t *testing.T) {
 	cr := &vmv1alpha1.VLDistributed{
+		TypeMeta:   metav1.TypeMeta{APIVersion: vmv1alpha1.SchemeGroupVersion.String(), Kind: "VLDistributed"},
+		ObjectMeta: metav1.ObjectMeta{Name: "dist", Namespace: "ns", UID: "dist-uid"},
 		Spec: vmv1alpha1.VLDistributedSpec{
-			ZoneCommon: vmv1alpha1.VLDistributedZoneCommon{ReadyTimeout: &metav1.Duration{Duration: 200 * time.Millisecond}},
-			VMAuth:     vmv1alpha1.VLDistributedAuth{Enabled: ptr.To(false)},
-			Zones:      []vmv1alpha1.VLDistributedZone{{Name: "target"}, {Name: "other"}},
+			BackendType: vmv1alpha1.VLDistributedBackendTypeVLSingle,
+			Zones: []vmv1alpha1.VLDistributedZone{{
+				Name: "zone-a",
+				VLAgent: vmv1alpha1.VLDistributedZoneAgent{Spec: vmv1alpha1.VLDistributedZoneAgentSpec{
+					CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To(int32(0))},
+				}},
+			}},
 		},
 	}
-	rclient := k8stools.GetTestClientWithObjects([]runtime.Object{backend})
-
-	// Existing agent can have a persisted queue even with no running replicas.
-	err := zs.upgrade(context.Background(), rclient, cr, 0)
-	assert.ErrorContains(t, err, "queue for backend=target is drained")
-
-	// Emulate discovery error
-	var discoveryCalls atomic.Int32
-	unavailable := k8stools.GetTestClientWithObjectsAndInterceptors([]runtime.Object{backend}, interceptor.Funcs{
-		List: func(ctx context.Context, cl client.WithWatch, obj client.ObjectList, opts ...client.ListOption) error {
-			if _, ok := obj.(*discoveryv1.EndpointSliceList); ok {
-				discoveryCalls.Add(1)
-				return fmt.Errorf("discovery unavailable")
-			}
-			return cl.List(ctx, obj, opts...)
-		},
-	})
-	err = zs.upgrade(context.Background(), unavailable, cr, 0)
-	assert.ErrorIs(t, err, context.DeadlineExceeded)
-	assert.ErrorContains(t, err, "queue for backend=target is drained")
-	assert.Greater(t, discoveryCalls.Load(), int32(0))
-
-	// An agent that never existed has no queue to drain.
-	zs.vlagents[1] = vlAgentRef{}
-	assert.NoError(t, zs.upgrade(context.Background(), rclient, cr, 0))
-	zs.vlagents[1] = vlAgentRef{obj: &vmv1.VLAgent{ObjectMeta: metav1.ObjectMeta{Name: "new", Namespace: "default"}}}
-	assert.NoError(t, zs.upgrade(context.Background(), rclient, cr, 0))
-}
-
-func TestWaitForAgentPQNoEndpoints(t *testing.T) {
-	agent := &vmv1.VLAgent{ObjectMeta: metav1.ObjectMeta{Name: "source", Namespace: "default"}}
-	zs := &zones{httpClient: &http.Client{Timeout: httpTimeout}}
-	var calls atomic.Int32
-	rclient := k8stools.GetTestClientWithObjectsAndInterceptors(nil, interceptor.Funcs{
-		List: func(ctx context.Context, cl client.WithWatch, obj client.ObjectList, opts ...client.ListOption) error {
-			if _, ok := obj.(*discoveryv1.EndpointSliceList); ok && calls.Add(1) == 1 {
-				return fmt.Errorf("temporary discovery failure")
-			}
-			return cl.List(ctx, obj, opts...)
-		},
-	})
-	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
-	defer cancel()
-
-	err := zs.waitForAgentPQ(ctx, rclient, time.Millisecond, agent)
-	assert.ErrorContains(t, err, "no ready metrics endpoints")
-	assert.Greater(t, calls.Load(), int32(1))
-}
-
-func TestUpgradeDrainsDisabledAgent(t *testing.T) {
-	var pending atomic.Bool
-	pending.Store(true)
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		value := 0
-		if pending.Load() {
-			value = 100
-		}
-		fmt.Fprintf(w, "%s{url=%q} %d\n", vlAgentQueueMetricName, "http://other-backend/write", value)
-	}))
-	defer ts.Close()
-	u, err := url.Parse(ts.URL)
-	assert.NoError(t, err)
-	host, portStr, err := net.SplitHostPort(u.Host)
-	assert.NoError(t, err)
-	port, err := strconv.Atoi(portStr)
-	assert.NoError(t, err)
-
-	backend := &vmv1.VLSingle{
-		ObjectMeta: metav1.ObjectMeta{Name: "target", Namespace: "default", CreationTimestamp: metav1.Now()},
-		Status: vmv1.VLSingleStatus{
-			StatusMetadata: vmv1beta1.StatusMetadata{UpdateStatus: vmv1beta1.UpdateStatusOperational},
-		},
-	}
+	other := metav1.OwnerReference{APIVersion: "v1", Kind: "ConfigMap", Name: "other", UID: "other-uid"}
 	agent := &vmv1.VLAgent{ObjectMeta: metav1.ObjectMeta{
-		Name: "source", Namespace: "default", CreationTimestamp: metav1.Now(),
+		Name:            "dist-zone-a",
+		Namespace:       "ns",
+		OwnerReferences: []metav1.OwnerReference{cr.AsOwner(), other},
 	}}
-	endpoints := &discoveryv1.EndpointSlice{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "source-endpoints", Namespace: "default",
-			Labels: map[string]string{discoveryv1.LabelServiceName: agent.PrefixedName()},
-		},
-		Endpoints: []discoveryv1.Endpoint{{
-			Addresses: []string{host}, Conditions: discoveryv1.EndpointConditions{Ready: ptr.To(true)},
-		}},
-		Ports: []discoveryv1.EndpointPort{{Name: ptr.To("http"), Port: ptr.To(int32(port))}},
-	}
-	rclient := k8stools.GetTestClientWithObjects([]runtime.Object{backend, agent, endpoints})
-	zs := &zones{
-		httpClient:   &http.Client{Timeout: httpTimeout},
-		vlagents:     []vlAgentRef{{obj: agent, delete: true}},
-		backends:     []vlBackend{{obj: backend}},
-		hasChanges:   []bool{true},
-		trafficModes: []vmv1alpha1.VLDistributedTrafficMode{vmv1alpha1.VLDistributedTrafficModeMaintenance},
-	}
-	cr := &vmv1alpha1.VLDistributed{Spec: vmv1alpha1.VLDistributedSpec{
-		ZoneCommon: vmv1alpha1.VLDistributedZoneCommon{ReadyTimeout: &metav1.Duration{Duration: 200 * time.Millisecond}},
-		VMAuth:     vmv1alpha1.VLDistributedAuth{Enabled: ptr.To(false)},
-		Zones:      []vmv1alpha1.VLDistributedZone{{Name: "target"}},
-	}}
+	rclient := k8stools.GetTestClientWithObjects([]runtime.Object{agent})
+	ctx := context.Background()
 
-	// Keep a write-capable backend unchanged until its stale agent drains.
-	zs.backends[0].prevAccepts = true
-	backend.Spec.RetentionPeriod = "29d"
-	err = zs.upgrade(context.Background(), rclient, cr, 0)
-	assert.ErrorContains(t, err, "failed to drain VLAgent=default/source queues")
-	var persisted vmv1.VLSingle
-	assert.NoError(t, rclient.Get(context.Background(), client.ObjectKeyFromObject(backend), &persisted))
-	assert.NotEqual(t, "29d", persisted.Spec.RetentionPeriod)
-	zs.backends[0].prevAccepts = false
-	backend.Spec.RetentionPeriod = ""
+	zs, err := getZones(ctx, rclient, cr)
+	assert.NoError(t, err)
+	assert.Nil(t, zs.vlagents[0])
 
-	endpoints.Endpoints[0].Conditions.Ready = ptr.To(false)
-	assert.NoError(t, rclient.Update(context.Background(), endpoints))
-	err = zs.upgrade(context.Background(), rclient, cr, 0)
-	assert.ErrorContains(t, err, "no ready metrics endpoints")
-	assert.NoError(t, rclient.Get(context.Background(), client.ObjectKeyFromObject(agent), &vmv1.VLAgent{}))
-
-	endpoints.Endpoints[0].Conditions.Ready = ptr.To(true)
-	assert.NoError(t, rclient.Update(context.Background(), endpoints))
-	err = zs.upgrade(context.Background(), rclient, cr, 0)
-	assert.ErrorContains(t, err, "failed to drain VLAgent=default/source queues")
-	assert.NoError(t, rclient.Get(context.Background(), client.ObjectKeyFromObject(agent), &vmv1.VLAgent{}))
-
-	pending.Store(false)
-	assert.NoError(t, zs.upgrade(context.Background(), rclient, cr, 0))
-	assert.True(t, k8serrors.IsNotFound(rclient.Get(context.Background(), client.ObjectKeyFromObject(agent), &vmv1.VLAgent{})))
-
-	// An agent already scaled to zero has no running queue to poll.
-	agent.Spec.ReplicaCount = ptr.To(int32(0))
-	agent.ResourceVersion = ""
-	assert.NoError(t, rclient.Create(context.Background(), agent))
-	pending.Store(true)
-	assert.NoError(t, zs.upgrade(context.Background(), rclient, cr, 0))
-	assert.True(t, k8serrors.IsNotFound(rclient.Get(context.Background(), client.ObjectKeyFromObject(agent), &vmv1.VLAgent{})))
-}
-
-func TestWaitForPQLogsTarget(t *testing.T) {
-	backend := &vmv1.VLCluster{
-		ObjectMeta: metav1.ObjectMeta{Name: "target", Namespace: "default"},
-		Spec:       vmv1.VLClusterSpec{VLInsert: &vmv1.VLInsert{}},
-	}
-	zs := &zones{backends: []vlBackend{{obj: backend}}}
-	var lines []string
-	ctx := logger.AddToContext(context.Background(), funcr.New(func(prefix, args string) {
-		lines = append(lines, prefix+args)
-	}, funcr.Options{}))
-
-	assert.NoError(t, zs.waitForEmptyPQ(ctx, k8stools.GetTestClientWithObjects(nil), time.Millisecond, 0))
-	if assert.Len(t, lines, 2) {
-		for _, line := range lines {
-			assert.Contains(t, line, backend.GetRemoteWriteURL())
-		}
-	}
+	var got vmv1.VLAgent
+	assert.NoError(t, rclient.Get(ctx, types.NamespacedName{Name: agent.Name, Namespace: agent.Namespace}, &got))
+	assert.Equal(t, []metav1.OwnerReference{other}, got.OwnerReferences)
 }
 
 func TestWaitForEmptyPQ(t *testing.T) {
@@ -526,14 +312,15 @@ func TestWaitForEmptyPQ(t *testing.T) {
 			httpClient: &http.Client{
 				Timeout: httpTimeout,
 			},
-			vlagents: []vlAgentRef{{obj: vlAgent}},
+			vlagents: []*vmv1.VLAgent{vlAgent},
 			backends: []vlBackend{{obj: vlCluster}},
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), o.timeout)
 		defer cancel()
 
-		err = zs.waitForEmptyPQ(ctx, rclient, 1*time.Second, 0)
+		zs.waitForEmptyPQ(ctx, rclient, 1*time.Second, 0)
+		err = ctx.Err()
 		if len(o.errMsg) > 0 {
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), o.errMsg)
@@ -607,15 +394,15 @@ func TestZonesSorting(t *testing.T) {
 		t.Helper()
 		zs := &zones{
 			backends:     make([]vlBackend, len(o.clusters)),
-			vlagents:     make([]vlAgentRef, len(o.clusters)),
+			vlagents:     make([]*vmv1.VLAgent, len(o.clusters)),
 			hasChanges:   make([]bool, len(o.clusters)),
 			trafficModes: make([]vmv1alpha1.VLDistributedTrafficMode, len(o.clusters)),
 		}
 		for i, c := range o.clusters {
 			zs.backends[i] = vlBackend{obj: c}
-			zs.vlagents[i] = vlAgentRef{obj: &vmv1.VLAgent{
+			zs.vlagents[i] = &vmv1.VLAgent{
 				ObjectMeta: metav1.ObjectMeta{Name: c.Name},
-			}}
+			}
 		}
 		if o.hasChanges != nil {
 			zs.hasChanges = o.hasChanges
@@ -771,8 +558,8 @@ func TestZonesSorting(t *testing.T) {
 		hasChanges: []bool{true, false},
 		wantNames:  []string{"zone-a", "zone-b"},
 		validate: func(zs *zones) {
-			assert.Equal(t, zs.backends[0].obj.GetName(), zs.vlagents[0].obj.Name)
-			assert.Equal(t, zs.backends[1].obj.GetName(), zs.vlagents[1].obj.Name)
+			assert.Equal(t, zs.backends[0].obj.GetName(), zs.vlagents[0].Name)
+			assert.Equal(t, zs.backends[1].obj.GetName(), zs.vlagents[1].Name)
 			assert.False(t, zs.hasChanges[0])
 			assert.True(t, zs.hasChanges[1])
 		},

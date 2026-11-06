@@ -28,7 +28,7 @@ import (
 )
 
 func buildService(cr *vmv1.VMAnomaly) *corev1.Service {
-	return build.Service(cr, cr.Spec.Server.Port, func(svc *corev1.Service) {
+	return build.Service(cr, cr.Port(), func(svc *corev1.Service) {
 		svc.Spec.ClusterIP = "None"
 		svc.Spec.PublishNotReadyAddresses = true
 	})

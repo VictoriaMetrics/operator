@@ -220,7 +220,7 @@ func StatefulSet(ctx context.Context, rclient client.Client, newObj, prevObj *ap
 			if o.UpdateBehavior.MaxUnavailable.String() == "100%" {
 				opts.delete = true
 			}
-			opts.maxUnavailable, err = intstr.GetScaledValueFromIntOrPercent(o.UpdateBehavior.MaxUnavailable, int(*newObj.Spec.Replicas), false)
+			opts.maxUnavailable, err = intstr.GetScaledValueFromIntOrPercent(o.UpdateBehavior.MaxUnavailable, int(ptr.Deref(newObj.Spec.Replicas, 1)), false)
 			if err != nil {
 				return err
 			}

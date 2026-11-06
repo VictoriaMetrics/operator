@@ -1954,3 +1954,14 @@ oauth2:
 `,
 	})
 }
+
+func Test_generateServiceScrapeConfigNilRelabel(t *testing.T) {
+	ctx := context.Background()
+	sp := &vmv1beta1.CommonScrapeParams{ServiceScrapeRelabelTemplate: []*vmv1beta1.RelabelConfig{nil}}
+	sc := &vmv1beta1.VMServiceScrape{Spec: vmv1beta1.VMServiceScrapeSpec{Endpoints: []vmv1beta1.Endpoint{{RelabelConfigs: []*vmv1beta1.RelabelConfig{nil}}}}}
+	ac := getAssetsCache(ctx, k8stools.GetTestClientWithObjects(nil))
+	assert.NotPanics(t, func() {
+		_, err := generateServiceScrapeConfig(ctx, sp, &ParsedObjects{}, sc, sc.Spec.Endpoints[0], 0, ac)
+		assert.NoError(t, err)
+	})
+}

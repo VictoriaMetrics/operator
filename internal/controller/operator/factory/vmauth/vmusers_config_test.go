@@ -19,6 +19,13 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
+func TestGenURLMapsMissingTarget(t *testing.T) {
+	_, err := genURLMaps("user", []vmv1beta1.TargetRef{{}}, nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "static.url, static.urls and ref.crd cannot be empty") {
+		t.Fatalf("expected missing target error, got %v", err)
+	}
+}
+
 func Test_genUserCfg(t *testing.T) {
 
 	type opts struct {

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 
@@ -200,4 +201,18 @@ func TestVTCluster_PrefixedName(t *testing.T) {
 	f("myapp", true, vmv1beta1.ClusterComponentSelect, "myapp-vtselect")
 	f("myapp", true, vmv1beta1.ClusterComponentInsert, "myapp-vtinsert")
 	f("myapp", true, vmv1beta1.ClusterComponentStorage, "myapp-vtstorage")
+}
+
+func TestClusterStorageLimits(t *testing.T) {
+	f := func(cr interface{ Validate() error }) {
+		t.Helper()
+		assert.Error(t, cr.Validate())
+	}
+
+	skip := map[string]string{vmv1beta1.SkipValidationAnnotation: vmv1beta1.SkipValidationValue}
+	over := ptr.To[int32](vmv1beta1.MaxReplicaCount + 1)
+	f(&VTCluster{Spec: VTClusterSpec{Storage: &VTStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: over}}}})
+	f(&VTCluster{ObjectMeta: metav1.ObjectMeta{Annotations: skip}, Spec: VTClusterSpec{Storage: &VTStorage{HPA: &vmv1beta1.EmbeddedHPA{MinReplicas: over}}}})
+	f(&VLCluster{Spec: VLClusterSpec{VLStorage: &VLStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: over}}}})
+	f(&VLCluster{ObjectMeta: metav1.ObjectMeta{Annotations: skip}, Spec: VLClusterSpec{VLStorage: &VLStorage{HPA: &vmv1beta1.EmbeddedHPA{MinReplicas: over}}}})
 }

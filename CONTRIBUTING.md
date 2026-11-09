@@ -50,7 +50,7 @@ Run the same checks as CI:
 ```bash
 make lint                      # linters
 make manifests api-gen docs    # regenerate CRDs, clients and docs
-git status                     # the generated files must be committed
+git diff --exit-code           # the generated files must be committed
 ./hack/check-rbac-markers.sh   # RBAC markers
 make test                      # unit tests
 make test-e2e                  # e2e tests in a kind cluster, optional, see below
@@ -80,13 +80,13 @@ Changes to `go.mod`, `go.sum` or the root `Makefile` are tested on master after 
 To add a new kind, e.g. `KIND_NAME`, run:
 
 ```bash
-kubebuilder create api --group operator --version v1beta1 --kind KIND_NAME
+kubebuilder create api --group operator --version v1alpha1 --kind KIND_NAME
 ```
 
 To add a webhook for it, run:
 
 ```bash
-kubebuilder create webhook --group operator --version v1beta1 --kind KIND_NAME --conversion --programmatic-validation
+kubebuilder create webhook --group operator --version v1alpha1 --kind KIND_NAME --conversion --programmatic-validation
 ```
 
-This scaffolds the API and the controller. Then edit the code in `api/operator/v1beta1` and `internal/controller/operator`.
+This scaffolds the API and the controller. Then edit the code in `api/operator/v1alpha1` and `internal/controller/operator`.

@@ -32,6 +32,7 @@ import (
 	"strings"
 
 	amcfg "github.com/prometheus/alertmanager/config"
+	"github.com/prometheus/alertmanager/featurecontrol"
 	"github.com/prometheus/alertmanager/matcher/compat"
 	amparse "github.com/prometheus/alertmanager/matcher/parse"
 	"golang.org/x/net/http/httpguts"
@@ -2362,6 +2363,8 @@ func init() {
 	compat.InitFromFlags(slog.New(&amNoopLogger{}), &alertmanagerFlags{})
 }
 
+var _ featurecontrol.Flagger = (*alertmanagerFlags)(nil)
+
 type alertmanagerFlags struct{}
 
 // EnableAlertNamesInMetrics implements featurecontrol.Flagger interface
@@ -2379,8 +2382,8 @@ func (af *alertmanagerFlags) UTF8StrictMode() bool { return true }
 // EnableAutoGOMEMLIMIT implements featurecontrol.Flagger interface
 func (af *alertmanagerFlags) EnableAutoGOMEMLIMIT() bool { return false }
 
-// EnableAutoGOMAXPROCS implements featurecontrol.Flagger interface
-func (af *alertmanagerFlags) EnableAutoGOMAXPROCS() bool { return false }
+// EnableMutedAlertsInNflog implements featurecontrol.Flagger interface
+func (af *alertmanagerFlags) EnableMutedAlertsInNflog() bool { return false }
 
 // EnableEventRecorder implements featurecontrol.Flagger interface
 func (af *alertmanagerFlags) EnableEventRecorder() bool { return false }

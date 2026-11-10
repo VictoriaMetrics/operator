@@ -15,6 +15,7 @@ aliases:
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.156.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.156.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.13.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.13.0).
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default version for Alertmanager to [v0.35.0](https://github.com/prometheus/alertmanager/releases/tag/v0.35.0).
 
 * FEATURE: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): add support for the `victoria-traces-agent` chart, which is converted into `VTAgent`. See [#2796](https://github.com/VictoriaMetrics/operator/pull/2796).
 * FEATURE: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): the `victoria-logs-single` chart is now converted into `VLSingle` instead of the deprecated `VLogs`, including its `license` settings. See [#2797](https://github.com/VictoriaMetrics/operator/pull/2797).

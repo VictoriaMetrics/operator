@@ -1064,7 +1064,7 @@ func TestConvertVTAgent(t *testing.T) {
 			},
 			ReplicaCount: ptr.To(int32(1)),
 			RemoteWrite: []VTAgentRemoteWriteValues{
-				{VTAgentRemoteWriteSpec: vmv1.VTAgentRemoteWriteSpec{URL: "http://victoria-traces:10428/insert/native"}},
+				{VTAgentRemoteWriteSpec: vmv1.VTAgentRemoteWriteSpec{URL: "http://victoria-traces:10428/insert/opentelemetry/v1/traces"}},
 			},
 			MaxDiskUsagePerURL: "1GiB",
 			OTLPGRPC: &VTAgentOTLPGRPCValues{
@@ -1093,7 +1093,7 @@ func TestConvertVTAgent(t *testing.T) {
 						ReplicaCount: ptr.To(int32(1)),
 					},
 					RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
-						{URL: "http://victoria-traces:10428/insert/native"},
+						{URL: "http://victoria-traces:10428/insert/opentelemetry/v1/traces"},
 					},
 					RemoteWriteSettings: &vmv1.VTAgentRemoteWriteSettings{
 						MaxDiskUsagePerURL: ptr.To(vmv1beta1.BytesString("1GiB")),
@@ -1139,7 +1139,7 @@ func TestUnmarshalValuesSupportsRemoteWriteTLSForVTAgent(t *testing.T) {
 image:
   repository: victoriametrics/vtagent
 remoteWrite:
-  - url: https://victoria-traces:10428/insert/native
+  - url: https://victoria-traces:10428/insert/opentelemetry/v1/traces
     tlsCAFile: /etc/tls/ca.crt
     tlsInsecureSkipVerify: true
 `), "victoria-traces-agent")

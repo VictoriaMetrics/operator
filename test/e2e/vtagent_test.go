@@ -64,10 +64,11 @@ var _ = Describe("test vtagent Controller", Label("vt", "agent", "vtagent"), fun
 				Spec: vmv1.VTAgentSpec{
 					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To[int32](1),
+						ExtraArgs:    map[string]string{"opentelemetry.traces.maxRequestSize": "15MB"},
 					},
 					RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
-						{URL: "http://localhost:10428/insert/native"},
-						{URL: "http://localhost:10430/insert/native", Format: ptr.To("jsonline")},
+						{URL: "http://localhost:10428/insert/opentelemetry/v1/traces"},
+						{URL: "http://localhost:10430/insert/opentelemetry/v1/traces"},
 					},
 					TmpDataPath: ptr.To("/tmp/custom-path"),
 					RemoteWriteSettings: &vmv1.VTAgentRemoteWriteSettings{
@@ -91,7 +92,7 @@ var _ = Describe("test vtagent Controller", Label("vt", "agent", "vtagent"), fun
 				Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(1))
 				cnt := sts.Spec.Template.Spec.Containers[0]
 				Expect(cnt.VolumeMounts).To(BeEmpty())
-				Expect(cnt.Args).To(ContainElements("-tmpDataPath=/tmp/custom-path", "-remoteWrite.maxBlockSize=15MB", "-remoteWrite.format=,jsonline"))
+				Expect(cnt.Args).To(ContainElements("-tmpDataPath=/tmp/custom-path", "-remoteWrite.maxBlockSize=15MB", "-opentelemetry.traces.maxRequestSize=15MB"))
 			}),
 			Entry("with persistent storage and tls remote target", "remote-tls",
 				&vmv1.VTAgent{
@@ -115,9 +116,9 @@ var _ = Describe("test vtagent Controller", Label("vt", "agent", "vtagent"), fun
 							},
 						},
 						RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
-							{URL: "http://localhost:10428/insert/native"},
+							{URL: "http://localhost:10428/insert/opentelemetry/v1/traces"},
 							{
-								URL: "http://localhost:10425/insert/native",
+								URL: "http://localhost:10425/insert/opentelemetry/v1/traces",
 								TLSConfig: &vmv1.TLSConfig{
 									CASecret: &corev1.SecretKeySelector{
 										LocalObjectReference: corev1.LocalObjectReference{
@@ -195,7 +196,7 @@ var _ = Describe("test vtagent Controller", Label("vt", "agent", "vtagent"), fun
 						},
 						RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
 							{
-								URL: "http://localhost:10428/insert/native",
+								URL: "http://localhost:10428/insert/opentelemetry/v1/traces",
 								BearerTokenSecret: &corev1.SecretKeySelector{
 									Key: "token",
 									LocalObjectReference: corev1.LocalObjectReference{
@@ -206,7 +207,7 @@ var _ = Describe("test vtagent Controller", Label("vt", "agent", "vtagent"), fun
 								MaxDiskUsage: ptr.To(vmv1beta1.BytesString(`10GB`)),
 							},
 							{
-								URL: "http://localhost:10425/insert/native",
+								URL: "http://localhost:10425/insert/opentelemetry/v1/traces",
 								OAuth2: &vmv1.OAuth2{
 									TokenURL:       "http://oauth2.example.com",
 									Scopes:         []string{"scope-1", "scope-2"},

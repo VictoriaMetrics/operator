@@ -64,7 +64,7 @@ var _ = Describe("test vtagent Controller", Label("vt", "agent", "vtagent"), fun
 				Spec: vmv1.VTAgentSpec{
 					CommonAppsParams: vmv1beta1.CommonAppsParams{
 						ReplicaCount: ptr.To[int32](1),
-						ExtraArgs: map[string]string{"opentelemetry.traces.maxRequestSize": "15MB"},
+						ExtraArgs:    map[string]string{"opentelemetry.traces.maxRequestSize": "15MB"},
 					},
 					RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
 						{URL: "http://localhost:10428/insert/opentelemetry/v1/traces"},

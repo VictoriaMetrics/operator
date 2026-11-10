@@ -355,7 +355,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	}
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
-	sort.Strings(args)
+	build.SortArgs(args)
 
 	vmauthContainer := corev1.Container{
 		Name:                     "vmauth",

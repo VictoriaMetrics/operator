@@ -3,7 +3,6 @@ package build
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -154,7 +153,7 @@ func VMBackupManager(
 		FailureThreshold: 10,
 	}
 
-	sort.Strings(args)
+	SortArgs(args)
 	vmBackuper := &corev1.Container{
 		Name:                     "vmbackuper",
 		Image:                    cr.Image.Reference(),
@@ -222,7 +221,7 @@ func VMRestore(
 		args = append(args, "-envflag.enable=true")
 	}
 
-	sort.Strings(args)
+	SortArgs(args)
 
 	args = append([]string{"restore"}, args...)
 

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -451,7 +450,7 @@ func newPodSpec(cr *vmv1.VLAgent) (*corev1.PodSpec, error) {
 	}
 	volumes, vmMounts = addRemoteWriteAssetsToVolumes(volumes, vmMounts, cr)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
-	sort.Strings(args)
+	build.SortArgs(args)
 
 	vlagentContainer := corev1.Container{
 		Name:                     "vlagent",

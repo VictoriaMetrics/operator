@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path"
-	"sort"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -728,7 +727,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VMSelect.ExtraArgs, "-")
-	sort.Strings(args)
+	build.SortArgs(args)
 	vmselectContainer := corev1.Container{
 		Name:                     "vmselect",
 		Image:                    cr.Spec.VMSelect.Image.Reference(),
@@ -952,7 +951,7 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VMInsert.ExtraArgs, "-")
-	sort.Strings(args)
+	build.SortArgs(args)
 
 	vminsertContainer := corev1.Container{
 		Name:                     "vminsert",
@@ -1208,7 +1207,7 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VMStorage.ExtraArgs, "-")
-	sort.Strings(args)
+	build.SortArgs(args)
 	vmstorageContainer := corev1.Container{
 		Name:                     "vmstorage",
 		Image:                    cr.Spec.VMStorage.Image.Reference(),
@@ -1660,7 +1659,7 @@ func buildVMAuthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
 	args = build.AddExtraArgsOverrideDefaults(args, spec.ExtraArgs, "-")
-	sort.Strings(args)
+	build.SortArgs(args)
 	vmauthLBCnt := corev1.Container{
 		Name: "vmauth",
 		Ports: []corev1.ContainerPort{

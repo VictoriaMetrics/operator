@@ -2,6 +2,7 @@ package vmsingle
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"testing/synctest"
 
@@ -495,6 +496,42 @@ func TestMakeSpecForVMSingleOk_WatchTargetDirPairing(t *testing.T) {
 		"/etc/vm/sc-raw-1":             "/etc/vm/sc-files/sc-raw-1",
 		"/etc/vm/sc-raw-2":             "/etc/vm/sc-files/sc-raw-2",
 	})
+}
+
+// downsampling rules must keep the user-defined order, since the first matching filter wins
+func TestMakeSpecForVMSingleOk_DownsamplingOrder(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1beta1.VMSingle{
+		ObjectMeta: metav1.ObjectMeta{Name: "single", Namespace: "default"},
+		Spec: vmv1beta1.VMSingleSpec{
+			Downsampling: &vmv1beta1.DownsamplingConfig{
+				Rules: []vmv1beta1.DownsamplingRule{
+					{Filter: `{env="prod"}`, Periods: []vmv1beta1.DownsamplingPeriod{{Offset: "1d", Interval: "30s"}}},
+					{Filter: `{__name__=~"node_.*"}`, Periods: []vmv1beta1.DownsamplingPeriod{{Offset: "1d", Interval: "5m"}}},
+					{Periods: []vmv1beta1.DownsamplingPeriod{{Offset: "30d", Interval: "10m"}, {Offset: "7d", Interval: "1m"}}},
+				},
+			},
+		},
+	}
+	fclient := k8stools.GetTestClientWithObjects(nil)
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	got, err := newPodSpec(ctx, cr, 0)
+	assert.NoError(t, err)
+
+	var periods []string
+	for _, arg := range got.Spec.Containers[0].Args {
+		if strings.HasPrefix(arg, "-downsampling.period=") {
+			periods = append(periods, arg)
+		}
+	}
+	assert.Equal(t, []string{
+		`-downsampling.period={env="prod"}:1d:30s`,
+		`-downsampling.period={__name__=~"node_.*"}:1d:5m`,
+		`-downsampling.period=30d:10m`,
+		`-downsampling.period=7d:1m`,
+	}, periods)
 }
 
 func TestCreateOrUpdateService(t *testing.T) {

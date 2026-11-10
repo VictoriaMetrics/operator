@@ -398,7 +398,7 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle, extraConfigSecretCo
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 	volumes, vmMounts = build.OpenShiftServiceCAVolumeTo(volumes, vmMounts)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
-	sort.Strings(args)
+	build.SortArgs(args)
 	vmsingleContainer := corev1.Container{
 		Name:                     "vmsingle",
 		Image:                    cr.Spec.Image.Reference(),

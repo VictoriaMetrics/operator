@@ -16,7 +16,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 // disabledControllers defines set of disabled VM operator controllers
@@ -104,45 +103,6 @@ func LicenseVolumeTo(volumes []corev1.Volume, mounts []corev1.VolumeMount, l *vm
 		ReadOnly:  true,
 		MountPath: path.Join(secretMountDir, l.KeyRef.Name),
 	})
-	return volumes, mounts
-}
-
-// SecretsAndConfigMapsVolumeTo mounts the given secrets and configmaps into given volumes and volume mounts
-func SecretsAndConfigMapsVolumeTo(volumes []corev1.Volume, mounts []corev1.VolumeMount, secrets, configMaps []string) ([]corev1.Volume, []corev1.VolumeMount) {
-	for _, s := range secrets {
-		name := k8stools.SanitizeVolumeName("secret-" + s)
-		volumes = append(volumes, corev1.Volume{
-			Name: name,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: s,
-				},
-			},
-		})
-		mounts = append(mounts, corev1.VolumeMount{
-			Name:      name,
-			ReadOnly:  true,
-			MountPath: path.Join(vmv1beta1.SecretsDir, s),
-		})
-	}
-	for _, c := range configMaps {
-		name := k8stools.SanitizeVolumeName("configmap-" + c)
-		volumes = append(volumes, corev1.Volume{
-			Name: name,
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: c,
-					},
-				},
-			},
-		})
-		mounts = append(mounts, corev1.VolumeMount{
-			Name:      name,
-			ReadOnly:  true,
-			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
-		})
-	}
 	return volumes, mounts
 }
 

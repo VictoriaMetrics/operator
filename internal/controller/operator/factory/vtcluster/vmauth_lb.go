@@ -3,6 +3,7 @@ package vtcluster
 import (
 	"context"
 	"fmt"
+	"path"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -180,7 +181,40 @@ func buildVMauthLBDeployment(cr *vmv1.VTCluster) (*appsv1.Deployment, error) {
 		},
 	}
 	vmounts = append(vmounts, spec.VolumeMounts...)
-	volumes, vmounts = build.SecretsAndConfigMapsVolumeTo(volumes, vmounts, spec.Secrets, spec.ConfigMaps)
+
+	for _, s := range spec.Secrets {
+		volumes = append(volumes, corev1.Volume{
+			Name: k8stools.SanitizeVolumeName("secret-" + s),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: s,
+				},
+			},
+		})
+		vmounts = append(vmounts, corev1.VolumeMount{
+			Name:      k8stools.SanitizeVolumeName("secret-" + s),
+			ReadOnly:  true,
+			MountPath: path.Join(vmv1beta1.SecretsDir, s),
+		})
+	}
+
+	for _, c := range spec.ConfigMaps {
+		volumes = append(volumes, corev1.Volume{
+			Name: k8stools.SanitizeVolumeName("configmap-" + c),
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: c,
+					},
+				},
+			},
+		})
+		vmounts = append(vmounts, corev1.VolumeMount{
+			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
+			ReadOnly:  true,
+			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
+		})
+	}
 
 	args := []string{
 		"-auth.config=/opt/vmauth-config/config.yaml",

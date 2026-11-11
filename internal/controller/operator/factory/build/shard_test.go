@@ -1,6 +1,7 @@
 package build
 
 import (
+	"math"
 	"slices"
 	"testing"
 
@@ -23,4 +24,7 @@ func TestShardNumIter(t *testing.T) {
 	}
 	f(true, 9)
 	f(false, 5)
+
+	// count above the limit is capped
+	assert.Len(t, slices.Collect(ShardNumIter(false, math.MaxInt32)), maxShardCount)
 }

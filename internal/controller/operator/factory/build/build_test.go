@@ -213,6 +213,12 @@ func TestMergeMapsRecursive(t *testing.T) {
 	assert.Equal(t, "root-added", base["e"])
 }
 
+func TestMergeMapsRecursiveNilBase(t *testing.T) {
+	merged := mergeMapsRecursive(nil, map[string]any{"a": "b"})
+	assert.Equal(t, map[string]any{"a": "b"}, merged)
+	assert.Nil(t, mergeMapsRecursive(nil, nil))
+}
+
 func TestDeepMerge(t *testing.T) {
 	type opts struct {
 		override *vmv1beta1.VMClusterSpec

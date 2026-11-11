@@ -47,6 +47,9 @@ const (
 	WorkloadKindDeployment  WorkloadKind = "Deployment"
 )
 
+// MaxReplicaCount bounds replicas; keep in sync with ReplicaCount kubebuilder Maximum marker
+const MaxReplicaCount = 100
+
 // ClusterComponent defines component kind for cluster
 type ClusterComponent string
 
@@ -1411,6 +1414,9 @@ type StatefulSetUpdateStrategyBehavior struct {
 var percentPattern = regexp.MustCompile(`^\d+%$`)
 
 func (s *StatefulSetUpdateStrategyBehavior) Validate() error {
+	if s.MaxUnavailable == nil {
+		return fmt.Errorf("maxUnavailable is required")
+	}
 	// If maxUnavailable is an integer, it must be >= 1
 	if s.MaxUnavailable.Type == intstr.Int {
 		if s.MaxUnavailable.IntValue() < 1 {
@@ -1549,6 +1555,7 @@ type CommonAppsParams struct {
 	// ReplicaCount is the expected size of the Application.
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	// +optional
+	// +kubebuilder:validation:Maximum=100
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
 	// The number of old ReplicaSets to retain to allow rollback in deployment or
 	// maximum number of revisions that will be maintained in the Deployment revision history.

@@ -1634,6 +1634,7 @@ func buildVMAuthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 		},
 	}
 	vmounts = append(vmounts, spec.VolumeMounts...)
+	volumes, vmounts = build.SecretsAndConfigMapsVolumeTo(volumes, vmounts, spec.Secrets, spec.ConfigMaps)
 
 	args := []string{
 		"-auth.config=/opt/vmauth-config/config.yaml",

@@ -181,6 +181,7 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 		},
 	}
 	vmMounts = append(vmMounts, spec.VolumeMounts...)
+	volumes, vmMounts = build.SecretsAndConfigMapsVolumeTo(volumes, vmMounts, spec.Secrets, spec.ConfigMaps)
 	cfg := config.MustGetBaseConfig()
 
 	args := []string{

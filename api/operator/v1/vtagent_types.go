@@ -55,9 +55,11 @@ type VTAgentSpec struct {
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
 
-	// RemoteWrite list of VictoriaTraces endpoints to replicate ingested trace spans to.
-	// The url must point to the OTLP/HTTP traces API of a VictoriaTraces instance, e.g.
+	// RemoteWrite list of endpoints to replicate ingested trace spans to.
+	// Since v0.13.0, vtagent sends data in OTLP/HTTP protobuf format,
+	// so the url must point to an OTLP/HTTP traces endpoint, e.g.
 	// http://vtsingle-example:10428/insert/opentelemetry/v1/traces
+	// Older vtagent versions require a VictoriaTraces endpoint matching the selected format, such as `/insert/native` for `native`.
 	// See https://docs.victoriametrics.com/victoriatraces/vtagent/
 	RemoteWrite []VTAgentRemoteWriteSpec `json:"remoteWrite"`
 	// RemoteWriteSettings defines global settings for all remoteWrite urls.
@@ -188,15 +190,17 @@ type VTAgentRemoteWriteSettings struct {
 // VTAgentRemoteWriteSpec defines the remote storage configuration for VTAgent
 // +k8s:openapi-gen=true
 type VTAgentRemoteWriteSpec struct {
-	// URL of the OTLP/HTTP traces endpoint (`/insert/opentelemetry/v1/traces`) to send trace spans to.
-	// VictoriaTraces versions older than v0.13.0 use the `/insert/native` endpoint instead.
+	// URL of the OTLP/HTTP traces endpoint to send trace spans to,
+	// e.g. http://vtsingle-example:10428/insert/opentelemetry/v1/traces
+	// vtagent versions older than v0.13.0 require a VictoriaTraces endpoint matching the selected Format, such as `/insert/native` for `native`.
 	URL string `json:"url"`
 	// Format defines the wire format used to send data to the given url.
-	// Supported only by VictoriaTraces versions older than v0.13.0, which need the url path matching the chosen format,
-	// e.g. /insert/native for native. Must be unset for v0.13.0 and newer, since they always send data in OTLP
-	// and fail to start with the removed -remoteWrite.format flag.
+	// This field is deprecated, as vtagent v0.13.0 removed the `-remoteWrite.format` flag
+	// and always sends data in OTLP/HTTP protobuf format.
+	// The operator ignores this field for vtagent v0.13.0 and newer.
 	// +optional
 	// +kubebuilder:validation:Enum=native;jsonline
+	// +notes={deprecated_in: "v0.76.0", removed_in: "v1.0.0"}
 	Format *string `json:"format,omitempty"`
 	// BasicAuth allow an endpoint to authenticate over basic authentication.
 	// +optional

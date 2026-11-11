@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -421,6 +422,22 @@ func addRemoteWriteAssetsToVolumes(dstVolumes []corev1.Volume, dstMounts []corev
 	return dstVolumes, dstMounts
 }
 
+// remoteWriteFormatRemovedVersion is the vtagent version, which removed the -remoteWrite.format flag.
+// see https://github.com/VictoriaMetrics/operator/pull/2818
+var remoteWriteFormatRemovedVersion = semver.MustParse("v0.13.0")
+
+// supportsRemoteWriteFormat checks whether the vtagent image accepts the -remoteWrite.format flag.
+// Tags that cannot be parsed as a version, such as `latest`, are treated as v0.13.0+
+func supportsRemoteWriteFormat(cr *vmv1.VTAgent) bool {
+	tag, _, _ := strings.Cut(cr.Spec.Image.Tag, "@")
+	v, err := semver.NewVersion(tag)
+	if err != nil {
+		return false
+	}
+	release := semver.New(v.Major(), v.Minor(), v.Patch(), "", "")
+	return release.LessThan(remoteWriteFormatRemovedVersion)
+}
+
 func buildRemoteWriteArgs(cr *vmv1.VTAgent) ([]string, error) {
 	// do not limit maxDiskUsage by default
 	// it's better to align behavior with vtagent defaults
@@ -473,7 +490,7 @@ func buildRemoteWriteArgs(cr *vmv1.VTAgent) ([]string, error) {
 		}
 		for i, rw := range remoteTargets {
 			url.Add(rw.URL, i)
-			if rw.Format != nil {
+			if supportsRemoteWriteFormat(cr) && rw.Format != nil {
 				format.Add(*rw.Format, i)
 			}
 			if rw.TLSConfig != nil {

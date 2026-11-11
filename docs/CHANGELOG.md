@@ -13,6 +13,8 @@ aliases:
 
 ## tip
 
+**Update note 1**: [vtagent](https://docs.victoriametrics.com/operator/resources/vtagent/): the default `VTAgent` version is now [v0.13.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.13.0), which sends trace spans in OTLP/HTTP protobuf format. Change every `spec.remoteWrite[].url` from the `/insert/native` endpoint to an OTLP/HTTP traces endpoint, such as `http://vtsingle-example:10428/insert/opentelemetry/v1/traces`. Otherwise, vtagent fails to write data. The `spec.remoteWrite[].format` field is deprecated and ignored for vtagent v0.13.0 and newer, since vtagent removed the `-remoteWrite.format` flag without a replacement. If `spec.remoteWriteSettings.maxBlockSize` is set below 32MiB, also set `spec.extraArgs: {opentelemetry.traces.maxRequestSize: <same value>}`, since vtagent v0.13.0 fails to start if the request size exceeds the block size. See [VictoriaTraces update note](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.13.0) and [these docs](https://docs.victoriametrics.com/operator/resources/vtagent/).
+
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.156.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.156.0) version
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.13.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.13.0).
 

@@ -68,7 +68,8 @@ var _ = Describe("test vtagent Controller", Label("vt", "agent", "vtagent"), fun
 					},
 					RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
 						{URL: "http://localhost:10428/insert/opentelemetry/v1/traces"},
-						{URL: "http://localhost:10430/insert/opentelemetry/v1/traces"},
+						// format is deprecated and must be ignored for vtagent v0.13.0 and newer
+						{URL: "http://localhost:10430/insert/opentelemetry/v1/traces", Format: ptr.To("jsonline")},
 					},
 					TmpDataPath: ptr.To("/tmp/custom-path"),
 					RemoteWriteSettings: &vmv1.VTAgentRemoteWriteSettings{
@@ -93,6 +94,7 @@ var _ = Describe("test vtagent Controller", Label("vt", "agent", "vtagent"), fun
 				cnt := sts.Spec.Template.Spec.Containers[0]
 				Expect(cnt.VolumeMounts).To(BeEmpty())
 				Expect(cnt.Args).To(ContainElements("-tmpDataPath=/tmp/custom-path", "-remoteWrite.maxBlockSize=15MB", "-opentelemetry.traces.maxRequestSize=15MB"))
+				Expect(cnt.Args).NotTo(ContainElement(HavePrefix("-remoteWrite.format")))
 			}),
 			Entry("with persistent storage and tls remote target", "remote-tls",
 				&vmv1.VTAgent{

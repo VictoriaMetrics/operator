@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"hash/fnv"
 	"path"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -303,7 +302,7 @@ func newPodSpec(cr *vmv1.VTAgent) (*corev1.PodSpec, error) {
 	}
 	volumes, vtMounts = addRemoteWriteAssetsToVolumes(volumes, vtMounts, cr)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
-	sort.Strings(args)
+	build.SortArgs(args)
 
 	vtagentContainer := corev1.Container{
 		Name:                     "vtagent",

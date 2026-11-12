@@ -156,6 +156,34 @@ func Resources(crdResources corev1.ResourceRequirements, defaultResources config
 	return crdResources
 }
 
+// orderSensitiveFlags contains flags, which may be repeated and whose values are applied in the given order.
+var orderSensitiveFlags = map[string]bool{
+	// the first matching filter is applied, see https://docs.victoriametrics.com/victoriametrics/#downsampling
+	"-downsampling.period": true,
+}
+
+// SortArgs sorts command-line args alphabetically,
+// except for repeated orderSensitiveFlags, which keep the order in which they were added.
+//
+// Other args are sorted alphabetically for two reasons:
+//   - alphabetical order has always been used, so changing it would roll out all related pods;
+//   - some args are built from maps in random order, sorting keeps the result stable between reconciles
+func SortArgs(args []string) {
+	sort.SliceStable(args, func(i, j int) bool {
+		if name := argName(args[i]); orderSensitiveFlags[name] && name == argName(args[j]) {
+			return false
+		}
+		return args[i] < args[j]
+	})
+}
+
+func argName(arg string) string {
+	if idx := strings.IndexByte(arg, '='); idx > 0 {
+		return arg[:idx]
+	}
+	return arg
+}
+
 // AddExtraArgsOverrideDefaults adds extraArgs for given source args
 // it trims in-place args if it was set via extraArgs
 // no need to check for extraEnvs, it has priority over args at VictoriaMetrics apps
@@ -464,7 +492,7 @@ func ConfigReloaderContainer(opts ConfigReloaderOpts) corev1.Container {
 		}
 		args = newArgs
 	}
-	sort.Strings(args)
+	SortArgs(args)
 	args = appendWatchTargetArgs(args, dirPairs)
 	sort.Slice(mounts, func(i, j int) bool {
 		return mounts[i].Name < mounts[j].Name

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path"
-	"sort"
 
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -324,7 +323,7 @@ func buildVTStoragePodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) 
 	}
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.Storage.ExtraArgs, "-")
-	sort.Strings(args)
+	build.SortArgs(args)
 	vmstorageContainer := corev1.Container{
 		Name:                     "vtstorage",
 		Image:                    cr.Spec.Storage.Image.Reference(),

@@ -709,7 +709,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretC
 
 	args = build.AppendArgsForInsertPorts(args, cr.Spec.InsertPorts)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
-	sort.Strings(args)
+	build.SortArgs(args)
 
 	vmagentContainer := corev1.Container{
 		Name:                     "vmagent",

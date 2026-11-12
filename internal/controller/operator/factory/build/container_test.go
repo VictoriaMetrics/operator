@@ -140,6 +140,59 @@ func Test_buildProbe(t *testing.T) {
 	})
 }
 
+func TestSortArgs(t *testing.T) {
+	f := func(args, want []string) {
+		t.Helper()
+		SortArgs(args)
+		assert.Equal(t, want, args)
+	}
+
+	f(nil, nil)
+
+	// sorted alphabetically, repeated order-sensitive flags keep their order
+	f([]string{
+		`-retentionPeriod=1y`,
+		`-downsampling.period={env="prod"}:1d:30s`,
+		`-enableTCP6`,
+		`-downsampling.period={__name__=~"node_.*"}:1d:5m`,
+		`-dedup.minScrapeInterval=30s`,
+		`-downsampling.period=30d:10m`,
+	}, []string{
+		`-dedup.minScrapeInterval=30s`,
+		`-downsampling.period={env="prod"}:1d:30s`,
+		`-downsampling.period={__name__=~"node_.*"}:1d:5m`,
+		`-downsampling.period=30d:10m`,
+		`-enableTCP6`,
+		`-retentionPeriod=1y`,
+	})
+
+	// other repeated flags are sorted by value, so the order of map iteration doesn't matter
+	f([]string{
+		`-external.label=team=x`,
+		`-retentionFilter={env="prod"}:1y`,
+		`-external.label=env=prod`,
+		`-retentionFilter={env="dev"}:1w`,
+	}, []string{
+		`-external.label=env=prod`,
+		`-external.label=team=x`,
+		`-retentionFilter={env="dev"}:1w`,
+		`-retentionFilter={env="prod"}:1y`,
+	})
+
+	// the same order as sort.Strings for flags, which name is a prefix of another flag name
+	f([]string{
+		`-storageNode=srv+vmstorage:8401`,
+		`-httpListenAddr=:8427`,
+		`-storageNode.discoveryInterval=30s`,
+		`-httpListenAddr.useProxyProtocol=true`,
+	}, []string{
+		`-httpListenAddr.useProxyProtocol=true`,
+		`-httpListenAddr=:8427`,
+		`-storageNode.discoveryInterval=30s`,
+		`-storageNode=srv+vmstorage:8401`,
+	})
+}
+
 func Test_addExtraArgsOverrideDefaults(t *testing.T) {
 	type opts struct {
 		args      []string

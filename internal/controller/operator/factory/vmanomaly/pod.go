@@ -3,7 +3,6 @@ package vmanomaly
 import (
 	"fmt"
 	"path"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -118,7 +117,7 @@ func newPodSpec(cr *vmv1.VMAnomaly, ac *build.AssetsCache) (*corev1.PodSpec, err
 	volumeMounts = append(volumeMounts, cr.Spec.VolumeMounts...)
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "--")
-	sort.Strings(args)
+	build.SortArgs(args)
 
 	envs := []corev1.EnvVar{
 		{

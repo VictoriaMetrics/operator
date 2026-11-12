@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path"
-	"sort"
 
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -274,7 +273,7 @@ func makePodSpec(r *vmv1.VTSingle) (*corev1.PodTemplateSpec, error) {
 	}
 
 	args = build.AddExtraArgsOverrideDefaults(args, r.Spec.ExtraArgs, "-")
-	sort.Strings(args)
+	build.SortArgs(args)
 	vtsingleContainer := corev1.Container{
 		Name:                     "vtsingle",
 		Image:                    r.Spec.Image.Reference(),

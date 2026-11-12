@@ -557,7 +557,7 @@ func TestCreateOrUpdate(t *testing.T) {
 		},
 	})
 
-	// with format field
+	// with format field and vtagent older than v0.13.0
 	f(opts{
 		cr: &vmv1.VTAgent{
 			ObjectMeta: metav1.ObjectMeta{
@@ -567,6 +567,7 @@ func TestCreateOrUpdate(t *testing.T) {
 			Spec: vmv1.VTAgentSpec{
 				CommonAppsParams: vmv1beta1.CommonAppsParams{
 					ReplicaCount: ptr.To(int32(0)),
+					Image:        vmv1beta1.Image{Tag: "v0.12.1"},
 				},
 				RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
 					{
@@ -580,6 +581,34 @@ func TestCreateOrUpdate(t *testing.T) {
 			assert.Len(t, set.Spec.Template.Spec.Containers, 1)
 			cnt := set.Spec.Template.Spec.Containers[0]
 			assert.Contains(t, cnt.Args, "-remoteWrite.format=jsonline")
+		},
+	})
+
+	// with format field and the default vtagent version, which removed -remoteWrite.format
+	f(opts{
+		cr: &vmv1.VTAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "with-format-default-version",
+				Namespace: "default",
+			},
+			Spec: vmv1.VTAgentSpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					ReplicaCount: ptr.To(int32(0)),
+				},
+				RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
+					{
+						URL:    "http://some-url/insert/opentelemetry/v1/traces",
+						Format: ptr.To("jsonline"),
+					},
+				},
+			},
+		},
+		validate: func(set *appsv1.StatefulSet) {
+			assert.Len(t, set.Spec.Template.Spec.Containers, 1)
+			cnt := set.Spec.Template.Spec.Containers[0]
+			for _, arg := range cnt.Args {
+				assert.NotContains(t, arg, "-remoteWrite.format")
+			}
 		},
 	})
 
@@ -794,26 +823,77 @@ func TestBuildRemoteWriteArgs(t *testing.T) {
 		`-remoteWrite.tlsKeyFile=/etc/vt/remote-write-assets/tls-secret/key`,
 	})
 
-	// test format field
+	// test format field with vtagent older than v0.13.0
 	f(&vmv1.VTAgent{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "default-vtagent",
 			Namespace: "default",
 		},
-		Spec: vmv1.VTAgentSpec{RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
-			{
-				URL:    "localhost:10429",
-				Format: ptr.To("native"),
+		Spec: vmv1.VTAgentSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				Image: vmv1beta1.Image{Tag: "v0.12.1"},
 			},
-			{
-				URL:    "localhost:10430",
-				Format: ptr.To("jsonline"),
+			RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
+				{
+					URL:    "localhost:10429",
+					Format: ptr.To("native"),
+				},
+				{
+					URL:    "localhost:10430",
+					Format: ptr.To("jsonline"),
+				},
 			},
-		}},
+		},
 	}, []string{
 		`-remoteWrite.url=localhost:10429,localhost:10430`,
 		`-remoteWrite.format=native,jsonline`,
 	})
+
+	// test format field is set only for some urls with vtagent older than v0.13.0
+	f(&vmv1.VTAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default-vtagent",
+			Namespace: "default",
+		},
+		Spec: vmv1.VTAgentSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				Image: vmv1beta1.Image{Tag: "v0.12.1"},
+			},
+			RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
+				{URL: "localhost:10429"},
+				{URL: "localhost:10430"},
+			},
+		},
+	}, []string{
+		`-remoteWrite.url=localhost:10429,localhost:10430`,
+	})
+
+	// test format field is ignored with vtagent v0.13.0 and newer
+	for _, tag := range []string{"v0.13.0", "v0.13.0-enterprise", "v0.14.1", "latest", ""} {
+		f(&vmv1.VTAgent{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "default-vtagent",
+				Namespace: "default",
+			},
+			Spec: vmv1.VTAgentSpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					Image: vmv1beta1.Image{Tag: tag},
+				},
+				RemoteWrite: []vmv1.VTAgentRemoteWriteSpec{
+					{
+						URL:    "localhost:10429",
+						Format: ptr.To("native"),
+					},
+					{
+						URL:    "localhost:10430",
+						Format: ptr.To("jsonline"),
+					},
+				},
+			},
+		}, []string{
+			`-remoteWrite.url=localhost:10429,localhost:10430`,
+		})
+	}
 
 	// test basicAuth
 	f(&vmv1.VTAgent{
@@ -1678,4 +1758,23 @@ func TestCreateOrUpdateService(t *testing.T) {
 			require.Len(t, svcList.Items, 2)
 		},
 	})
+}
+
+func TestSupportsRemoteWriteFormat(t *testing.T) {
+	f := func(tag string, want bool) {
+		t.Helper()
+		cr := &vmv1.VTAgent{Spec: vmv1.VTAgentSpec{CommonAppsParams: vmv1beta1.CommonAppsParams{Image: vmv1beta1.Image{Tag: tag}}}}
+		assert.Equal(t, want, supportsRemoteWriteFormat(cr))
+	}
+
+	f("v0.12.1", true)
+	f("v0.12.0-enterprise", true)
+	f("0.12.1", true)
+	f("v0.12.1@sha256:0123456789abcdef", true)
+	f("v0.13.0", false)
+	f("v0.13.0-enterprise", false)
+	f("v0.13.0@sha256:0123456789abcdef", false)
+	f("v1.0.0", false)
+	f("latest", false)
+	f("", false)
 }

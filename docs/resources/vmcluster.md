@@ -563,6 +563,9 @@ from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametri
 
 For using Enterprise version of [vmcluster](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/) you need to:
  - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-keyref).
+   Starting from VictoriaMetrics [v1.156.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.156.0), license keys are no longer verified,
+   and setting the license is treated as accepting the [ESA](https://victoriametrics.com/legal/esa/).
+   See [License and ESA](https://docs.victoriametrics.com/operator/enterprise/#license-and-esa) for details.
  - change version of `vmcluster` to version with `-enterprise-cluster` suffix using [Version management](https://docs.victoriametrics.com/operator/resources/vmcluster/#version-management).
 
 ### Downsampling

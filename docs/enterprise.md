@@ -44,3 +44,34 @@ on [VictoriaMetrics Enterprise page](https://docs.victoriametrics.com/victoriame
 
 In order to find examples of deploying enterprise components with operator,
 please, check [this](https://docs.victoriametrics.com/victoriametrics/enterprise/#kubernetes-operator) documentation.
+
+## License and ESA
+
+Enterprise features are enabled with the [`spec.license`](https://docs.victoriametrics.com/operator/api/#v1beta1-license) field
+of the custom resource and an enterprise version of the component.
+The operator passes `spec.license.key` to the component as the `-license` command-line flag,
+and mounts the secret from `spec.license.keyRef` and passes it as the `-licenseFile` flag.
+
+Starting from VictoriaMetrics [v1.156.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.156.0),
+VictoriaMetrics Enterprise components are started with the `-eula` flag to accept the [ESA](https://victoriametrics.com/legal/esa/),
+and license keys are no longer verified. The `-license`, `-licenseFile`, `-licenseFile.reloadInterval` and `-license.forceOffline`
+flags are deprecated and treated as `-eula`, so existing `spec.license` settings keep working without changes.
+See [Running VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/) for details.
+
+This applies to `VMAgent`, `VMAlert`, `VMAuth`, `VMCluster`, `VMSingle` and the components they manage, such as `vmbackupmanager`.
+For these resources running v1.156.0 or newer:
+
+- `spec.license.key` or `spec.license.keyRef` is still required by the operator to enable enterprise features,
+  such as downsampling, retention filters, automatic vmstorage discovery and backup automation.
+  Since the key is no longer verified, any non-empty value in `spec.license.key` accepts the ESA.
+  The license is shared by all components of the resource, including `vmbackupmanager`:
+
+  ```yaml
+  spec:
+    license:
+      # any non-empty value works, it doesn't have to be a valid license key
+      key: accept-esa
+  ```
+
+- `spec.license.forceOffline` and `spec.license.reloadInterval` have no effect.
+- `spec.license.keyRef` must point to an existing Secret, because the operator mounts it into the pods.

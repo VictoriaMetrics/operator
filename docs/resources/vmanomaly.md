@@ -346,6 +346,12 @@ spec:
         z_threshold: 2.5
 ```
 
+## Temporal Envelope versions
+
+Set `spec.image.tag: v1.32.0` or a newer version. In the model configuration, set `model_version: v2` in a `temporal_envelope` or `temporal_envelope_multivariate` model to opt into the [experimental implementation](https://docs.victoriametrics.com/anomaly-detection/components/models/#experimental-temporal-envelope-implementations). Omission retains v1. Switching versions requires a fresh fit; learned state is not interchangeable.
+
+V2 supports `calendar_month` seasonality; `month_smooth` and `month_plateau` require v1. The `dependency_strength` output is available for multivariate v2 only. These options belong in model configuration supplied through `spec.configRawYaml`, `spec.configSecret`, or a selected `VMAnomalyConfig`.
+
 ## High Availability and Sharding
 
 Anomaly Detection can be deployed in [HA mode](https://docs.victoriametrics.com/anomaly-detection/scaling-vmanomaly/#high-availability) and scaled horizontally. Horizontal scaling is achieved by [automatically splitting the configuration into shards](https://new.docs.victoriametrics.com/anomaly-detection/scaling-vmanomaly/#sub-configuration) using the `spec.shardCount` parameter. The `spec.replicaCount` parameter defines the number of replicas per shard. The Operator creates one StatefulSet per shard (equal to `spec.shardCount`), with each StatefulSet containing `spec.replicaCount` replicas.

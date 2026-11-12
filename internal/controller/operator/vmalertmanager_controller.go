@@ -18,6 +18,7 @@ package operator
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -90,15 +91,25 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return
 	}
 
+	RegisterObjectStat(&instance, r.name)
+	if !instance.DeletionTimestamp.IsZero() {
+		// Deletion is handled before the IsUnmanaged lock guard below, so the release does
+		// not depend on how IsUnmanaged treats a deleting object. The lock serializes the
+		// release with the controller that writes the same Applied condition.
+		alertmanagerSync.RLock()
+		releaseErr := vmalertmanager.ReleaseAppliedConditions(ctx, r.Client, &instance)
+		alertmanagerSync.RUnlock()
+		if releaseErr != nil {
+			err = fmt.Errorf("cannot release status conditions for vmalertmanager: %w", releaseErr)
+			return
+		}
+		err = finalize.OnVMAlertManagerDelete(ctx, r.Client, &instance)
+		return
+	}
+
 	if !instance.IsUnmanaged() {
 		alertmanagerSync.RLock()
 		defer alertmanagerSync.RUnlock()
-	}
-
-	RegisterObjectStat(&instance, r.name)
-	if !instance.DeletionTimestamp.IsZero() {
-		err = finalize.OnVMAlertManagerDelete(ctx, r.Client, &instance)
-		return
 	}
 	if instance.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(instance.Status.ParsingSpecError) {
 		err = newParsingError(instance.Status.ParsingSpecError)

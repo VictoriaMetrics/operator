@@ -3,6 +3,7 @@ package vlcluster
 import (
 	"context"
 	"fmt"
+	"path"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -181,6 +182,41 @@ func buildVMauthLBDeployment(cr *vmv1.VLCluster) (*appsv1.Deployment, error) {
 		},
 	}
 	vmMounts = append(vmMounts, spec.VolumeMounts...)
+
+	for _, s := range spec.Secrets {
+		volumes = append(volumes, corev1.Volume{
+			Name: k8stools.SanitizeVolumeName("secret-" + s),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: s,
+				},
+			},
+		})
+		vmMounts = append(vmMounts, corev1.VolumeMount{
+			Name:      k8stools.SanitizeVolumeName("secret-" + s),
+			ReadOnly:  true,
+			MountPath: path.Join(vmv1beta1.SecretsDir, s),
+		})
+	}
+
+	for _, c := range spec.ConfigMaps {
+		volumes = append(volumes, corev1.Volume{
+			Name: k8stools.SanitizeVolumeName("configmap-" + c),
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: c,
+					},
+				},
+			},
+		})
+		vmMounts = append(vmMounts, corev1.VolumeMount{
+			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
+			ReadOnly:  true,
+			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
+		})
+	}
+
 	cfg := config.MustGetBaseConfig()
 
 	args := []string{

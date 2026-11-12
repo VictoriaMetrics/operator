@@ -17,6 +17,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
@@ -724,6 +725,18 @@ templates: []
 
 	// slack ok
 	f(opts{
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				ConfigNamespaceSelector: &metav1.LabelSelector{},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					Image: vmv1beta1.Image{Tag: "v0.35.0"},
+				},
+			},
+		},
 		baseCfg: []byte(`global:
  time_out: 1min
 `),
@@ -759,14 +772,15 @@ templates: []
 											Name: "slack",
 										},
 									},
-									SendResolved:  ptr.To(true),
-									UpdateMessage: ptr.To(true),
-									Text:          "some-text",
-									Title:         "some-title",
-									LinkNames:     false,
-									ThumbURL:      "some-url",
-									Pretext:       "text-1",
-									Username:      "some-user",
+									SendResolved:        ptr.To(true),
+									UpdateMessage:       ptr.To(true),
+									PostUpdatesToThread: ptr.To(true),
+									Text:                "some-text",
+									Title:               "some-title",
+									LinkNames:           false,
+									ThumbURL:            "some-url",
+									Pretext:             "text-1",
+									Username:            "some-user",
 									Actions: []vmv1beta1.SlackAction{
 										{
 											Name: "deny",
@@ -827,6 +841,7 @@ receivers:
     title: some-title
     thumb_url: some-url
     update_message: true
+    post_updates_to_thread: true
     actions:
     - name: deny
       text: text-5
@@ -1116,6 +1131,70 @@ templates: []
 			},
 		},
 		parseError: `unable to fetch secret="tg-secret", ns="default": secrets "tg-secret" not found`,
+		want: `global:
+  time_out: 1min
+route:
+  receiver: blackhole
+receivers:
+- name: blackhole
+templates: []
+`,
+	})
+
+	// slack post_updates_to_thread with unsupported alertmanager version
+	f(opts{
+		cr: &vmv1beta1.VMAlertmanager{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				ConfigNamespaceSelector: &metav1.LabelSelector{},
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					Image: vmv1beta1.Image{Tag: "v0.34.1"},
+				},
+			},
+		},
+		baseCfg: []byte(`global:
+ time_out: 1min
+`),
+		predefinedObjects: []runtime.Object{
+			&vmv1beta1.VMAlertmanagerConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "slack-thread",
+					Namespace: "default",
+				},
+				Spec: vmv1beta1.VMAlertmanagerConfigSpec{
+					Receivers: []vmv1beta1.Receiver{
+						{
+							Name: "slack",
+							SlackConfigs: []vmv1beta1.SlackConfig{
+								{
+									APIURL: &corev1.SecretKeySelector{
+										Key:                  "url",
+										LocalObjectReference: corev1.LocalObjectReference{Name: "slack"},
+									},
+									PostUpdatesToThread: ptr.To(true),
+								},
+							},
+						},
+					},
+					Route: &vmv1beta1.Route{
+						Receiver: "slack",
+					},
+				},
+			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "slack",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					"url": []byte("https://slack.com/api/chat.postMessage"),
+				},
+			},
+		},
+		parseError: `receiver "slack": slack_configs[0].post_updates_to_thread requires alertmanager >= v0.35.0, got image tag "v0.34.1"; set VM_VMALERTMANAGER_SLACK_POST_UPDATES_TO_THREAD_SUPPORT=true if the image supports it`,
 		want: `global:
   time_out: 1min
 route:
@@ -2494,4 +2573,60 @@ tls_client_config:
   key_file: /etc/client/cert.key
 `,
 	})
+}
+
+func Test_validateReceiverVersion(t *testing.T) {
+	type opts struct {
+		tag                 string
+		postUpdatesToThread *bool
+		declareSupport      bool
+		wantErr             bool
+	}
+	f := func(o opts) {
+		t.Helper()
+		cfg := config.MustGetBaseConfig()
+		defaultCfg := *cfg
+		cfg.VMAlertmanagerSlackPostUpdatesToThreadSupport = o.declareSupport
+		defer func() {
+			*config.MustGetBaseConfig() = defaultCfg
+		}()
+		cr := &vmv1beta1.VMAlertmanager{
+			Spec: vmv1beta1.VMAlertmanagerSpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					Image: vmv1beta1.Image{Tag: o.tag},
+				},
+			},
+		}
+		r := vmv1beta1.Receiver{
+			Name:         "slack",
+			SlackConfigs: []vmv1beta1.SlackConfig{{PostUpdatesToThread: o.postUpdatesToThread}},
+		}
+		err := validateReceiverVersion(cr, r)
+		if o.wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
+	}
+
+	// field not set, old version
+	f(opts{tag: "v0.34.1"})
+
+	// field set, old version
+	f(opts{tag: "v0.34.1", postUpdatesToThread: ptr.To(true), wantErr: true})
+
+	// field explicitly disabled is still rendered, old version
+	f(opts{tag: "v0.34.1", postUpdatesToThread: ptr.To(false), wantErr: true})
+
+	// field set, supported version
+	f(opts{tag: "v0.35.0", postUpdatesToThread: ptr.To(true)})
+
+	// field set, non-semver custom tag
+	f(opts{tag: "main-2026-11-03", postUpdatesToThread: ptr.To(true), wantErr: true})
+
+	// field set, non-semver custom tag with declared support
+	f(opts{tag: "main-2026-11-03", postUpdatesToThread: ptr.To(true), declareSupport: true})
+
+	// field set, old version with declared support
+	f(opts{tag: "v0.34.1", postUpdatesToThread: ptr.To(true), declareSupport: true})
 }

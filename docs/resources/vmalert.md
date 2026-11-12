@@ -343,7 +343,10 @@ from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametri
 
 For using Enterprise version of [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) you need to:
 
-- specify license at either [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-key) or [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-keyref);
+- specify license at either [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-key) or [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-keyref).
+  Starting from VictoriaMetrics [v1.156.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.156.0), license keys are no longer verified,
+  and setting the license is treated as accepting the [ESA](https://victoriametrics.com/legal/esa/).
+  See [License and ESA](https://docs.victoriametrics.com/operator/enterprise/#license-and-esa) for details.
 - change version of `vmalert` to version with `-enterprise` suffix using [Version management](https://docs.victoriametrics.com/operator/resources/vmalert/#version-management).
 
 ### Reading rules from object storage

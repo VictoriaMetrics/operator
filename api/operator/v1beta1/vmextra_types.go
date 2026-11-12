@@ -1088,15 +1088,22 @@ func (m *StringOrArray) MarshalJSON() ([]byte, error) {
 // License holds license key for enterprise features.
 // Using license key is supported starting from VictoriaMetrics corev1.94.0.
 // See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
+// and [License and ESA](https://docs.victoriametrics.com/operator/enterprise/#license-and-esa) for details on how the operator handles the license.
 type License struct {
 	// Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
 	// To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+	// Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+	// and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
 	Key *string `json:"key,omitempty"`
 	// KeyRef is reference to secret with license key for enterprise features.
+	// Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+	// and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
 	KeyRef *corev1.SecretKeySelector `json:"keyRef,omitempty"`
 	// Enforce offline verification of the license key.
+	// It has no effect on VictoriaMetrics components starting from v1.156.0.
 	ForceOffline *bool `json:"forceOffline,omitempty"`
 	// Interval to be used for checking for license key changes. Note that this is only applicable when using KeyRef.
+	// It has no effect on VictoriaMetrics components starting from v1.156.0.
 	ReloadInterval *string `json:"reloadInterval,omitempty"`
 }
 

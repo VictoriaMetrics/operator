@@ -844,16 +844,22 @@ spec:
                   See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/#victorialogs-enterprise-features)
                 properties:
                   forceOffline:
-                    description: Enforce offline verification of the license key.
+                    description: |-
+                      Enforce offline verification of the license key.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: boolean
                   key:
                     description: |-
                       Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     type: string
                   keyRef:
-                    description: KeyRef is reference to secret with license key for
-                      enterprise features.
+                    description: |-
+                      KeyRef is reference to secret with license key for enterprise features.
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -877,8 +883,9 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   reloadInterval:
-                    description: Interval to be used for checking for license key
-                      changes. Note that this is only applicable when using KeyRef.
+                    description: |-
+                      Interval to be used for checking for license key changes. Note that this is only applicable when using KeyRef.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: string
                 type: object
               livenessProbe:
@@ -3254,16 +3261,22 @@ spec:
                   See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/#victorialogs-enterprise-features)
                 properties:
                   forceOffline:
-                    description: Enforce offline verification of the license key.
+                    description: |-
+                      Enforce offline verification of the license key.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: boolean
                   key:
                     description: |-
                       Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     type: string
                   keyRef:
-                    description: KeyRef is reference to secret with license key for
-                      enterprise features.
+                    description: |-
+                      KeyRef is reference to secret with license key for enterprise features.
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -3287,8 +3300,9 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   reloadInterval:
-                    description: Interval to be used for checking for license key
-                      changes. Note that this is only applicable when using KeyRef.
+                    description: |-
+                      Interval to be used for checking for license key changes. Note that this is only applicable when using KeyRef.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: string
                 type: object
               managedMetadata:
@@ -8594,16 +8608,22 @@ spec:
                   If not nil, it will be passed to VLAgent and VLClusters.
                 properties:
                   forceOffline:
-                    description: Enforce offline verification of the license key.
+                    description: |-
+                      Enforce offline verification of the license key.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: boolean
                   key:
                     description: |-
                       Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     type: string
                   keyRef:
-                    description: KeyRef is reference to secret with license key for
-                      enterprise features.
+                    description: |-
+                      KeyRef is reference to secret with license key for enterprise features.
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -8627,8 +8647,9 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   reloadInterval:
-                    description: Interval to be used for checking for license key
-                      changes. Note that this is only applicable when using KeyRef.
+                    description: |-
+                      Interval to be used for checking for license key changes. Note that this is only applicable when using KeyRef.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: string
                 type: object
               paused:
@@ -10421,17 +10442,22 @@ spec:
                           See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                         properties:
                           forceOffline:
-                            description: Enforce offline verification of the license
-                              key.
+                            description: |-
+                              Enforce offline verification of the license key.
+                              It has no effect on VictoriaMetrics components starting from v1.156.0.
                             type: boolean
                           key:
                             description: |-
                               Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
                               To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+                              Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                              and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                             type: string
                           keyRef:
-                            description: KeyRef is reference to secret with license
-                              key for enterprise features.
+                            description: |-
+                              KeyRef is reference to secret with license key for enterprise features.
+                              Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                              and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
@@ -10455,9 +10481,9 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                           reloadInterval:
-                            description: Interval to be used for checking for license
-                              key changes. Note that this is only applicable when
-                              using KeyRef.
+                            description: |-
+                              Interval to be used for checking for license key changes. Note that this is only applicable when using KeyRef.
+                              It has no effect on VictoriaMetrics components starting from v1.156.0.
                             type: string
                         type: object
                       livenessProbe:
@@ -13142,17 +13168,22 @@ spec:
                               See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/#victorialogs-enterprise-features)
                             properties:
                               forceOffline:
-                                description: Enforce offline verification of the license
-                                  key.
+                                description: |-
+                                  Enforce offline verification of the license key.
+                                  It has no effect on VictoriaMetrics components starting from v1.156.0.
                                 type: boolean
                               key:
                                 description: |-
                                   Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
                                   To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+                                  Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                                  and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                                 type: string
                               keyRef:
-                                description: KeyRef is reference to secret with license
-                                  key for enterprise features.
+                                description: |-
+                                  KeyRef is reference to secret with license key for enterprise features.
+                                  Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                                  and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                                 properties:
                                   key:
                                     description: The key of the secret to select from.  Must
@@ -13176,9 +13207,9 @@ spec:
                                 type: object
                                 x-kubernetes-map-type: atomic
                               reloadInterval:
-                                description: Interval to be used for checking for
-                                  license key changes. Note that this is only applicable
-                                  when using KeyRef.
+                                description: |-
+                                  Interval to be used for checking for license key changes. Note that this is only applicable when using KeyRef.
+                                  It has no effect on VictoriaMetrics components starting from v1.156.0.
                                 type: string
                             type: object
                           livenessProbe:
@@ -15283,17 +15314,22 @@ spec:
                                 See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/#victorialogs-enterprise-features)
                               properties:
                                 forceOffline:
-                                  description: Enforce offline verification of the
-                                    license key.
+                                  description: |-
+                                    Enforce offline verification of the license key.
+                                    It has no effect on VictoriaMetrics components starting from v1.156.0.
                                   type: boolean
                                 key:
                                   description: |-
                                     Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
                                     To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+                                    Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                                    and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                                   type: string
                                 keyRef:
-                                  description: KeyRef is reference to secret with
-                                    license key for enterprise features.
+                                  description: |-
+                                    KeyRef is reference to secret with license key for enterprise features.
+                                    Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                                    and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -15317,9 +15353,9 @@ spec:
                                   type: object
                                   x-kubernetes-map-type: atomic
                                 reloadInterval:
-                                  description: Interval to be used for checking for
-                                    license key changes. Note that this is only applicable
-                                    when using KeyRef.
+                                  description: |-
+                                    Interval to be used for checking for license key changes. Note that this is only applicable when using KeyRef.
+                                    It has no effect on VictoriaMetrics components starting from v1.156.0.
                                   type: string
                               type: object
                             livenessProbe:
@@ -17202,16 +17238,22 @@ spec:
                   See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/#victorialogs-enterprise-features)
                 properties:
                   forceOffline:
-                    description: Enforce offline verification of the license key.
+                    description: |-
+                      Enforce offline verification of the license key.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: boolean
                   key:
                     description: |-
                       Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     type: string
                   keyRef:
-                    description: KeyRef is reference to secret with license key for
-                      enterprise features.
+                    description: |-
+                      KeyRef is reference to secret with license key for enterprise features.
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -17235,8 +17277,9 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   reloadInterval:
-                    description: Interval to be used for checking for license key
-                      changes. Note that this is only applicable when using KeyRef.
+                    description: |-
+                      Interval to be used for checking for license key changes. Note that this is only applicable when using KeyRef.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: string
                 type: object
               livenessProbe:
@@ -20995,16 +21038,22 @@ spec:
                   See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                 properties:
                   forceOffline:
-                    description: Enforce offline verification of the license key.
+                    description: |-
+                      Enforce offline verification of the license key.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: boolean
                   key:
                     description: |-
                       Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     type: string
                   keyRef:
-                    description: KeyRef is reference to secret with license key for
-                      enterprise features.
+                    description: |-
+                      KeyRef is reference to secret with license key for enterprise features.
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -21028,8 +21077,9 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   reloadInterval:
-                    description: Interval to be used for checking for license key
-                      changes. Note that this is only applicable when using KeyRef.
+                    description: |-
+                      Interval to be used for checking for license key changes. Note that this is only applicable when using KeyRef.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: string
                 type: object
               livenessProbe:
@@ -35019,16 +35069,22 @@ spec:
                   See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                 properties:
                   forceOffline:
-                    description: Enforce offline verification of the license key.
+                    description: |-
+                      Enforce offline verification of the license key.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: boolean
                   key:
                     description: |-
                       Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     type: string
                   keyRef:
-                    description: KeyRef is reference to secret with license key for
-                      enterprise features.
+                    description: |-
+                      KeyRef is reference to secret with license key for enterprise features.
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -35052,8 +35108,9 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   reloadInterval:
-                    description: Interval to be used for checking for license key
-                      changes. Note that this is only applicable when using KeyRef.
+                    description: |-
+                      Interval to be used for checking for license key changes. Note that this is only applicable when using KeyRef.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: string
                 type: object
               livenessProbe:
@@ -38014,16 +38071,22 @@ spec:
                   See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                 properties:
                   forceOffline:
-                    description: Enforce offline verification of the license key.
+                    description: |-
+                      Enforce offline verification of the license key.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: boolean
                   key:
                     description: |-
                       Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     type: string
                   keyRef:
-                    description: KeyRef is reference to secret with license key for
-                      enterprise features.
+                    description: |-
+                      KeyRef is reference to secret with license key for enterprise features.
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -38047,8 +38110,9 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   reloadInterval:
-                    description: Interval to be used for checking for license key
-                      changes. Note that this is only applicable when using KeyRef.
+                    description: |-
+                      Interval to be used for checking for license key changes. Note that this is only applicable when using KeyRef.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: string
                 type: object
               livenessProbe:
@@ -42699,16 +42763,22 @@ spec:
                   See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                 properties:
                   forceOffline:
-                    description: Enforce offline verification of the license key.
+                    description: |-
+                      Enforce offline verification of the license key.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: boolean
                   key:
                     description: |-
                       Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     type: string
                   keyRef:
-                    description: KeyRef is reference to secret with license key for
-                      enterprise features.
+                    description: |-
+                      KeyRef is reference to secret with license key for enterprise features.
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -42732,8 +42802,9 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   reloadInterval:
-                    description: Interval to be used for checking for license key
-                      changes. Note that this is only applicable when using KeyRef.
+                    description: |-
+                      Interval to be used for checking for license key changes. Note that this is only applicable when using KeyRef.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: string
                 type: object
               livenessProbe:
@@ -44907,16 +44978,22 @@ spec:
                   See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                 properties:
                   forceOffline:
-                    description: Enforce offline verification of the license key.
+                    description: |-
+                      Enforce offline verification of the license key.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: boolean
                   key:
                     description: |-
                       Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     type: string
                   keyRef:
-                    description: KeyRef is reference to secret with license key for
-                      enterprise features.
+                    description: |-
+                      KeyRef is reference to secret with license key for enterprise features.
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -44940,8 +45017,9 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   reloadInterval:
-                    description: Interval to be used for checking for license key
-                      changes. Note that this is only applicable when using KeyRef.
+                    description: |-
+                      Interval to be used for checking for license key changes. Note that this is only applicable when using KeyRef.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: string
                 type: object
               managedMetadata:
@@ -51214,16 +51292,22 @@ spec:
                   If not nil, it will be passed to VMAgent, VMAuth and VMClusters.
                 properties:
                   forceOffline:
-                    description: Enforce offline verification of the license key.
+                    description: |-
+                      Enforce offline verification of the license key.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: boolean
                   key:
                     description: |-
                       Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     type: string
                   keyRef:
-                    description: KeyRef is reference to secret with license key for
-                      enterprise features.
+                    description: |-
+                      KeyRef is reference to secret with license key for enterprise features.
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -51247,8 +51331,9 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   reloadInterval:
-                    description: Interval to be used for checking for license key
-                      changes. Note that this is only applicable when using KeyRef.
+                    description: |-
+                      Interval to be used for checking for license key changes. Note that this is only applicable when using KeyRef.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: string
                 type: object
               paused:
@@ -53041,17 +53126,22 @@ spec:
                           See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                         properties:
                           forceOffline:
-                            description: Enforce offline verification of the license
-                              key.
+                            description: |-
+                              Enforce offline verification of the license key.
+                              It has no effect on VictoriaMetrics components starting from v1.156.0.
                             type: boolean
                           key:
                             description: |-
                               Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
                               To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+                              Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                              and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                             type: string
                           keyRef:
-                            description: KeyRef is reference to secret with license
-                              key for enterprise features.
+                            description: |-
+                              KeyRef is reference to secret with license key for enterprise features.
+                              Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                              and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
@@ -53075,9 +53165,9 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                           reloadInterval:
-                            description: Interval to be used for checking for license
-                              key changes. Note that this is only applicable when
-                              using KeyRef.
+                            description: |-
+                              Interval to be used for checking for license key changes. Note that this is only applicable when using KeyRef.
+                              It has no effect on VictoriaMetrics components starting from v1.156.0.
                             type: string
                         type: object
                       livenessProbe:
@@ -56400,17 +56490,22 @@ spec:
                               See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                             properties:
                               forceOffline:
-                                description: Enforce offline verification of the license
-                                  key.
+                                description: |-
+                                  Enforce offline verification of the license key.
+                                  It has no effect on VictoriaMetrics components starting from v1.156.0.
                                 type: boolean
                               key:
                                 description: |-
                                   Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
                                   To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+                                  Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                                  and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                                 type: string
                               keyRef:
-                                description: KeyRef is reference to secret with license
-                                  key for enterprise features.
+                                description: |-
+                                  KeyRef is reference to secret with license key for enterprise features.
+                                  Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                                  and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                                 properties:
                                   key:
                                     description: The key of the secret to select from.  Must
@@ -56434,9 +56529,9 @@ spec:
                                 type: object
                                 x-kubernetes-map-type: atomic
                               reloadInterval:
-                                description: Interval to be used for checking for
-                                  license key changes. Note that this is only applicable
-                                  when using KeyRef.
+                                description: |-
+                                  Interval to be used for checking for license key changes. Note that this is only applicable when using KeyRef.
+                                  It has no effect on VictoriaMetrics components starting from v1.156.0.
                                 type: string
                             type: object
                           livenessProbe:
@@ -59018,17 +59113,22 @@ spec:
                                 See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                               properties:
                                 forceOffline:
-                                  description: Enforce offline verification of the
-                                    license key.
+                                  description: |-
+                                    Enforce offline verification of the license key.
+                                    It has no effect on VictoriaMetrics components starting from v1.156.0.
                                   type: boolean
                                 key:
                                   description: |-
                                     Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
                                     To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+                                    Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                                    and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                                   type: string
                                 keyRef:
-                                  description: KeyRef is reference to secret with
-                                    license key for enterprise features.
+                                  description: |-
+                                    KeyRef is reference to secret with license key for enterprise features.
+                                    Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                                    and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -59052,9 +59152,9 @@ spec:
                                   type: object
                                   x-kubernetes-map-type: atomic
                                 reloadInterval:
-                                  description: Interval to be used for checking for
-                                    license key changes. Note that this is only applicable
-                                    when using KeyRef.
+                                  description: |-
+                                    Interval to be used for checking for license key changes. Note that this is only applicable when using KeyRef.
+                                    It has no effect on VictoriaMetrics components starting from v1.156.0.
                                   type: string
                               type: object
                             livenessProbe:
@@ -79163,16 +79263,22 @@ spec:
                   See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                 properties:
                   forceOffline:
-                    description: Enforce offline verification of the license key.
+                    description: |-
+                      Enforce offline verification of the license key.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: boolean
                   key:
                     description: |-
                       Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     type: string
                   keyRef:
-                    description: KeyRef is reference to secret with license key for
-                      enterprise features.
+                    description: |-
+                      KeyRef is reference to secret with license key for enterprise features.
+                      Starting from VictoriaMetrics v1.156.0, license keys are no longer verified by VictoriaMetrics components
+                      and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -79196,8 +79302,9 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   reloadInterval:
-                    description: Interval to be used for checking for license key
-                      changes. Note that this is only applicable when using KeyRef.
+                    description: |-
+                      Interval to be used for checking for license key changes. Note that this is only applicable when using KeyRef.
+                      It has no effect on VictoriaMetrics components starting from v1.156.0.
                     type: string
                 type: object
               livenessProbe:

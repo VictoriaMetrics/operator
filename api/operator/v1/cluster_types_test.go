@@ -80,6 +80,79 @@ func TestVLCluster_AvailableStorageNodeIDs(t *testing.T) {
 	}, vmv1beta1.ClusterComponentSelect, []int32{0, 1, 2})
 }
 
+func TestVLCluster_RequestsLoadBalancerHTTPListenersValidate(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		enabled bool
+		params  vmv1beta1.CommonAppsParams
+		wantErr string
+	}{
+		{
+			name:    "reserved listener name",
+			enabled: true,
+			params:  vmv1beta1.CommonAppsParams{HTTPListeners: []vmv1beta1.HTTPListener{{Name: "http", Port: 8429}}},
+			wantErr: "requestsLoadBalancer: httpListeners name=\"http\" is reserved",
+		},
+		{
+			name:    "legacy listener list",
+			enabled: true,
+			params: vmv1beta1.CommonAppsParams{
+				ExtraArgs:     map[string]string{"httpListenAddr": ":8427,:8429"},
+				HTTPListeners: []vmv1beta1.HTTPListener{{Name: "plain", Port: 8430}},
+			},
+			wantErr: "requestsLoadBalancer: httpListeners cannot be combined with listeners defined in extraArgs.httpListenAddr",
+		},
+		{
+			name:    "valid listeners",
+			enabled: true,
+			params:  vmv1beta1.CommonAppsParams{HTTPListeners: []vmv1beta1.HTTPListener{{Name: "plain", Port: 8429}}},
+		},
+		{
+			name:   "disabled load balancer",
+			params: vmv1beta1.CommonAppsParams{HTTPListeners: []vmv1beta1.HTTPListener{{Name: "http", Port: 8429}}},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cr := &VLCluster{Spec: VLClusterSpec{RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+				Enabled: tc.enabled,
+				Spec:    vmv1beta1.VMAuthLoadBalancerSpec{CommonAppsParams: tc.params},
+			}}}
+			err := cr.Validate()
+			if tc.wantErr == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.ErrorContains(t, err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestVTCluster_RequestsLoadBalancerHTTPListenersValidate(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		enabled bool
+		wantErr string
+	}{
+		{name: "enabled", enabled: true, wantErr: "requestsLoadBalancer: httpListeners name=\"http\" is reserved"},
+		{name: "disabled"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cr := &VTCluster{Spec: VTClusterSpec{RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+				Enabled: tc.enabled,
+				Spec: vmv1beta1.VMAuthLoadBalancerSpec{CommonAppsParams: vmv1beta1.CommonAppsParams{
+					HTTPListeners: []vmv1beta1.HTTPListener{{Name: "http", Port: 8429}},
+				}},
+			}}}
+			err := cr.Validate()
+			if tc.wantErr == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.ErrorContains(t, err, tc.wantErr)
+			}
+		})
+	}
+}
+
 func TestVTCluster_StorageNodeIDsUnderMaintenance(t *testing.T) {
 	f := func(cr *VTCluster, want sets.Set[int32]) {
 		t.Helper()

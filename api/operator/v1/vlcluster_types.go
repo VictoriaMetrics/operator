@@ -879,6 +879,9 @@ func (cr *VLCluster) Validate() error {
 		if rlb.AdditionalServiceSpec != nil && rlb.AdditionalServiceSpec.Name == name {
 			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
 		}
+		if err := rlb.Validate(); err != nil {
+			return fmt.Errorf("requestsLoadBalancer: %w", err)
+		}
 	}
 
 	return nil

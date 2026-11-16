@@ -341,10 +341,15 @@ func (s *SyslogServerSpec) Validate(httpPort string, p *vmv1beta1.CommonAppsPara
 	// Reject them, otherwise the effective TLS configuration of a listener
 	// silently differs from the defined one
 	refIdx := -1
+	tcpPorts := make(map[int32]int)
 	for idx, tcp := range s.TCPListeners {
 		if tcp == nil {
 			continue
 		}
+		if prev, ok := tcpPorts[tcp.ListenPort]; ok {
+			return fmt.Errorf("syslogSpec.tcpListeners[%d].listenPort=%d duplicates syslogSpec.tcpListeners[%d].listenPort", idx, tcp.ListenPort, prev)
+		}
+		tcpPorts[tcp.ListenPort] = idx
 		if strconv.Itoa(int(tcp.ListenPort)) == httpPort {
 			return fmt.Errorf("syslogSpec.tcpListeners[%d].listenPort=%d must not be equal to the HTTP listen port=%s", idx, tcp.ListenPort, httpPort)
 		}
@@ -379,6 +384,18 @@ func (s *SyslogServerSpec) Validate(httpPort string, p *vmv1beta1.CommonAppsPara
 				"since application uses a single list of cipher suites for all syslog TCP listeners",
 				idx, tcp.TLSConfig.CipherSuites, refIdx, ref.CipherSuites)
 		}
+	}
+
+	// each UDP listener binds its own socket, duplicate ports fail at startup
+	udpPorts := make(map[int32]int)
+	for idx, udp := range s.UDPListeners {
+		if udp == nil {
+			continue
+		}
+		if prev, ok := udpPorts[udp.ListenPort]; ok {
+			return fmt.Errorf("syslogSpec.udpListeners[%d].listenPort=%d duplicates syslogSpec.udpListeners[%d].listenPort", idx, udp.ListenPort, prev)
+		}
+		udpPorts[udp.ListenPort] = idx
 	}
 	return nil
 }

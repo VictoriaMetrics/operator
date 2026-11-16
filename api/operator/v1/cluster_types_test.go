@@ -204,15 +204,36 @@ func TestVTCluster_PrefixedName(t *testing.T) {
 }
 
 func TestClusterStorageLimits(t *testing.T) {
-	f := func(cr interface{ Validate() error }) {
+	f := func(cr interface{ Validate() error }, wantErr bool) {
 		t.Helper()
-		assert.Error(t, cr.Validate())
+		if wantErr {
+			assert.Error(t, cr.Validate())
+			return
+		}
+		assert.NoError(t, cr.Validate())
 	}
 
 	skip := map[string]string{vmv1beta1.SkipValidationAnnotation: vmv1beta1.SkipValidationValue}
+
+	// limit is inclusive
+	limit := ptr.To[int32](vmv1beta1.MaxReplicaCount)
+	limitHPA := &vmv1beta1.EmbeddedHPA{MinReplicas: limit, MaxReplicas: vmv1beta1.MaxReplicaCount}
+	f(&VTCluster{Spec: VTClusterSpec{Storage: &VTStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: limit}}}}, false)
+	f(&VTCluster{Spec: VTClusterSpec{Storage: &VTStorage{HPA: limitHPA}}}, false)
+	f(&VLCluster{Spec: VLClusterSpec{VLStorage: &VLStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: limit}}}}, false)
+	f(&VLCluster{Spec: VLClusterSpec{VLStorage: &VLStorage{HPA: limitHPA}}}, false)
+
+	// over limit rejected, even with skip-validation annotation
 	over := ptr.To[int32](vmv1beta1.MaxReplicaCount + 1)
-	f(&VTCluster{Spec: VTClusterSpec{Storage: &VTStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: over}}}})
-	f(&VTCluster{ObjectMeta: metav1.ObjectMeta{Annotations: skip}, Spec: VTClusterSpec{Storage: &VTStorage{HPA: &vmv1beta1.EmbeddedHPA{MinReplicas: over}}}})
-	f(&VLCluster{Spec: VLClusterSpec{VLStorage: &VLStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: over}}}})
-	f(&VLCluster{ObjectMeta: metav1.ObjectMeta{Annotations: skip}, Spec: VLClusterSpec{VLStorage: &VLStorage{HPA: &vmv1beta1.EmbeddedHPA{MinReplicas: over}}}})
+	f(&VTCluster{Spec: VTClusterSpec{Storage: &VTStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: over}}}}, true)
+	f(&VTCluster{ObjectMeta: metav1.ObjectMeta{Annotations: skip}, Spec: VTClusterSpec{Storage: &VTStorage{HPA: &vmv1beta1.EmbeddedHPA{MinReplicas: over}}}}, true)
+	f(&VLCluster{Spec: VLClusterSpec{VLStorage: &VLStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: over}}}}, true)
+	f(&VLCluster{ObjectMeta: metav1.ObjectMeta{Annotations: skip}, Spec: VLClusterSpec{VLStorage: &VLStorage{HPA: &vmv1beta1.EmbeddedHPA{MinReplicas: over}}}}, true)
+
+	// hpa.maxReplicas over limit rejected
+	overHPA := &vmv1beta1.EmbeddedHPA{MaxReplicas: vmv1beta1.MaxReplicaCount + 1}
+	f(&VTCluster{Spec: VTClusterSpec{Storage: &VTStorage{HPA: overHPA}}}, true)
+	f(&VTCluster{ObjectMeta: metav1.ObjectMeta{Annotations: skip}, Spec: VTClusterSpec{Storage: &VTStorage{HPA: overHPA}}}, true)
+	f(&VLCluster{Spec: VLClusterSpec{VLStorage: &VLStorage{HPA: overHPA}}}, true)
+	f(&VLCluster{ObjectMeta: metav1.ObjectMeta{Annotations: skip}, Spec: VLClusterSpec{VLStorage: &VLStorage{HPA: overHPA}}}, true)
 }

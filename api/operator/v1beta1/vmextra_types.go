@@ -1848,13 +1848,17 @@ func (p *CommonConfigReloaderParams) configReloaderPort() namedPort {
 	return namedPort{name: "config-reloader port", value: p.ConfigReloaderPort()}
 }
 
-// validateListenerConflicts rejects httpListeners bound to ports used by other listeners or sidecars,
+// validateListenerConflicts rejects primary port and httpListeners bound to ports used by other listeners or sidecars,
 // containers share pod network namespace and listener cannot bind to the same port
 func (p *CommonAppsParams) validateListenerConflicts(others ...namedPort) error {
 	for _, o := range others {
 		port, err := strconv.ParseInt(o.value, 10, 32)
 		if err != nil {
 			continue
+		}
+		// primary listener binds the same socket as the others, e.g. -httpListenAddr=:8428 and -clusternativeListenAddr=:8428
+		if primary, err := strconv.ParseInt(p.Port, 10, 32); err == nil && primary == port {
+			return fmt.Errorf("port=%s conflicts with %s", p.Port, o.name)
 		}
 		for _, l := range p.HTTPListeners {
 			if l.Port == int32(port) {

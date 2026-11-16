@@ -500,6 +500,16 @@ func TestHTTPListenersSidecarPortConflicts(t *testing.T) {
 		CommonAppsParams:  listeners(8402),
 		ClusterNativePort: "8400",
 	}}}, "")
+
+	// primary port
+	f(&VMCluster{Spec: VMClusterSpec{RetentionPeriod: "1", VMInsert: &VMInsert{
+		CommonAppsParams:  CommonAppsParams{Port: "8428"},
+		ClusterNativePort: "8428",
+	}}}, `vminsert: port=8428 conflicts with clusterNativeListenPort`)
+	f(&VMCluster{Spec: VMClusterSpec{RetentionPeriod: "1", VMSelect: &VMSelect{
+		CommonAppsParams:  CommonAppsParams{Port: "8428"},
+		ClusterNativePort: "8428",
+	}}}, `vmselect: port=8428 conflicts with clusterNativeListenPort`)
 }
 
 func TestVLogs_PrefixedName(t *testing.T) {

@@ -46,7 +46,7 @@ func (*VMSingleCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1bet
 		err = errors.New(obj.Status.ParsingSpecError)
 		return
 	}
-	if err = obj.Validate(); err != nil {
+	if err = build.ValidateWithDefaults(obj); err != nil {
 		return
 	}
 	if obj.Spec.VMBackup != nil && obj.Spec.VMBackup.AcceptEULA {
@@ -63,7 +63,7 @@ func (*VMSingleCustomValidator) ValidateUpdate(ctx context.Context, _, newObj *v
 		err = errors.New(newObj.Status.ParsingSpecError)
 		return
 	}
-	if err = newObj.Validate(); err != nil {
+	if err = build.ValidateWithDefaults(newObj); err != nil {
 		return
 	}
 	if newObj.Spec.VMBackup != nil && newObj.Spec.VMBackup.AcceptEULA {

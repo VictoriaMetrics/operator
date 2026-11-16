@@ -45,7 +45,7 @@ func (v *VMAnomalyCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1
 	if obj.Status.ParsingSpecError != "" {
 		return nil, errors.New(obj.Status.ParsingSpecError)
 	}
-	if err := obj.Validate(); err != nil {
+	if err := build.ValidateWithDefaults(obj); err != nil {
 		return nil, err
 	}
 	return build.WarnOpenShiftSecurityContext(obj.Spec.SecurityContext), nil
@@ -56,7 +56,7 @@ func (v *VMAnomalyCustomValidator) ValidateUpdate(ctx context.Context, oldObj, n
 	if newObj.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(newObj.Status.ParsingSpecError) {
 		return nil, errors.New(newObj.Status.ParsingSpecError)
 	}
-	if err := newObj.Validate(); err != nil {
+	if err := build.ValidateWithDefaults(newObj); err != nil {
 		return nil, err
 	}
 	return build.WarnOpenShiftSecurityContext(newObj.Spec.SecurityContext), nil

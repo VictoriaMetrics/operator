@@ -45,7 +45,7 @@ func (*VLClusterCustomValidator) ValidateCreate(_ context.Context, obj *vmv1.VLC
 	if obj.Status.ParsingSpecError != "" {
 		return nil, errors.New(obj.Status.ParsingSpecError)
 	}
-	if err := obj.Validate(); err != nil {
+	if err := build.ValidateWithDefaults(obj); err != nil {
 		return nil, err
 	}
 	return build.WarnOpenShiftVLClusterSpec(&obj.Spec), nil
@@ -56,7 +56,7 @@ func (*VLClusterCustomValidator) ValidateUpdate(_ context.Context, _, newObj *vm
 	if newObj.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(newObj.Status.ParsingSpecError) {
 		return nil, errors.New(newObj.Status.ParsingSpecError)
 	}
-	if err := newObj.Validate(); err != nil {
+	if err := build.ValidateWithDefaults(newObj); err != nil {
 		return nil, err
 	}
 	return build.WarnOpenShiftVLClusterSpec(&newObj.Spec), nil

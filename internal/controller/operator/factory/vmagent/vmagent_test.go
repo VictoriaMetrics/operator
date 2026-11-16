@@ -951,6 +951,42 @@ func TestCreateOrUpdate(t *testing.T) {
 	})
 }
 
+func TestVMAgentHTTPListeners(t *testing.T) {
+	cr := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
+		Spec: vmv1beta1.VMAgentSpec{CommonAppsParams: vmv1beta1.CommonAppsParams{
+			HTTPListeners: []vmv1beta1.HTTPListener{{
+				Name: "https", Port: 8428,
+				TLS: &vmv1beta1.HTTPListenerTLS{CertFile: "/tls/crt", KeyFile: "/tls/key"},
+			}},
+		}},
+	}
+	cl := k8stools.GetTestClientWithObjects(nil)
+	build.AddDefaults(cl.Scheme())
+	cl.Scheme().Default(cr)
+	ac := getAssetsCache(context.Background(), cl, cr)
+	pod, err := newPodSpec(cr, ac, 0)
+	if !assert.NoError(t, err) {
+		return
+	}
+	container := pod.Containers[0]
+	assert.Subset(t, container.Args, []string{
+		"-httpListenAddr=:8429,:8428", "-tls=false,true",
+		"-tlsCertFile=,/tls/crt", "-tlsKeyFile=,/tls/key",
+	})
+	assert.Contains(t, container.Ports, corev1.ContainerPort{Name: "https", Protocol: corev1.ProtocolTCP, ContainerPort: 8428})
+
+	ctx := context.Background()
+	if !assert.NoError(t, createOrUpdateService(ctx, cl, cr, nil)) {
+		return
+	}
+	var svc corev1.Service
+	if !assert.NoError(t, cl.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: cr.Namespace}, &svc)) {
+		return
+	}
+	assert.Contains(t, svc.Spec.Ports, corev1.ServicePort{Name: "https", Protocol: corev1.ProtocolTCP, Port: 8428, TargetPort: intstr.FromInt32(8428)})
+}
+
 func TestBuildRemoteWriteArgs(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMAgent

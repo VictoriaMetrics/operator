@@ -1641,6 +1641,32 @@ serviceaccountname: vtagent-agent
 `)
 }
 
+func TestNewPodSpecHTTPListeners(t *testing.T) {
+	cr := &vmv1.VTAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
+		Spec: vmv1.VTAgentSpec{CommonAppsParams: vmv1beta1.CommonAppsParams{
+			Port: "10429",
+			HTTPListeners: []vmv1beta1.HTTPListener{
+				{Name: "plain", Port: 10430},
+				{Name: "secure", Port: 10431, TLS: &vmv1beta1.HTTPListenerTLS{CertFile: "/tls/crt", KeyFile: "/tls/key"}},
+			},
+		}},
+	}
+	podSpec, err := newPodSpec(cr)
+	require.NoError(t, err)
+	require.Len(t, podSpec.Containers, 1)
+	container := podSpec.Containers[0]
+	assert.Equal(t, []corev1.ContainerPort{
+		{Name: "http", Protocol: corev1.ProtocolTCP, ContainerPort: 10429},
+		{Name: "plain", Protocol: corev1.ProtocolTCP, ContainerPort: 10430},
+		{Name: "secure", Protocol: corev1.ProtocolTCP, ContainerPort: 10431},
+	}, container.Ports)
+	assert.Contains(t, container.Args, "-httpListenAddr=:10429,:10430,:10431")
+	assert.Contains(t, container.Args, "-tls=false,false,true")
+	assert.Contains(t, container.Args, "-tlsCertFile=,,/tls/crt")
+	assert.Contains(t, container.Args, "-tlsKeyFile=,,/tls/key")
+}
+
 func TestCreateOrUpdate_Paused(t *testing.T) {
 	// Create a paused VTAgent CR and test that it is not reconciled
 	cr := &vmv1.VTAgent{
@@ -1735,6 +1761,28 @@ func TestCreateOrUpdateService(t *testing.T) {
 				}
 			}
 			assert.True(t, hasHTTPPort, "expected default http port to be preserved in the merged useAsDefault service")
+		},
+	})
+
+	f(opts{
+		cr: &vmv1.VTAgent{
+			ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
+			Spec: vmv1.VTAgentSpec{CommonAppsParams: vmv1beta1.CommonAppsParams{
+				Port: "10429",
+				HTTPListeners: []vmv1beta1.HTTPListener{
+					{Name: "plain", Port: 10430},
+					{Name: "secure", Port: 10431, TLS: &vmv1beta1.HTTPListenerTLS{CertFile: "/tls/crt", KeyFile: "/tls/key"}},
+				},
+			}},
+		},
+		validate: func(t *testing.T, rclient client.Client) {
+			var svc corev1.Service
+			require.NoError(t, rclient.Get(context.TODO(), types.NamespacedName{Namespace: "default", Name: "vtagent-agent"}, &svc))
+			assert.Equal(t, []corev1.ServicePort{
+				{Name: "http", Protocol: corev1.ProtocolTCP, Port: 10429, TargetPort: intstr.FromInt32(10429)},
+				{Name: "plain", Protocol: corev1.ProtocolTCP, Port: 10430, TargetPort: intstr.FromInt32(10430)},
+				{Name: "secure", Protocol: corev1.ProtocolTCP, Port: 10431, TargetPort: intstr.FromInt32(10431)},
+			}, svc.Spec.Ports)
 		},
 	})
 

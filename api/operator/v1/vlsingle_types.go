@@ -319,7 +319,7 @@ func (cr *VLSingle) Validate() error {
 			return err
 		}
 	}
-	if err := cr.Spec.SyslogSpec.Validate(); err != nil {
+	if err := cr.Spec.SyslogSpec.Validate(cr.Spec.HTTPListeners...); err != nil {
 		return err
 	}
 	if err := cr.Spec.Validate(); err != nil {

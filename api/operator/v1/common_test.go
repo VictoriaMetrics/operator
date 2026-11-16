@@ -1,6 +1,12 @@
 package v1
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+)
 
 func TestOTLPGRPCSpec_Validate(t *testing.T) {
 	f := func(g *OTLPGRPCSpec, httpPort string, wantErr bool) {
@@ -22,6 +28,41 @@ func TestOTLPGRPCSpec_Validate(t *testing.T) {
 
 	// colliding with the HTTP port
 	f(&OTLPGRPCSpec{ListenPort: 10429}, "10429", true)
+}
+
+func TestHTTPListenersGRPCPortValidate(t *testing.T) {
+	listeners := []vmv1beta1.HTTPListener{{Name: "extra", Port: 4317}}
+	for _, tc := range []struct {
+		name     string
+		validate func() error
+	}{
+		{"VTAgent", func() error {
+			return (&VTAgent{Spec: VTAgentSpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{HTTPListeners: listeners},
+				RemoteWrite:      []VTAgentRemoteWriteSpec{{URL: "http://example.com"}},
+				GRPCSpec:         &OTLPGRPCSpec{ListenPort: 4317},
+			}}).Validate()
+		}},
+		{"VTSingle", func() error {
+			return (&VTSingle{Spec: VTSingleSpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{HTTPListeners: listeners},
+				GRPCSpec:         &OTLPGRPCSpec{ListenPort: 4317},
+			}}).Validate()
+		}},
+		{"VTCluster insert", func() error {
+			return (&VTCluster{Spec: VTClusterSpec{Insert: &VTInsert{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{HTTPListeners: listeners},
+				GRPCSpec:         &OTLPGRPCSpec{ListenPort: 4317},
+			}}}).Validate()
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.ErrorContains(t, tc.validate(), "grpcSpec.listenPort=4317 conflicts with httpListeners port=4317")
+			listeners[0].Port = 4318
+			assert.NoError(t, tc.validate())
+			listeners[0].Port = 4317
+		})
+	}
 }
 
 func TestTLSServerConfig_Validate(t *testing.T) {

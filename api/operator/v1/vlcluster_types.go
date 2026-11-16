@@ -330,8 +330,8 @@ type SyslogServerSpec struct {
 	UDPListeners []*SyslogUDPListener `json:"udpListeners,omitempty"`
 }
 
-// Validate checks syntax of the syslog listeners configuration
-func (s *SyslogServerSpec) Validate() error {
+// Validate checks syslog listeners and HTTP listener port collisions.
+func (s *SyslogServerSpec) Validate(httpListeners ...vmv1beta1.HTTPListener) error {
 	if s == nil {
 		return nil
 	}
@@ -343,6 +343,11 @@ func (s *SyslogServerSpec) Validate() error {
 	for idx, tcp := range s.TCPListeners {
 		if tcp == nil {
 			continue
+		}
+		for _, listener := range httpListeners {
+			if listener.Port == tcp.ListenPort {
+				return fmt.Errorf("httpListeners name=%q port=%d conflicts with syslogSpec.tcpListeners[%d].listenPort", listener.Name, listener.Port, idx)
+			}
 		}
 		if err := tcp.TLSConfig.Validate(); err != nil {
 			return fmt.Errorf("syslogSpec.tcpListeners[%d]: %w", idx, err)
@@ -810,7 +815,7 @@ func (cr *VLCluster) Validate() error {
 				return err
 			}
 		}
-		if err := vli.SyslogSpec.Validate(); err != nil {
+		if err := vli.SyslogSpec.Validate(vli.HTTPListeners...); err != nil {
 			return fmt.Errorf("vlinsert: %w", err)
 		}
 		if err := vli.Validate(); err != nil {

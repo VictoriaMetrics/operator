@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 const (
@@ -80,14 +82,18 @@ type OTLPGRPCSpec struct {
 	TLSConfig *TLSServerConfig `json:"tlsConfig,omitempty"`
 }
 
-// Validate checks that ListenPort doesn't collide with httpPort, the port already used for
-// the component's main HTTP listener.
-func (g *OTLPGRPCSpec) Validate(httpPort string) error {
+// Validate checks that ListenPort doesn't collide with HTTP listener ports.
+func (g *OTLPGRPCSpec) Validate(httpPort string, listeners ...vmv1beta1.HTTPListener) error {
 	if g == nil {
 		return nil
 	}
 	if strconv.Itoa(int(g.ListenPort)) == httpPort {
 		return fmt.Errorf("spec.grpcSpec.listenPort=%d must not be equal to the HTTP listen port=%s", g.ListenPort, httpPort)
+	}
+	for _, listener := range listeners {
+		if g.ListenPort == listener.Port {
+			return fmt.Errorf("spec.grpcSpec.listenPort=%d conflicts with httpListeners port=%d", g.ListenPort, listener.Port)
+		}
 	}
 	if err := g.TLSConfig.Validate(); err != nil {
 		return fmt.Errorf("spec.grpcSpec: %w", err)

@@ -677,7 +677,7 @@ func (cr *VTCluster) Validate() error {
 		if vti.Port != "" {
 			insertPort = vti.Port
 		}
-		if err := vti.GRPCSpec.Validate(insertPort); err != nil {
+		if err := vti.GRPCSpec.Validate(insertPort, vti.HTTPListeners...); err != nil {
 			return fmt.Errorf("insert: %w", err)
 		}
 		if err := vti.Validate(); err != nil {

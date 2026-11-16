@@ -413,6 +413,60 @@ func TestHTTPListenersValidate(t *testing.T) {
 	f(CommonAppsParams{Port: "8443", HTTPListeners: []HTTPListener{tlsListener}}, "port=8443 is already in use")
 }
 
+func TestConfigReloaderPort(t *testing.T) {
+	f := func(addr, want string) {
+		t.Helper()
+		p := CommonConfigReloaderParams{}
+		if addr != "" {
+			p.ConfigReloaderExtraArgs = map[string]string{"http.listenAddr": addr}
+		}
+		assert.Equal(t, want, p.configReloaderPort().value)
+	}
+
+	f("", "8435")
+	f(":8436", "8436")
+	f("[::1]:8437", "8437")
+	f("hostname-only", "8435")
+	f("127.0.0.1:0", "8435")
+	f("127.0.0.1:70000", "8435")
+}
+
+func TestHTTPListenersSidecarPortConflicts(t *testing.T) {
+	f := func(cr interface{ Validate() error }, wantErr string) {
+		t.Helper()
+		err := cr.Validate()
+		if wantErr == "" {
+			assert.NoError(t, err)
+			return
+		}
+		assert.ErrorContains(t, err, wantErr)
+	}
+	listeners := func(port int32) CommonAppsParams {
+		return CommonAppsParams{Port: "8427", HTTPListeners: []HTTPListener{{Name: "extra", Port: port}}}
+	}
+
+	// config-reloader default and custom ports
+	f(&VMAuth{Spec: VMAuthSpec{CommonAppsParams: listeners(8435)}}, `port=8435 conflicts with config-reloader port`)
+	f(&VMAuth{Spec: VMAuthSpec{
+		CommonAppsParams:           listeners(8435),
+		CommonConfigReloaderParams: CommonConfigReloaderParams{ConfigReloaderExtraArgs: map[string]string{"http.listenAddr": ":8436"}},
+	}}, "")
+	f(&VMAuth{Spec: VMAuthSpec{
+		CommonAppsParams:           listeners(8436),
+		CommonConfigReloaderParams: CommonConfigReloaderParams{ConfigReloaderExtraArgs: map[string]string{"http.listenAddr": ":8436"}},
+	}}, `port=8436 conflicts with config-reloader port`)
+
+	// alertmanager cluster mesh port
+	f(&VMAlertmanager{Spec: VMAlertmanagerSpec{CommonAppsParams: listeners(9094)}}, `port=9094 conflicts with cluster mesh port`)
+	f(&VMAlertmanager{Spec: VMAlertmanagerSpec{CommonAppsParams: listeners(8435)}}, `port=8435 conflicts with config-reloader port`)
+
+	// vmstorage vmbackupmanager sidecar
+	f(&VMCluster{Spec: VMClusterSpec{RetentionPeriod: "1", VMStorage: &VMStorage{
+		CommonAppsParams: listeners(8300),
+		VMBackup:         &VMBackup{Port: "8300", AcceptEULA: true},
+	}}}, `vmstorage: httpListeners name="extra" port=8300 conflicts with vmBackup.port`)
+}
+
 func TestVLogs_PrefixedName(t *testing.T) {
 	f := func(name string, omit bool, want string) {
 		t.Helper()

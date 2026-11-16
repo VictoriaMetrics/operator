@@ -214,6 +214,49 @@ func TestVMSingle_Validate(t *testing.T) {
 	}, false)
 }
 
+func TestVMSingle_HTTPListenerPortConflicts(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		insertPorts *InsertPorts
+		backup      *VMBackup
+		wantErr     string
+	}{
+		{"graphite", &InsertPorts{GraphitePort: "9000"}, nil, "httpListeners name=\"extra\" port=9000 conflicts with insertPorts.graphitePort"},
+		{"influx", &InsertPorts{InfluxPort: "9000"}, nil, "httpListeners name=\"extra\" port=9000 conflicts with insertPorts.influxPort"},
+		{"opentsdb HTTP", &InsertPorts{OpenTSDBHTTPPort: "9000"}, nil, "httpListeners name=\"extra\" port=9000 conflicts with insertPorts.openTSDBHTTPPort"},
+		{"opentsdb TCP", &InsertPorts{OpenTSDBPort: "9000"}, nil, "httpListeners name=\"extra\" port=9000 conflicts with insertPorts.openTSDBPort"},
+		{"vmbackup", nil, &VMBackup{Port: "9000", AcceptEULA: true}, "httpListeners name=\"extra\" port=9000 conflicts with vmBackup.port"},
+		{"different ports", &InsertPorts{GraphitePort: "9001"}, &VMBackup{Port: "9002", AcceptEULA: true}, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cr := &VMSingle{Spec: VMSingleSpec{
+				InsertPorts: tc.insertPorts,
+				VMBackup:    tc.backup,
+				CommonAppsParams: CommonAppsParams{
+					Port:          "8428",
+					HTTPListeners: []HTTPListener{{Name: "extra", Port: 9000}},
+				},
+			}}
+			if tc.wantErr == "" {
+				assert.NoError(t, cr.Validate())
+			} else {
+				assert.ErrorContains(t, cr.Validate(), tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestVMSingle_HTTPListenerAliasPort(t *testing.T) {
+	cr := &VMSingle{Spec: VMSingleSpec{CommonAppsParams: CommonAppsParams{
+		Port:          "9000",
+		HTTPListeners: []HTTPListener{{Name: "extra", Port: 8428}},
+	}}}
+	assert.ErrorContains(t, cr.Validate(), "httpListeners name=\"extra\" port=8428 conflicts with the http-alias service port")
+
+	cr.Spec.HTTPListeners[0].Port = 8429
+	assert.NoError(t, cr.Validate())
+}
+
 func TestVMSingle_PrefixedName(t *testing.T) {
 	f := func(name string, omit bool, want string) {
 		t.Helper()

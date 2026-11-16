@@ -604,7 +604,10 @@ func (cr *VMAlertmanager) Validate() error {
 	if err := cr.Spec.Validate(); err != nil {
 		return err
 	}
-	return nil
+	return cr.Spec.validateListenerConflicts(
+		namedPort{"cluster mesh port", "9094"},
+		cr.Spec.configReloaderPort(),
+	)
 }
 
 // VMAlertmanagerTracingConfig defines Tracing configuration for alertmanager

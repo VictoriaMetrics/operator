@@ -1807,6 +1807,44 @@ func (p *CommonAppsParams) validateHTTPListeners() error {
 	return nil
 }
 
+const configReloaderDefaultPort = "8435"
+
+// namedPort is a port of other listener or sidecar container sharing pod network namespace
+type namedPort struct {
+	name  string
+	value string
+}
+
+// configReloaderPort returns config-reloader HTTP port, e.g. "8436" for http.listenAddr=":8436"
+func (p *CommonConfigReloaderParams) configReloaderPort() namedPort {
+	np := namedPort{name: "config-reloader port", value: configReloaderDefaultPort}
+	_, port, err := net.SplitHostPort(p.ConfigReloaderExtraArgs["http.listenAddr"])
+	if err != nil {
+		return np
+	}
+	if v, err := strconv.ParseInt(port, 10, 32); err == nil && v >= 1 && v <= 65535 {
+		np.value = port
+	}
+	return np
+}
+
+// validateListenerConflicts rejects httpListeners bound to ports used by other listeners or sidecars,
+// containers share pod network namespace and listener cannot bind to the same port
+func (p *CommonAppsParams) validateListenerConflicts(others ...namedPort) error {
+	for _, o := range others {
+		port, err := strconv.ParseInt(o.value, 10, 32)
+		if err != nil {
+			continue
+		}
+		for _, l := range p.HTTPListeners {
+			if l.Port == int32(port) {
+				return fmt.Errorf("httpListeners name=%q port=%d conflicts with %s", l.Name, l.Port, o.name)
+			}
+		}
+	}
+	return nil
+}
+
 // SecurityContext extends PodSecurityContext with ContainerSecurityContext
 // It allows to globally configure security params for pod and all containers
 type SecurityContext struct {

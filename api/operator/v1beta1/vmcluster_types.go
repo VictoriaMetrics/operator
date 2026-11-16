@@ -874,6 +874,11 @@ func (cr *VMCluster) Validate() error {
 		if err := vms.Validate(); err != nil {
 			return fmt.Errorf("vmstorage: %w", err)
 		}
+		if vms.VMBackup != nil {
+			if err := vms.validateListenerConflicts(namedPort{"vmBackup.port", vms.VMBackup.Port}); err != nil {
+				return fmt.Errorf("vmstorage: %w", err)
+			}
+		}
 	}
 	if cr.Spec.RequestsLoadBalancer.Enabled {
 		rlb := cr.Spec.RequestsLoadBalancer.Spec

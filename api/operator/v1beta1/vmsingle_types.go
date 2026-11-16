@@ -483,7 +483,29 @@ func (cr *VMSingle) Validate() error {
 	if err := cr.Spec.Validate(); err != nil {
 		return err
 	}
-	return nil
+	if cr.Spec.Port != "" && cr.Spec.Port != "8428" {
+		for _, listener := range cr.Spec.HTTPListeners {
+			if listener.Port == 8428 {
+				return fmt.Errorf("httpListeners name=%q port=8428 conflicts with the http-alias service port", listener.Name)
+			}
+		}
+	}
+	if len(cr.Spec.HTTPListeners) == 0 {
+		return nil
+	}
+	otherPorts := []namedPort{cr.Spec.configReloaderPort()}
+	if ip := cr.Spec.InsertPorts; ip != nil {
+		otherPorts = append(otherPorts,
+			namedPort{"insertPorts.graphitePort", ip.GraphitePort},
+			namedPort{"insertPorts.influxPort", ip.InfluxPort},
+			namedPort{"insertPorts.openTSDBHTTPPort", ip.OpenTSDBHTTPPort},
+			namedPort{"insertPorts.openTSDBPort", ip.OpenTSDBPort},
+		)
+	}
+	if cr.Spec.VMBackup != nil {
+		otherPorts = append(otherPorts, namedPort{"vmBackup.port", cr.Spec.VMBackup.Port})
+	}
+	return cr.Spec.validateListenerConflicts(otherPorts...)
 }
 
 // GetStatusMetadata returns metadata for object status

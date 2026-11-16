@@ -144,7 +144,7 @@ func (cr *VTAgent) Validate() error {
 	if specPort == "" {
 		specPort = "10429"
 	}
-	if err := cr.Spec.GRPCSpec.Validate(specPort); err != nil {
+	if err := cr.Spec.GRPCSpec.Validate(specPort, cr.Spec.HTTPListeners...); err != nil {
 		return err
 	}
 	if err := cr.Spec.Validate(); err != nil {

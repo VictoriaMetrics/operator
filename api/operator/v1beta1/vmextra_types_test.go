@@ -420,7 +420,7 @@ func TestConfigReloaderPort(t *testing.T) {
 		if addr != "" {
 			p.ConfigReloaderExtraArgs = map[string]string{"http.listenAddr": addr}
 		}
-		assert.Equal(t, want, p.configReloaderPort().value)
+		assert.Equal(t, want, p.ConfigReloaderPort())
 	}
 
 	f("", "8435")

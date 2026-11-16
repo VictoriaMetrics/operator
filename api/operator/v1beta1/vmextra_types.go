@@ -1815,17 +1815,20 @@ type namedPort struct {
 	value string
 }
 
-// configReloaderPort returns config-reloader HTTP port, e.g. "8436" for http.listenAddr=":8436"
-func (p *CommonConfigReloaderParams) configReloaderPort() namedPort {
-	np := namedPort{name: "config-reloader port", value: configReloaderDefaultPort}
+// ConfigReloaderPort returns config-reloader HTTP port, e.g. "8436" for http.listenAddr=":8436"
+func (p *CommonConfigReloaderParams) ConfigReloaderPort() string {
 	_, port, err := net.SplitHostPort(p.ConfigReloaderExtraArgs["http.listenAddr"])
 	if err != nil {
-		return np
+		return configReloaderDefaultPort
 	}
 	if v, err := strconv.ParseInt(port, 10, 32); err == nil && v >= 1 && v <= 65535 {
-		np.value = port
+		return port
 	}
-	return np
+	return configReloaderDefaultPort
+}
+
+func (p *CommonConfigReloaderParams) configReloaderPort() namedPort {
+	return namedPort{name: "config-reloader port", value: p.ConfigReloaderPort()}
 }
 
 // validateListenerConflicts rejects httpListeners bound to ports used by other listeners or sidecars,

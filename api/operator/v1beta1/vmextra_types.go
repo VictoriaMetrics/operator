@@ -22,6 +22,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/validation"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -1632,6 +1634,13 @@ type CommonAppsParams struct {
 	// Port listen address
 	// +optional
 	Port string `json:"port,omitempty"`
+	// HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+	// Ignored by VMAlertmanager and VMAnomaly.
+	// +notes={available_from: "v0.76.0"}
+	// +listType=map
+	// +listMapKey=name
+	// +optional
+	HTTPListeners []HTTPListener `json:"httpListeners,omitempty"`
 	// UseStrictSecurity enables strict security mode for component
 	// it restricts disk writes access
 	// uses non-root user out of the box
@@ -1678,6 +1687,113 @@ func (p *CommonAppsParams) Validate() error {
 			return fmt.Errorf("preStopSleepSeconds (%d) must be less than terminationGracePeriodSeconds (%d)",
 				*p.PreStopSleepSeconds, *p.TerminationGracePeriodSeconds)
 		}
+	}
+	return p.validateHTTPListeners()
+}
+
+// HTTPListener defines an additional HTTP listener
+type HTTPListener struct {
+	// Name of the container port and service port
+	// +kubebuilder:validation:MaxLength=15
+	// +kubebuilder:validation:Pattern=`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
+	Name string `json:"name"`
+	// Port to listen on
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
+	Port int32 `json:"port"`
+	// TLS enables TLS for the listener
+	// +optional
+	TLS *HTTPListenerTLS `json:"tls,omitempty"`
+	// UseProxyProtocol enables PROXY protocol for the listener
+	// +optional
+	UseProxyProtocol bool `json:"useProxyProtocol,omitempty"`
+}
+
+// HTTPListenerTLS defines TLS settings of an additional HTTP listener
+type HTTPListenerTLS struct {
+	// CertFile is a path to the TLS certificate file
+	// +kubebuilder:validation:MinLength=1
+	CertFile string `json:"certFile"`
+	// KeyFile is a path to the TLS key file
+	// +kubebuilder:validation:MinLength=1
+	KeyFile string `json:"keyFile"`
+	// MTLS enables client certificate verification. Enterprise feature
+	// +optional
+	MTLS bool `json:"mtls,omitempty"`
+	// MTLSCAFile is a path to the CA file for client certificate verification, system CAs are used if empty
+	// +optional
+	MTLSCAFile string `json:"mtlsCAFile,omitempty"`
+}
+
+// HTTPListenerFlags are positional flags configured per HTTP listener
+var HTTPListenerFlags = []string{
+	"httpListenAddr",
+	httpUseProxyProtocolFlag,
+	"tls",
+	"tlsCertFile",
+	"tlsKeyFile",
+	"mtls",
+	"mtlsCAFile",
+}
+
+// reservedPortNames are port names used by operator-managed containers and services
+var reservedPortNames = sets.New(
+	"http",
+	"http-alias",
+	"internal",
+	"reloader-http",
+	"vmbackupmanager",
+	"http-backup",
+	"http-restore",
+	"clusternative",
+	"vminsert",
+	"vmselect",
+	"otlp-grpc",
+	"graphite-tcp",
+	"graphite-udp",
+	"influx-tcp",
+	"influx-udp",
+	"opentsdb-http",
+	"opentsdb-tcp",
+	"opentsdb-udp",
+	"tcp-mesh",
+	"udp-mesh",
+	"mesh-tcp",
+)
+
+func (p *CommonAppsParams) validateHTTPListeners() error {
+	if len(p.HTTPListeners) == 0 {
+		return nil
+	}
+
+	// extraArgs with comma-separated values define extra listeners, e.g. httpListenAddr: ":8428,:8429"
+	for _, f := range HTTPListenerFlags {
+		if strings.Contains(p.ExtraArgs[f], ",") {
+			return fmt.Errorf("httpListeners cannot be combined with listeners defined in extraArgs.%s", f)
+		}
+	}
+
+	// Validate container names and port - duplicates, reserved and duplicated names
+	names := sets.New[string]()
+	ports := sets.New[int32]()
+	if port, err := strconv.ParseInt(p.Port, 10, 32); err == nil {
+		ports.Insert(int32(port))
+	}
+	for _, l := range p.HTTPListeners {
+		if errs := validation.IsValidPortName(l.Name); len(errs) > 0 {
+			return fmt.Errorf("httpListeners name=%q is invalid: %s", l.Name, strings.Join(errs, "; "))
+		}
+		if reservedPortNames.Has(l.Name) || strings.HasPrefix(l.Name, "syslog-") {
+			return fmt.Errorf("httpListeners name=%q is reserved", l.Name)
+		}
+		if names.Has(l.Name) {
+			return fmt.Errorf("httpListeners name=%q is duplicated", l.Name)
+		}
+		if ports.Has(l.Port) {
+			return fmt.Errorf("httpListeners name=%q port=%d is already in use", l.Name, l.Port)
+		}
+		names.Insert(l.Name)
+		ports.Insert(l.Port)
 	}
 	return nil
 }

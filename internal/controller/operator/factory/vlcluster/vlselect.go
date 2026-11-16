@@ -173,6 +173,7 @@ func createOrUpdateVLSelectService(ctx context.Context, rclient client.Client, c
 func buildVLSelectService(cr *vmv1.VLCluster) *corev1.Service {
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
 	svc := build.Service(b, cr.Spec.VLSelect.Port, func(svc *corev1.Service) {
+		build.AddHTTPListenerServicePorts(svc, cr.Spec.VLSelect.HTTPListeners)
 		svc.Spec.ClusterIP = "None"
 		svc.Spec.PublishNotReadyAddresses = true
 	})
@@ -287,6 +288,7 @@ func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 		Protocol:      "TCP",
 		ContainerPort: intstr.Parse(cr.Spec.VLSelect.Port).IntVal,
 	})
+	ports = build.AddHTTPListenerPorts(ports, cr.Spec.VLSelect.HTTPListeners)
 
 	volumes := make([]corev1.Volume, 0)
 	volumes = append(volumes, cr.Spec.VLSelect.Volumes...)
@@ -332,6 +334,7 @@ func buildVLSelectPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 	}
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VLSelect.ExtraArgs, "-")
+	args = build.AddHTTPListenerArgs(args, cr.Spec.VLSelect.HTTPListeners)
 	build.SortArgs(args)
 	selectContainers := corev1.Container{
 		Name:                     "vlselect",

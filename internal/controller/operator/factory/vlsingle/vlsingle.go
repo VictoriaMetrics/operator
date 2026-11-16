@@ -224,6 +224,7 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(r.Spec.Port).IntVal})
+	ports = build.AddHTTPListenerPorts(ports, r.Spec.HTTPListeners)
 
 	var pvcSrc *corev1.PersistentVolumeClaimVolumeSource
 	if !isStorageEmpty(r.Spec.Storage) {
@@ -279,6 +280,7 @@ func makePodSpec(r *vmv1.VLSingle) (*corev1.PodTemplateSpec, error) {
 	args = build.LicenseArgsTo(args, r.Spec.License, vmv1beta1.SecretsDir)
 
 	args = build.AddExtraArgsOverrideDefaults(args, r.Spec.ExtraArgs, "-")
+	args = build.AddHTTPListenerArgs(args, r.Spec.HTTPListeners)
 	build.SortArgs(args)
 	vlsingleContainer := corev1.Container{
 		Name:                     "vlsingle",
@@ -333,12 +335,14 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil {
 		prevSvc = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
+			build.AddHTTPListenerServicePorts(svc, prevCR.Spec.HTTPListeners)
 			build.AddSyslogPortsToService(svc, prevCR.Spec.SyslogSpec)
 		})
 		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.ServiceSpec)
 	}
 
 	svc := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
+		build.AddHTTPListenerServicePorts(svc, cr.Spec.HTTPListeners)
 		build.AddSyslogPortsToService(svc, cr.Spec.SyslogSpec)
 	})
 	owner := cr.AsOwner()

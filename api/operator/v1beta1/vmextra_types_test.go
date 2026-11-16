@@ -347,6 +347,54 @@ func TestCommonAppsParamsValidate(t *testing.T) {
 	}, true)
 }
 
+func TestHTTPListenersValidate(t *testing.T) {
+	f := func(p CommonAppsParams, wantErr string) {
+		t.Helper()
+		err := p.Validate()
+		if wantErr == "" {
+			assert.NoError(t, err)
+			return
+		}
+		assert.ErrorContains(t, err, wantErr)
+	}
+	tlsListener := HTTPListener{Name: "https", Port: 8443, TLS: &HTTPListenerTLS{CertFile: "/tls/crt", KeyFile: "/tls/key"}}
+
+	// valid listeners
+	f(CommonAppsParams{Port: "8428", HTTPListeners: []HTTPListener{
+		{Name: "plain", Port: 8429, UseProxyProtocol: true},
+		tlsListener,
+		{Name: "mtls", Port: 8444, TLS: &HTTPListenerTLS{CertFile: "/tls/crt", KeyFile: "/tls/key", MTLS: true, MTLSCAFile: "/tls/ca"}},
+	}}, "")
+
+	// listeners in both httpListeners and extraArgs
+	f(CommonAppsParams{
+		ExtraArgs:     map[string]string{"httpListenAddr": ":8428,:8429"},
+		HTTPListeners: []HTTPListener{tlsListener},
+	}, "cannot be combined with listeners defined in extraArgs.httpListenAddr")
+	f(CommonAppsParams{
+		ExtraArgs:     map[string]string{"tls": "true,false"},
+		HTTPListeners: []HTTPListener{tlsListener},
+	}, "cannot be combined with listeners defined in extraArgs.tls")
+
+	// single primary listener value in extraArgs is allowed
+	f(CommonAppsParams{
+		ExtraArgs:     map[string]string{"tls": "true"},
+		HTTPListeners: []HTTPListener{tlsListener},
+	}, "")
+
+	// reserved name
+	f(CommonAppsParams{HTTPListeners: []HTTPListener{{Name: "8080", Port: 8429}}}, "is invalid")
+	f(CommonAppsParams{HTTPListeners: []HTTPListener{{Name: "a--b", Port: 8429}}}, "is invalid")
+	f(CommonAppsParams{HTTPListeners: []HTTPListener{{Name: "http", Port: 8429}}}, "is reserved")
+	f(CommonAppsParams{HTTPListeners: []HTTPListener{{Name: "syslog-tcp-0", Port: 8429}}}, "is reserved")
+
+	// duplicated name
+	f(CommonAppsParams{HTTPListeners: []HTTPListener{tlsListener, tlsListener}}, "is duplicated")
+
+	// port conflicts with primary port
+	f(CommonAppsParams{Port: "8443", HTTPListeners: []HTTPListener{tlsListener}}, "port=8443 is already in use")
+}
+
 func TestVLogs_PrefixedName(t *testing.T) {
 	f := func(name string, omit bool, want string) {
 		t.Helper()

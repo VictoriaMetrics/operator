@@ -534,6 +534,38 @@ func TestMakeSpecForVMSingleOk_DownsamplingOrder(t *testing.T) {
 	}, periods)
 }
 
+// additional http listeners must be rendered as positional flags and container ports
+func TestMakeSpecForVMSingleOk_HTTPListeners(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1beta1.VMSingle{
+		ObjectMeta: metav1.ObjectMeta{Name: "single", Namespace: "default"},
+		Spec: vmv1beta1.VMSingleSpec{
+			CommonAppsParams: vmv1beta1.CommonAppsParams{
+				HTTPListeners: []vmv1beta1.HTTPListener{{
+					Name: "https",
+					Port: 8409,
+					TLS:  &vmv1beta1.HTTPListenerTLS{CertFile: "/tls/crt", KeyFile: "/tls/key"},
+				}},
+			},
+		},
+	}
+	fclient := k8stools.GetTestClientWithObjects(nil)
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	got, err := newPodSpec(ctx, cr, 0)
+	assert.NoError(t, err)
+
+	cnt := got.Spec.Containers[0]
+	assert.Subset(t, cnt.Args, []string{
+		"-httpListenAddr=:8429,:8409",
+		"-tls=false,true",
+		"-tlsCertFile=,/tls/crt",
+		"-tlsKeyFile=,/tls/key",
+	})
+	assert.Contains(t, cnt.Ports, corev1.ContainerPort{Name: "https", Protocol: corev1.ProtocolTCP, ContainerPort: 8409})
+}
+
 func TestCreateOrUpdateService(t *testing.T) {
 	type opts struct {
 		cr                *vmv1beta1.VMSingle
@@ -631,6 +663,29 @@ func TestCreateOrUpdateService(t *testing.T) {
 				"app.kubernetes.io/instance":  "single-1",
 				"app.kubernetes.io/component": "monitoring",
 				"managed-by":                  "vm-operator",
+			})
+		},
+	})
+
+	// additional http listener exposed via service
+	f(opts{
+		cr: &vmv1beta1.VMSingle{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "single-1",
+				Namespace: "default",
+			},
+			Spec: vmv1beta1.VMSingleSpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					HTTPListeners: []vmv1beta1.HTTPListener{{Name: "https", Port: 8409}},
+				},
+			},
+		},
+		validate: func(svc *corev1.Service) {
+			assert.Contains(t, svc.Spec.Ports, corev1.ServicePort{
+				Name:       "https",
+				Protocol:   corev1.ProtocolTCP,
+				Port:       8409,
+				TargetPort: intstr.FromInt32(8409),
 			})
 		},
 	})

@@ -202,6 +202,7 @@ func buildVMSelectService(cr *vmv1beta1.VMCluster) *corev1.Service {
 	// so the default Service is allowed to be replaced by a non-headless one.
 	// see https://github.com/VictoriaMetrics/operator/issues/2487#issuecomment-5807946714
 	svc := build.Service(b, cr.Spec.VMSelect.Port, func(svc *corev1.Service) {
+		build.AddHTTPListenerServicePorts(svc, cr.Spec.VMSelect.HTTPListeners)
 		svc.Spec.ClusterIP = "None"
 		svc.Spec.PublishNotReadyAddresses = true
 		if cr.Spec.VMSelect.ClusterNativePort != "" {
@@ -352,6 +353,7 @@ func createOrUpdateVMInsert(ctx context.Context, rclient client.Client, cr, prev
 func buildVMInsertService(cr *vmv1beta1.VMCluster) *corev1.Service {
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	svc := build.Service(b, cr.Spec.VMInsert.Port, func(svc *corev1.Service) {
+		build.AddHTTPListenerServicePorts(svc, cr.Spec.VMInsert.HTTPListeners)
 		build.AppendInsertPortsToService(cr.Spec.VMInsert.InsertPorts, svc)
 		if cr.Spec.VMInsert.ClusterNativePort != "" {
 			svc.Spec.Ports = append(svc.Spec.Ports,
@@ -466,6 +468,7 @@ func createOrUpdateVMStorage(ctx context.Context, rclient client.Client, cr, pre
 func buildVMStorageService(cr *vmv1beta1.VMCluster) *corev1.Service {
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
 	return build.Service(b, cr.Spec.VMStorage.Port, func(svc *corev1.Service) {
+		build.AddHTTPListenerServicePorts(svc, cr.Spec.VMStorage.HTTPListeners)
 		svc.Spec.ClusterIP = "None"
 		svc.Spec.PublishNotReadyAddresses = true
 		svc.Spec.Ports = append(svc.Spec.Ports, []corev1.ServicePort{
@@ -670,6 +673,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.VMSelect.Port).IntVal})
+	ports = build.AddHTTPListenerPorts(ports, cr.Spec.VMSelect.HTTPListeners)
 	if cr.Spec.VMSelect.ClusterNativePort != "" {
 		ports = append(ports, corev1.ContainerPort{Name: "clusternative", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.VMSelect.ClusterNativePort).IntVal})
 	}
@@ -727,6 +731,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VMSelect.ExtraArgs, "-")
+	args = build.AddHTTPListenerArgs(args, cr.Spec.VMSelect.HTTPListeners)
 	build.SortArgs(args)
 	vmselectContainer := corev1.Container{
 		Name:                     "vmselect",
@@ -895,6 +900,7 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 			ContainerPort: intstr.Parse(cr.Spec.VMInsert.Port).IntVal,
 		},
 	}
+	ports = build.AddHTTPListenerPorts(ports, cr.Spec.VMInsert.HTTPListeners)
 	ports = build.AppendInsertPorts(ports, cr.Spec.VMInsert.InsertPorts)
 	if cr.Spec.VMInsert.ClusterNativePort != "" {
 		ports = append(ports,
@@ -951,6 +957,7 @@ func makePodSpecForVMInsert(cr *vmv1beta1.VMCluster) (*corev1.PodTemplateSpec, e
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VMInsert.ExtraArgs, "-")
+	args = build.AddHTTPListenerArgs(args, cr.Spec.VMInsert.HTTPListeners)
 	build.SortArgs(args)
 
 	vminsertContainer := corev1.Container{
@@ -1143,6 +1150,7 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 			ContainerPort: intstr.Parse(cr.Spec.VMStorage.VMSelectPort).IntVal,
 		},
 	}
+	ports = build.AddHTTPListenerPorts(ports, cr.Spec.VMStorage.HTTPListeners)
 	volumes := make([]corev1.Volume, 0)
 
 	volumes = append(volumes, cr.Spec.VMStorage.Volumes...)
@@ -1207,6 +1215,7 @@ func makePodSpecForVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster) (*cor
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VMStorage.ExtraArgs, "-")
+	args = build.AddHTTPListenerArgs(args, cr.Spec.VMStorage.HTTPListeners)
 	build.SortArgs(args)
 	vmstorageContainer := corev1.Container{
 		Name:                     "vmstorage",
@@ -1659,16 +1668,17 @@ func buildVMAuthLBDeployment(cr *vmv1beta1.VMCluster) (*appsv1.Deployment, error
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 
 	args = build.AddExtraArgsOverrideDefaults(args, spec.ExtraArgs, "-")
+	args = build.AddHTTPListenerArgs(args, spec.HTTPListeners)
 	build.SortArgs(args)
 	vmauthLBCnt := corev1.Container{
 		Name: "vmauth",
-		Ports: []corev1.ContainerPort{
+		Ports: build.AddHTTPListenerPorts([]corev1.ContainerPort{
 			{
 				Protocol:      corev1.ProtocolTCP,
 				Name:          "http",
 				ContainerPort: intstr.Parse(spec.Port).IntVal,
 			},
-		},
+		}, spec.HTTPListeners),
 		Args:            args,
 		Env:             spec.ExtraEnvs,
 		EnvFrom:         spec.ExtraEnvsFrom,
@@ -1737,11 +1747,15 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 		return b
 	}
 	b := builder(cr)
-	svc := build.Service(b, cr.Spec.RequestsLoadBalancer.Spec.Port, nil)
+	svc := build.Service(b, cr.Spec.RequestsLoadBalancer.Spec.Port, func(svc *corev1.Service) {
+		build.AddHTTPListenerServicePorts(svc, cr.Spec.RequestsLoadBalancer.Spec.HTTPListeners)
+	})
 	var prevSvc *corev1.Service
 	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Enabled {
 		b = builder(prevCR)
-		prevSvc = build.Service(b, prevCR.Spec.RequestsLoadBalancer.Spec.Port, nil)
+		prevSvc = build.Service(b, prevCR.Spec.RequestsLoadBalancer.Spec.Port, func(svc *corev1.Service) {
+			build.AddHTTPListenerServicePorts(svc, prevCR.Spec.RequestsLoadBalancer.Spec.HTTPListeners)
+		})
 	}
 	owner := cr.AsOwner()
 	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {

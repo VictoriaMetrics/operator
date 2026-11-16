@@ -55,11 +55,11 @@ func buildScrape(cr *vmv1beta1.VMAlert, svc *corev1.Service) *vmv1beta1.VMServic
 func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1beta1.VMAlert) error {
 	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil {
-		prevSvc = build.Service(prevCR, prevCR.Spec.Port, nil)
+		prevSvc = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) { build.AddHTTPListenerServicePorts(svc, prevCR.Spec.HTTPListeners) })
 		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.ServiceSpec)
 	}
 
-	svc := build.Service(cr, cr.Spec.Port, nil)
+	svc := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) { build.AddHTTPListenerServicePorts(svc, cr.Spec.HTTPListeners) })
 	owner := cr.AsOwner()
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
@@ -308,6 +308,7 @@ func newPodSpec(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.As
 	})
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
+	ports = build.AddHTTPListenerPorts(ports, cr.Spec.HTTPListeners)
 
 	// sort for consistency
 	build.SortArgs(args)
@@ -599,6 +600,7 @@ func buildArgs(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, ac *build.Ass
 
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
+	args = build.AddHTTPListenerArgs(args, cr.Spec.HTTPListeners)
 
 	build.SortArgs(args)
 	return args, nil

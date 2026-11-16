@@ -19,6 +19,7 @@ aliases:
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.54.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.54.0).
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.13.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.13.0).
 
+* FEATURE: [vmoperator](https://docs.victoriametrics.com/operator/): add `spec.httpListeners` to serve HTTP on additional ports, each with its own TLS, mTLS and PROXY protocol settings. VMAlertmanager and VMAnomaly ignore this field.
 * FEATURE: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): add support for the `victoria-traces-agent` chart, which is converted into `VTAgent`. See [#2796](https://github.com/VictoriaMetrics/operator/pull/2796).
 * FEATURE: [helm-converter](https://docs.victoriametrics.com/operator/helm-converter/): the `victoria-logs-single` chart is now converted into `VLSingle` instead of the deprecated `VLogs`, including its `license` settings. See [#2797](https://github.com/VictoriaMetrics/operator/pull/2797).
 

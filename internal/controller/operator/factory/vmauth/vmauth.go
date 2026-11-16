@@ -234,6 +234,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	var ports []corev1.ContainerPort
 
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
+	ports = build.AddHTTPListenerPorts(ports, cr.Spec.HTTPListeners)
 
 	if len(cr.Spec.InternalListenPort) > 0 {
 		ports = append(ports, corev1.ContainerPort{
@@ -355,6 +356,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	}
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
+	args = build.AddHTTPListenerArgs(args, cr.Spec.HTTPListeners)
 	build.SortArgs(args)
 
 	vmauthContainer := corev1.Container{
@@ -586,6 +588,7 @@ func buildIngressConfig(cr *vmv1beta1.VMAuth) *networkingv1.Ingress {
 
 func setInternalSvcPort(cr *vmv1beta1.VMAuth) func(svc *corev1.Service) {
 	return func(svc *corev1.Service) {
+		build.AddHTTPListenerServicePorts(svc, cr.Spec.HTTPListeners)
 		if len(cr.Spec.InternalListenPort) > 0 {
 			p := intstr.Parse(cr.Spec.InternalListenPort)
 			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{

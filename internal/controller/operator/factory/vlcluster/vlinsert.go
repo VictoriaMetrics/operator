@@ -175,6 +175,7 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 			ContainerPort: intstr.Parse(cr.Spec.VLInsert.Port).IntVal,
 		},
 	}
+	ports = build.AddHTTPListenerPorts(ports, cr.Spec.VLInsert.HTTPListeners)
 
 	volumes := make([]corev1.Volume, 0)
 	volumes = append(volumes, cr.Spec.VLInsert.Volumes...)
@@ -226,6 +227,7 @@ func buildVLInsertPodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) {
 	}
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VLInsert.ExtraArgs, "-")
+	args = build.AddHTTPListenerArgs(args, cr.Spec.VLInsert.HTTPListeners)
 	build.SortArgs(args)
 
 	insertContainers := corev1.Container{
@@ -381,6 +383,7 @@ func createOrUpdateVLInsertService(ctx context.Context, rclient client.Client, c
 func buildVLInsertService(cr *vmv1.VLCluster) *corev1.Service {
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	svc := build.Service(b, cr.Spec.VLInsert.Port, func(svc *corev1.Service) {
+		build.AddHTTPListenerServicePorts(svc, cr.Spec.VLInsert.HTTPListeners)
 		syslogSpec := cr.Spec.VLInsert.SyslogSpec
 		if syslogSpec == nil || cr.Spec.RequestsLoadBalancer.Enabled {
 			// fast path

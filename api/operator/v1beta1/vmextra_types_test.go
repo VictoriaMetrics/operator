@@ -376,11 +376,29 @@ func TestHTTPListenersValidate(t *testing.T) {
 		HTTPListeners: []HTTPListener{tlsListener},
 	}, "cannot be combined with listeners defined in extraArgs.tls")
 
-	// single primary listener value in extraArgs is allowed
+	// single primary listener value in extraArgs is allowed unless its port conflicts
 	f(CommonAppsParams{
 		ExtraArgs:     map[string]string{"tls": "true"},
 		HTTPListeners: []HTTPListener{tlsListener},
 	}, "")
+	f(CommonAppsParams{
+		ExtraArgs:     map[string]string{"httpListenAddr": ":8429"},
+		HTTPListeners: []HTTPListener{{Name: "plain", Port: 8429}},
+	}, "port=8429 is already in use")
+	f(CommonAppsParams{
+		ExtraArgs:     map[string]string{"httpListenAddr": "[::1]:8443"},
+		HTTPListeners: []HTTPListener{tlsListener},
+	}, "port=8443 is already in use")
+	f(CommonAppsParams{
+		Port:          "8428",
+		ExtraArgs:     map[string]string{"httpListenAddr": ":8428"},
+		HTTPListeners: []HTTPListener{{Name: "plain", Port: 8429}},
+	}, "")
+	f(CommonAppsParams{
+		Port:          "8428",
+		ExtraArgs:     map[string]string{"httpListenAddr": ":9000"},
+		HTTPListeners: []HTTPListener{{Name: "plain", Port: 8429}},
+	}, "extraArgs.httpListenAddr port=9000 must match port=8428")
 
 	// reserved name
 	f(CommonAppsParams{HTTPListeners: []HTTPListener{{Name: "8080", Port: 8429}}}, "is invalid")

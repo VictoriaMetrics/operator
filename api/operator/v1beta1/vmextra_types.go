@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/url"
 	"path"
 	"reflect"
@@ -1778,6 +1779,14 @@ func (p *CommonAppsParams) validateHTTPListeners() error {
 	ports := sets.New[int32]()
 	if port, err := strconv.ParseInt(p.Port, 10, 32); err == nil {
 		ports.Insert(int32(port))
+	}
+	if _, port, err := net.SplitHostPort(p.ExtraArgs["httpListenAddr"]); err == nil {
+		if port, err := strconv.ParseInt(port, 10, 32); err == nil {
+			if primaryPort, err := strconv.ParseInt(p.Port, 10, 32); err == nil && primaryPort != port {
+				return fmt.Errorf("extraArgs.httpListenAddr port=%d must match port=%d when httpListeners are configured", port, primaryPort)
+			}
+			ports.Insert(int32(port))
+		}
 	}
 	for _, l := range p.HTTPListeners {
 		if errs := validation.IsValidPortName(l.Name); len(errs) > 0 {

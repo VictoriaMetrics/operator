@@ -803,6 +803,9 @@ func (cr *VMCluster) Validate() error {
 		if err := vms.Validate(); err != nil {
 			return fmt.Errorf("vmselect: %w", err)
 		}
+		if err := vms.validateListenerConflicts(namedPort{"clusterNativeListenPort", vms.ClusterNativePort}); err != nil {
+			return fmt.Errorf("vmselect: %w", err)
+		}
 		storageNodes := sets.New[string]()
 		if cr.Spec.VMStorage != nil && !vms.Discovery.OrDefault(cr.Spec.Discovery).enabled() {
 			storageName := cr.PrefixedName(ClusterComponentStorage)
@@ -848,7 +851,8 @@ func (cr *VMCluster) Validate() error {
 		if err := vmi.Validate(); err != nil {
 			return fmt.Errorf("vminsert: %w", err)
 		}
-		if err := vmi.validateListenerConflicts(vmi.InsertPorts.namedPorts()...); err != nil {
+		insertPorts := append(vmi.InsertPorts.namedPorts(), namedPort{"clusterNativeListenPort", vmi.ClusterNativePort})
+		if err := vmi.validateListenerConflicts(insertPorts...); err != nil {
 			return fmt.Errorf("vminsert: %w", err)
 		}
 	}

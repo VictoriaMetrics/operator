@@ -72,3 +72,18 @@ func TestSyslogHTTPPortCollision(t *testing.T) {
 	}}).Validate(), "must not be equal to the HTTP listen port=9429")
 	assert.Error(t, (&VLCluster{Spec: VLClusterSpec{VLInsert: &VLInsert{SyslogSpec: &SyslogServerSpec{TCPListeners: []*SyslogTCPListener{{ListenPort: 9481}}}}}}).Validate())
 }
+
+func TestSyslogDuplicatePorts(t *testing.T) {
+	p := &vmv1beta1.CommonAppsParams{}
+	tcp := &SyslogServerSpec{TCPListeners: []*SyslogTCPListener{{ListenPort: 514}, {ListenPort: 515}, {ListenPort: 514}}}
+	assert.ErrorContains(t, tcp.Validate("9428", p), "syslogSpec.tcpListeners[2].listenPort=514 duplicates syslogSpec.tcpListeners[0].listenPort")
+
+	udp := &SyslogServerSpec{UDPListeners: []*SyslogUDPListener{{ListenPort: 514}, {ListenPort: 514}}}
+	assert.ErrorContains(t, udp.Validate("9428", p), "syslogSpec.udpListeners[1].listenPort=514 duplicates syslogSpec.udpListeners[0].listenPort")
+
+	mixed := &SyslogServerSpec{
+		TCPListeners: []*SyslogTCPListener{{ListenPort: 514}},
+		UDPListeners: []*SyslogUDPListener{{ListenPort: 514}},
+	}
+	assert.NoError(t, mixed.Validate("9428", p))
+}

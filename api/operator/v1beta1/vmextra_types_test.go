@@ -486,6 +486,20 @@ func TestHTTPListenersSidecarPortConflicts(t *testing.T) {
 		CommonAppsParams: listeners(8089),
 		InsertPorts:      &InsertPorts{InfluxPort: "8089"},
 	}}}, `vminsert: httpListeners name="extra" port=8089 conflicts with insertPorts.influxPort`)
+
+	// clusternative ports
+	f(&VMCluster{Spec: VMClusterSpec{RetentionPeriod: "1", VMInsert: &VMInsert{
+		CommonAppsParams:  listeners(8400),
+		ClusterNativePort: "8400",
+	}}}, `vminsert: httpListeners name="extra" port=8400 conflicts with clusterNativeListenPort`)
+	f(&VMCluster{Spec: VMClusterSpec{RetentionPeriod: "1", VMSelect: &VMSelect{
+		CommonAppsParams:  listeners(8401),
+		ClusterNativePort: "8401",
+	}}}, `vmselect: httpListeners name="extra" port=8401 conflicts with clusterNativeListenPort`)
+	f(&VMCluster{Spec: VMClusterSpec{RetentionPeriod: "1", VMInsert: &VMInsert{
+		CommonAppsParams:  listeners(8402),
+		ClusterNativePort: "8400",
+	}}}, "")
 }
 
 func TestVLogs_PrefixedName(t *testing.T) {

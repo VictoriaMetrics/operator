@@ -201,7 +201,11 @@ func (cr *VLAgent) Validate() error {
 			return err
 		}
 	}
-	if err := cr.Spec.SyslogSpec.Validate(cr.Spec.HTTPListeners...); err != nil {
+	specPort := cr.Spec.Port
+	if specPort == "" {
+		specPort = "9429"
+	}
+	if err := cr.Spec.SyslogSpec.Validate(specPort, &cr.Spec.CommonAppsParams); err != nil {
 		return err
 	}
 	if err := cr.Spec.Validate(); err != nil {

@@ -493,15 +493,7 @@ func (cr *VMSingle) Validate() error {
 	if len(cr.Spec.HTTPListeners) == 0 {
 		return nil
 	}
-	otherPorts := []namedPort{cr.Spec.configReloaderPort()}
-	if ip := cr.Spec.InsertPorts; ip != nil {
-		otherPorts = append(otherPorts,
-			namedPort{"insertPorts.graphitePort", ip.GraphitePort},
-			namedPort{"insertPorts.influxPort", ip.InfluxPort},
-			namedPort{"insertPorts.openTSDBHTTPPort", ip.OpenTSDBHTTPPort},
-			namedPort{"insertPorts.openTSDBPort", ip.OpenTSDBPort},
-		)
-	}
+	otherPorts := append([]namedPort{cr.Spec.configReloaderPort()}, cr.Spec.InsertPorts.namedPorts()...)
 	if cr.Spec.VMBackup != nil {
 		otherPorts = append(otherPorts, namedPort{"vmBackup.port", cr.Spec.VMBackup.Port})
 	}

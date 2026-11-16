@@ -1762,6 +1762,23 @@ var reservedPortNames = sets.New(
 	"mesh-tcp",
 )
 
+// ExtraArgsHTTPPorts returns ports defined at extraArgs.httpListenAddr, e.g. ":8428,:8429" -> [8428 8429]
+func (p *CommonAppsParams) ExtraArgsHTTPPorts() []int32 {
+	var ports []int32
+	for _, addr := range strings.Split(p.ExtraArgs["httpListenAddr"], ",") {
+		_, port, err := net.SplitHostPort(strings.TrimSpace(addr))
+		if err != nil {
+			continue
+		}
+		v, err := strconv.ParseInt(port, 10, 32)
+		if err != nil {
+			continue
+		}
+		ports = append(ports, int32(v))
+	}
+	return ports
+}
+
 func (p *CommonAppsParams) validateHTTPListeners() error {
 	if len(p.HTTPListeners) == 0 {
 		return nil

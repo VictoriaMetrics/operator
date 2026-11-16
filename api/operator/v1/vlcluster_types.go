@@ -19,6 +19,7 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -330,8 +331,8 @@ type SyslogServerSpec struct {
 	UDPListeners []*SyslogUDPListener `json:"udpListeners,omitempty"`
 }
 
-// Validate checks syslog listeners and HTTP listener port collisions.
-func (s *SyslogServerSpec) Validate(httpListeners ...vmv1beta1.HTTPListener) error {
+// Validate checks syslog listeners and HTTP port collisions.
+func (s *SyslogServerSpec) Validate(httpPort string, p *vmv1beta1.CommonAppsParams) error {
 	if s == nil {
 		return nil
 	}
@@ -344,9 +345,17 @@ func (s *SyslogServerSpec) Validate(httpListeners ...vmv1beta1.HTTPListener) err
 		if tcp == nil {
 			continue
 		}
-		for _, listener := range httpListeners {
+		if strconv.Itoa(int(tcp.ListenPort)) == httpPort {
+			return fmt.Errorf("syslogSpec.tcpListeners[%d].listenPort=%d must not be equal to the HTTP listen port=%s", idx, tcp.ListenPort, httpPort)
+		}
+		for _, listener := range p.HTTPListeners {
 			if listener.Port == tcp.ListenPort {
 				return fmt.Errorf("httpListeners name=%q port=%d conflicts with syslogSpec.tcpListeners[%d].listenPort", listener.Name, listener.Port, idx)
+			}
+		}
+		for _, port := range p.ExtraArgsHTTPPorts() {
+			if port == tcp.ListenPort {
+				return fmt.Errorf("extraArgs.httpListenAddr port=%d conflicts with syslogSpec.tcpListeners[%d].listenPort", port, idx)
 			}
 		}
 		if err := tcp.TLSConfig.Validate(); err != nil {
@@ -815,7 +824,11 @@ func (cr *VLCluster) Validate() error {
 				return err
 			}
 		}
-		if err := vli.SyslogSpec.Validate(vli.HTTPListeners...); err != nil {
+		insertPort := "9481"
+		if vli.Port != "" {
+			insertPort = vli.Port
+		}
+		if err := vli.SyslogSpec.Validate(insertPort, &vli.CommonAppsParams); err != nil {
 			return fmt.Errorf("vlinsert: %w", err)
 		}
 		if err := vli.Validate(); err != nil {

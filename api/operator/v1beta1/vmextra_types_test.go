@@ -465,6 +465,27 @@ func TestHTTPListenersSidecarPortConflicts(t *testing.T) {
 		CommonAppsParams: listeners(8300),
 		VMBackup:         &VMBackup{Port: "8300", AcceptEULA: true},
 	}}}, `vmstorage: httpListeners name="extra" port=8300 conflicts with vmBackup.port`)
+
+	// vmstorage cluster-native ports
+	f(&VMCluster{Spec: VMClusterSpec{RetentionPeriod: "1", VMStorage: &VMStorage{
+		CommonAppsParams: listeners(8400),
+		VMInsertPort:     "8400",
+	}}}, `vmstorage: httpListeners name="extra" port=8400 conflicts with vmInsertPort`)
+	f(&VMCluster{Spec: VMClusterSpec{RetentionPeriod: "1", VMStorage: &VMStorage{
+		CommonAppsParams: listeners(8401),
+		VMSelectPort:     "8401",
+	}}}, `vmstorage: httpListeners name="extra" port=8401 conflicts with vmSelectPort`)
+
+	// insert ports
+	f(&VMAgent{Spec: VMAgentSpec{
+		CommonAppsParams: listeners(2003),
+		RemoteWrite:      []VMAgentRemoteWriteSpec{{URL: "http://example.com"}},
+		InsertPorts:      &InsertPorts{GraphitePort: "2003"},
+	}}, `port=2003 conflicts with insertPorts.graphitePort`)
+	f(&VMCluster{Spec: VMClusterSpec{RetentionPeriod: "1", VMInsert: &VMInsert{
+		CommonAppsParams: listeners(8089),
+		InsertPorts:      &InsertPorts{InfluxPort: "8089"},
+	}}}, `vminsert: httpListeners name="extra" port=8089 conflicts with insertPorts.influxPort`)
 }
 
 func TestVLogs_PrefixedName(t *testing.T) {

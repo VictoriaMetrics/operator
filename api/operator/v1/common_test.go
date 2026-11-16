@@ -11,7 +11,7 @@ import (
 func TestOTLPGRPCSpec_Validate(t *testing.T) {
 	f := func(g *OTLPGRPCSpec, httpPort string, wantErr bool) {
 		t.Helper()
-		err := g.Validate(httpPort)
+		err := g.Validate(httpPort, &vmv1beta1.CommonAppsParams{})
 		if wantErr && err == nil {
 			t.Fatalf("expected error, got nil")
 		}
@@ -28,6 +28,11 @@ func TestOTLPGRPCSpec_Validate(t *testing.T) {
 
 	// colliding with the HTTP port
 	f(&OTLPGRPCSpec{ListenPort: 10429}, "10429", true)
+
+	// colliding with legacy extraArgs.httpListenAddr listener
+	p := &vmv1beta1.CommonAppsParams{ExtraArgs: map[string]string{"httpListenAddr": ":10429,:4317"}}
+	assert.ErrorContains(t, (&OTLPGRPCSpec{ListenPort: 4317}).Validate("10429", p), "conflicts with extraArgs.httpListenAddr port=4317")
+	assert.NoError(t, (&OTLPGRPCSpec{ListenPort: 4318}).Validate("10429", p))
 }
 
 func TestHTTPListenersGRPCPortValidate(t *testing.T) {
@@ -104,7 +109,7 @@ func TestTLSServerConfig_Validate(t *testing.T) {
 func TestSyslogServerSpec_Validate(t *testing.T) {
 	f := func(s *SyslogServerSpec, wantErr bool) {
 		t.Helper()
-		err := s.Validate()
+		err := s.Validate("", &vmv1beta1.CommonAppsParams{})
 		if wantErr && err == nil {
 			t.Fatalf("expected error, got nil")
 		}

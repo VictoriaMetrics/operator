@@ -83,16 +83,21 @@ type OTLPGRPCSpec struct {
 }
 
 // Validate checks that ListenPort doesn't collide with HTTP listener ports.
-func (g *OTLPGRPCSpec) Validate(httpPort string, listeners ...vmv1beta1.HTTPListener) error {
+func (g *OTLPGRPCSpec) Validate(httpPort string, p *vmv1beta1.CommonAppsParams) error {
 	if g == nil {
 		return nil
 	}
 	if strconv.Itoa(int(g.ListenPort)) == httpPort {
 		return fmt.Errorf("spec.grpcSpec.listenPort=%d must not be equal to the HTTP listen port=%s", g.ListenPort, httpPort)
 	}
-	for _, listener := range listeners {
+	for _, listener := range p.HTTPListeners {
 		if g.ListenPort == listener.Port {
 			return fmt.Errorf("spec.grpcSpec.listenPort=%d conflicts with httpListeners port=%d", g.ListenPort, listener.Port)
+		}
+	}
+	for _, port := range p.ExtraArgsHTTPPorts() {
+		if g.ListenPort == port {
+			return fmt.Errorf("spec.grpcSpec.listenPort=%d conflicts with extraArgs.httpListenAddr port=%d", g.ListenPort, port)
 		}
 	}
 	if err := g.TLSConfig.Validate(); err != nil {

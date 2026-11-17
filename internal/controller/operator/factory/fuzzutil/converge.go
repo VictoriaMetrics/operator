@@ -76,6 +76,8 @@ func Converge[T client.Object](f *testing.F, seeds []string, newCR func() T, new
 		f.Add([]byte(seed), []byte{}, []byte{}, true)
 		f.Add([]byte(seed), []byte(seeds[(i+1)%len(seeds)]), []byte{200, 201, 202, 203, 204, 205}, false)
 	}
+	// empty input fills foreign finalizers, so delete leaves the CR with deletionTimestamp
+	f.Add([]byte{}, []byte{}, []byte{}, true)
 	f.Fuzz(func(t *testing.T, data, update, faults []byte, optionalAPIs bool) {
 		cr := decodeCR(data, newCR)
 		cr.SetUID(fuzzUID)
@@ -282,6 +284,11 @@ func normalize(t testing.TB, obj client.Object, keepStatus bool) map[string]any 
 		delete(md, "resourceVersion")
 		delete(md, "managedFields")
 		delete(md, "generation")
+
+		// synctest clock advances between runs, so only presence of deletionTimestamp matters
+		if _, ok := md["deletionTimestamp"]; ok {
+			md["deletionTimestamp"] = true
+		}
 	}
 	if !keepStatus {
 		delete(u, "status")

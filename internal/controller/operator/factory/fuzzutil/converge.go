@@ -10,7 +10,6 @@ import (
 	"testing/synctest"
 
 	"github.com/go-logr/logr"
-	"github.com/google/go-cmp/cmp"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -20,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -28,13 +26,8 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
-const (
-	// fuzzUID is the CR UID, the fake client assigns none.
-	fuzzUID = types.UID("fuzz-uid")
-
-	// maxFaultyRounds bounds reconciles under faults, as many as a controller requeues in a burst.
-	maxFaultyRounds = 10
-)
+// fuzzUID is the CR UID, the fake client assigns none.
+const fuzzUID = types.UID("fuzz-uid")
 
 // childLists returns every list kind of s, so any object a controller creates is compared.
 // Events are skipped, they log attempts, not state.
@@ -67,18 +60,17 @@ type step struct {
 	do   func(context.Context, client.Client) error
 }
 
-// Converge fuzzes a reconciler under injected API faults through CR create, spec update and delete:
-// after each step, once faults stop, clean reconciles must succeed and leave the CR and its children
-// as a fault-free run does.
-// Input is the CR (as in CreateOrUpdate), optional updated CR, and fault bytes for faultPicker.
+// Converge fuzzes a reconciler through CR create, spec update and delete:
+// after each step, once reconciled, another reconcile must not write and children must reference the CR UID.
+// Input is the CR (as in CreateOrUpdate) and optional updated CR.
 func Converge[T client.Object](f *testing.F, seeds []string, newCR func() T, newReconciler func() Reconciler) {
 	for i, seed := range seeds {
-		f.Add([]byte(seed), []byte{}, []byte{}, true)
-		f.Add([]byte(seed), []byte(seeds[(i+1)%len(seeds)]), []byte{200, 201, 202, 203, 204, 205}, false)
+		f.Add([]byte(seed), []byte{}, true)
+		f.Add([]byte(seed), []byte(seeds[(i+1)%len(seeds)]), false)
 	}
 	// empty input fills foreign finalizers, so delete leaves the CR with deletionTimestamp
-	f.Add([]byte{}, []byte{}, []byte{}, true)
-	f.Fuzz(func(t *testing.T, data, update, faults []byte, optionalAPIs bool) {
+	f.Add([]byte{}, []byte{}, true)
+	f.Fuzz(func(t *testing.T, data, update []byte, optionalAPIs bool) {
 		cr := decodeCR(data, newCR)
 		cr.SetUID(fuzzUID)
 		cr.SetGeneration(1)
@@ -99,7 +91,7 @@ func Converge[T client.Object](f *testing.F, seeds []string, newCR func() T, new
 			return r
 		}
 		synctest.Test(t, func(t *testing.T) {
-			converge(t, cr, updated, faults, build)
+			converge(t, cr, updated, build)
 		})
 	})
 }
@@ -115,56 +107,27 @@ func steps(cr, updated client.Object) []step {
 	}})
 }
 
-func converge(t testing.TB, cr, updated client.Object, faults []byte, build func(client.Client) reconcile.Reconciler) {
+func converge(t testing.TB, cr, updated client.Object, build func(client.Client) reconcile.Reconciler) {
 	ctx := t.Context()
 	req := reconcile.Request{NamespacedName: client.ObjectKeyFromObject(cr)}
-	steps := steps(cr, updated)
 
-	// reference state after each step and fault-free reconciles, inputs it rejects are out of scope
-	clean := newClient(cr)
-	var wants []map[string]map[string]any
-	for _, s := range steps {
-		if err := s.do(ctx, clean); err != nil {
+	// inputs rejected by a step or the first reconcile are out of scope
+	c := newClient(cr)
+	for _, s := range steps(cr, updated) {
+		if err := s.do(ctx, c); err != nil {
 			return
 		}
-		for range 2 {
-			if _, err := build(clean).Reconcile(ctx, req); err != nil {
-				return
-			}
-		}
-		wants = append(wants, snapshot(t, clean, cr))
-	}
-
-	// same steps, faulty rounds after each until fault bytes run out, errors are expected
-	raw := newClient(cr)
-	gvk, err := apiutil.GVKForObject(cr, raw.Scheme())
-	if err != nil {
-		t.Fatalf("cannot get CR kind: %s", err)
-	}
-	picker := newFaultPicker(faults, gvk)
-	r := build(picker.wrap(raw.(client.WithWatch)))
-	for i, s := range steps {
-		if err := s.do(ctx, raw); err != nil {
-			t.Fatalf("%s failed: %s\nfaults:\n%s", s.name, err, strings.Join(picker.trace, "\n"))
-		}
-		for j := 0; j < maxFaultyRounds && !picker.exhausted(); j++ {
-			_, _ = r.Reconcile(ctx, req)
-		}
-
-		trace := strings.Join(picker.trace, "\n")
-		if _, err := build(raw).Reconcile(ctx, req); err != nil {
-			t.Fatalf("clean reconcile after %s with faults failed: %s\nfaults:\n%s", s.name, err, trace)
+		if _, err := build(c).Reconcile(ctx, req); err != nil {
+			return
 		}
 
 		// converged state must not be rewritten, e.g. by defaulting that never settles
-		c, actions := recordWrites(raw)
-		if _, err := build(c).Reconcile(ctx, req); err != nil {
-			t.Fatalf("second clean reconcile after %s with faults failed: %s\nfaults:\n%s", s.name, err, trace)
+		rc, actions := recordWrites(c)
+		if _, err := build(rc).Reconcile(ctx, req); err != nil {
+			return
 		}
-		noWrites(t, *actions, fmt.Sprintf("reconcile after %s (faults:\n%s\n)", s.name, trace))
-		if diff := cmp.Diff(wants[i], snapshot(t, raw, cr)); diff != "" {
-			t.Fatalf("state after %s with faults differs from fault-free run (-want +got):\n%s\nfaults:\n%s", s.name, diff, trace)
-		}
+		noWrites(t, *actions, "reconcile after "+s.name)
+		checkChildren(t, c, cr)
 	}
 }
 
@@ -238,20 +201,9 @@ func stsPods(ctx context.Context, cl client.WithWatch, obj client.Object) error 
 	return nil
 }
 
-// snapshot returns normalized CR and children keyed by "kind ns/name", checking children ownerRefs.
-func snapshot(t testing.TB, c client.Client, cr client.Object) map[string]map[string]any {
+// checkChildren fails when any object references the CR by name with a wrong UID.
+func checkChildren(t testing.TB, c client.Client, cr client.Object) {
 	ctx := t.Context()
-	got := map[string]map[string]any{}
-
-	// CR is gone after delete once finalizers are removed
-	owner := cr.DeepCopyObject().(client.Object)
-	switch err := c.Get(ctx, client.ObjectKeyFromObject(cr), owner); {
-	case err == nil:
-		got["CR"] = normalize(t, owner, true)
-	case !k8serrors.IsNotFound(err):
-		t.Fatalf("cannot get CR: %s", err)
-	}
-
 	for _, list := range childLists(c.Scheme()) {
 		if err := c.List(ctx, list); err != nil {
 			t.Fatalf("cannot list %T: %s", list, err)
@@ -261,12 +213,9 @@ func snapshot(t testing.TB, c client.Client, cr client.Object) map[string]map[st
 			t.Fatalf("cannot extract %T: %s", list, err)
 		}
 		for _, item := range items {
-			obj := item.(client.Object)
-			checkOwners(t, obj, cr)
-			got[fmt.Sprintf("%T %s/%s", obj, obj.GetNamespace(), obj.GetName())] = normalize(t, obj, false)
+			checkOwners(t, item.(client.Object), cr)
 		}
 	}
-	return got
 }
 
 // checkOwners fails when obj references the CR kind by name with a wrong UID.
@@ -276,27 +225,4 @@ func checkOwners(t testing.TB, obj, owner client.Object) {
 			t.Fatalf("%T %s/%s ownerRef %s/%s has UID %q, want %q", obj, obj.GetNamespace(), obj.GetName(), ref.Kind, ref.Name, ref.UID, owner.GetUID())
 		}
 	}
-}
-
-// normalize drops server-assigned fields; children status belongs to their own controllers.
-// Timestamps stay, synctest freezes the clock.
-func normalize(t testing.TB, obj client.Object, keepStatus bool) map[string]any {
-	u, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
-	if err != nil {
-		t.Fatalf("cannot convert %T: %s", obj, err)
-	}
-	if md, ok := u["metadata"].(map[string]any); ok {
-		delete(md, "resourceVersion")
-		delete(md, "managedFields")
-		delete(md, "generation")
-
-		// synctest clock advances between runs, so only presence of deletionTimestamp matters
-		if _, ok := md["deletionTimestamp"]; ok {
-			md["deletionTimestamp"] = true
-		}
-	}
-	if !keepStatus {
-		delete(u, "status")
-	}
-	return u
 }

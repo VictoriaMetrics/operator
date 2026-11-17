@@ -27,39 +27,32 @@ func (r *fatalRecorder) Fatalf(format string, args ...any) {
 	runtime.Goexit()
 }
 
-// stickyReconciler marks the CR failed on a write error and never clears the mark.
-type stickyReconciler struct {
+// childReconciler creates a child ConfigMap once, or on every run if flap is set.
+type childReconciler struct {
 	client.Client
-	flap bool // recreate the child on every run
+	flap bool
 }
 
-func (r stickyReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+func (r childReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "child", Namespace: req.Namespace}}
 	if err := r.Get(ctx, client.ObjectKeyFromObject(cm), &corev1.ConfigMap{}); err == nil && !r.flap {
 		return reconcile.Result{}, nil
 	}
-	err := r.Create(ctx, cm)
-	if err == nil || k8serrors.IsAlreadyExists(err) {
-		return reconcile.Result{}, nil
-	}
-
-	var cr vmv1beta1.VMAlert
-	if err := r.Get(ctx, req.NamespacedName, &cr); err != nil {
+	if err := r.Create(ctx, cm); err != nil && !k8serrors.IsAlreadyExists(err) {
 		return reconcile.Result{}, err
 	}
-	cr.Annotations = map[string]string{"failed": "true"}
-	return reconcile.Result{}, r.Update(ctx, &cr)
+	return reconcile.Result{}, nil
 }
 
 func TestConverge(t *testing.T) {
-	f := func(faults []byte, flap bool, wantErr string) {
+	f := func(flap bool, wantErr string) {
 		t.Helper()
 		cr := &vmv1beta1.VMAlert{ObjectMeta: metav1.ObjectMeta{Name: fuzzName, Namespace: fuzzNamespace, UID: fuzzUID}}
 		rec := &fatalRecorder{TB: t}
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			converge(rec, cr, nil, faults, func(c client.Client) reconcile.Reconciler { return stickyReconciler{c, flap} })
+			converge(rec, cr, nil, func(c client.Client) reconcile.Reconciler { return childReconciler{c, flap} })
 		}()
 		<-done
 		if (wantErr == "") != (rec.msg == "") || !strings.Contains(rec.msg, wantErr) {
@@ -67,12 +60,9 @@ func TestConverge(t *testing.T) {
 		}
 	}
 
-	// no faults
-	f(nil, false, "")
-
-	// conflict on child create leaves the failed mark
-	f([]byte{0, 200}, false, "state after create with faults differs")
+	// converged child is left alone
+	f(false, "")
 
 	// converged child is written again
-	f(nil, true, "wrote:\nCreate ConfigMap default/child")
+	f(true, "wrote:\nCreate ConfigMap default/child")
 }

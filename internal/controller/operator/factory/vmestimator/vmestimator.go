@@ -10,14 +10,12 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
@@ -58,23 +56,14 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VMEstim
 		}
 	}
 
-	configHash, err := createOrUpdateConfig(ctx, rclient, cr, prevCR)
-	if err != nil {
+	if err := createOrUpdateConfig(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot reconcile config: %w", err)
 	}
-	if err := createOrUpdateSingle(ctx, rclient, cr, prevCR, configHash); err != nil {
-		return fmt.Errorf("cannot reconcile single: %w", err)
-	}
-	if err := createOrUpdateStorage(ctx, rclient, cr, prevCR, configHash); err != nil {
+	if err := createOrUpdateStorage(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot reconcile storage: %w", err)
 	}
 	if err := createOrUpdateSelect(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot reconcile select: %w", err)
-	}
-	if prevCR != nil {
-		if err := deleteOrphaned(ctx, rclient, cr); err != nil {
-			return fmt.Errorf("failed to remove objects from previous state: %w", err)
-		}
 	}
 	return nil
 }
@@ -87,19 +76,13 @@ type componentObjects struct {
 }
 
 // createOrUpdateComponentObjects reconciles optional objects of the component, which runs as the given workload kind
-func createOrUpdateComponentObjects(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator, kind vmv1beta1.ClusterComponent, workloadKind string, cur, prev componentObjects) error {
-	owner := cr.AsOwner()
-	b := build.NewChildBuilder(cr, kind)
-	var prevB *build.ChildBuilder
-	if prevCR != nil {
-		prevB = build.NewChildBuilder(prevCR, kind)
-	}
+func createOrUpdateComponentObjects(ctx context.Context, rclient client.Client, b, prevB *build.ChildBuilder, owner *metav1.OwnerReference, workloadKind string, cur, prev componentObjects) error {
 	if cur.pdb != nil {
 		var prevPDB *policyv1.PodDisruptionBudget
 		if prev.pdb != nil {
 			prevPDB = build.PodDisruptionBudget(prevB, prev.pdb)
 		}
-		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(b, cur.pdb), prevPDB, &owner); err != nil {
+		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(b, cur.pdb), prevPDB, owner); err != nil {
 			return fmt.Errorf("cannot reconcile PDB: %w", err)
 		}
 	}
@@ -108,7 +91,7 @@ func createOrUpdateComponentObjects(ctx context.Context, rclient client.Client, 
 		if prev.np != nil {
 			prevNP = build.NetworkPolicy(prevB, prev.np)
 		}
-		if err := reconcile.NetworkPolicy(ctx, rclient, build.NetworkPolicy(b, cur.np), prevNP, &owner); err != nil {
+		if err := reconcile.NetworkPolicy(ctx, rclient, build.NetworkPolicy(b, cur.np), prevNP, owner); err != nil {
 			return fmt.Errorf("cannot reconcile NetworkPolicy: %w", err)
 		}
 	}
@@ -122,116 +105,9 @@ func createOrUpdateComponentObjects(ctx context.Context, rclient client.Client, 
 		if prev.vpa != nil {
 			prevVPA = build.VPA(prevB, targetRef, prev.vpa)
 		}
-		if err := reconcile.VPA(ctx, rclient, build.VPA(b, targetRef, cur.vpa), prevVPA, &owner); err != nil {
+		if err := reconcile.VPA(ctx, rclient, build.VPA(b, targetRef, cur.vpa), prevVPA, owner); err != nil {
 			return fmt.Errorf("cannot reconcile VPA: %w", err)
 		}
 	}
 	return nil
-}
-
-// buildInsertService builds service, which accepts remote write requests in both modes:
-// it routes them to the single-replica Deployment in single mode and load-balances them among storage nodes in cluster mode.
-// It's marked as additional service in order to exclude it from VMServiceScrape selector.
-func buildInsertService(cr *vmv1.VMEstimator, defaultSvc *corev1.Service) *corev1.Service {
-	return build.AdditionalServiceFromDefault(defaultSvc, &vmv1beta1.AdditionalServiceSpec{
-		EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
-			Name: cr.PrefixedInsertName(),
-		},
-		Spec: corev1.ServiceSpec{
-			Type: corev1.ServiceTypeClusterIP,
-		},
-	})
-}
-
-func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMEstimator) error {
-	cc := finalize.NewChildCleaner()
-	// the single-replica Deployment is deployed only in single mode
-	if storage := cr.Spec.Storage; storage == nil || cr.IsClusterMode() {
-		if err := finalize.OnVMEstimatorSingleDelete(ctx, rclient, cr, true); err != nil {
-			return fmt.Errorf("cannot remove orphaned single resources: %w", err)
-		}
-	} else {
-		commonName := cr.PrefixedName(singleKind)
-		if storage.PodDisruptionBudget != nil {
-			cc.KeepPDB(commonName)
-		}
-		if storage.NetworkPolicy != nil {
-			cc.KeepNetworkPolicy(commonName)
-		}
-		if storage.VPA != nil {
-			cc.KeepVPA(commonName)
-		}
-		if !ptr.Deref(storage.DisableSelfServiceScrape, false) {
-			cc.KeepScrape(cr.PrefixedQueryName())
-		}
-		cc.KeepService(cr.PrefixedQueryName())
-		cc.KeepService(cr.PrefixedInsertName())
-		if storage.ServiceSpec != nil && !storage.ServiceSpec.UseAsDefault {
-			cc.KeepService(storage.ServiceSpec.NameOrDefault(cr.PrefixedQueryName()))
-		}
-	}
-
-	// storage nodes are deployed only in cluster mode
-	if storage := cr.Spec.Storage; storage == nil || !cr.IsClusterMode() {
-		if err := finalize.OnStorageDelete(ctx, rclient, cr, true); err != nil {
-			return fmt.Errorf("cannot remove orphaned storage resources: %w", err)
-		}
-	} else {
-		commonName := cr.PrefixedName(storageKind)
-		if storage.PodDisruptionBudget != nil {
-			cc.KeepPDB(commonName)
-		}
-		if storage.NetworkPolicy != nil {
-			cc.KeepNetworkPolicy(commonName)
-		}
-		if storage.VPA != nil {
-			cc.KeepVPA(commonName)
-		}
-		if !ptr.Deref(storage.DisableSelfServiceScrape, false) {
-			cc.KeepScrape(commonName)
-		}
-		cc.KeepService(commonName)
-		cc.KeepService(cr.PrefixedInsertName())
-		if storage.ServiceSpec != nil && !storage.ServiceSpec.UseAsDefault {
-			cc.KeepService(storage.ServiceSpec.NameOrDefault(commonName))
-		}
-	}
-
-	// select is deployed only in cluster mode
-	if sel := cr.Spec.Select; sel == nil || !cr.IsClusterMode() {
-		if err := finalize.OnSelectDelete(ctx, rclient, cr, true); err != nil {
-			return fmt.Errorf("cannot remove orphaned select resources: %w", err)
-		}
-	} else {
-		commonName := cr.PrefixedName(selectKind)
-		if sel.PodDisruptionBudget != nil {
-			cc.KeepPDB(commonName)
-		}
-		if sel.NetworkPolicy != nil {
-			cc.KeepNetworkPolicy(commonName)
-		}
-		if sel.HPA != nil {
-			cc.KeepHPA(commonName)
-		}
-		if sel.VPA != nil {
-			cc.KeepVPA(commonName)
-		}
-		if !ptr.Deref(sel.DisableSelfServiceScrape, false) {
-			cc.KeepScrape(cr.PrefixedQueryName())
-		}
-		cc.KeepService(cr.PrefixedQueryName())
-		if sel.ServiceSpec != nil && !sel.ServiceSpec.UseAsDefault {
-			cc.KeepService(sel.ServiceSpec.NameOrDefault(cr.PrefixedQueryName()))
-		}
-	}
-
-	if !cr.IsOwnsServiceAccount() {
-		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
-		objMeta := metav1.ObjectMeta{Name: b.PrefixedName(), Namespace: b.GetNamespace()}
-		objsToRemove := []client.Object{&corev1.ServiceAccount{ObjectMeta: objMeta}}
-		if err := finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, b); err != nil {
-			return fmt.Errorf("cannot remove serviceaccount: %w", err)
-		}
-	}
-	return cc.RemoveOrphaned(ctx, rclient, cr)
 }

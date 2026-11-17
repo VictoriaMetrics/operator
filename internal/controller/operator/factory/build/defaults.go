@@ -835,15 +835,10 @@ func addVMEstimatorDefaults(objI any) {
 	if cr.Spec.ClusterDomainName == "" {
 		cr.Spec.ClusterDomainName = c.ClusterDomainName
 	}
-	if cr.Spec.Mode == "" {
-		cr.Spec.Mode = vmv1.VMEstimatorModeSingle
-	}
-	// spec.storage configures storage nodes in cluster mode and the single-replica Deployment in single mode,
-	// while select nodes are deployed only in cluster mode
 	if cr.Spec.Storage == nil {
 		cr.Spec.Storage = &vmv1.VMEstimatorStorage{}
 	}
-	if cr.IsClusterMode() && cr.Spec.Select == nil {
+	if cr.Spec.Select == nil {
 		cr.Spec.Select = &vmv1.VMEstimatorSelect{}
 	}
 	storageDefaults := config.ApplicationDefaults(c.VMEstimator.Storage)

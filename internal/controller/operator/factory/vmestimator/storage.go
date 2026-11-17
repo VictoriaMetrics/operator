@@ -16,32 +16,29 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-const (
-	storageKind = vmv1beta1.ClusterComponentStorage
-)
-
 // createOrUpdateStorage reconciles storage nodes, which are deployed only in cluster mode
-func createOrUpdateStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator, configHash string) error {
-	if cr.Spec.Storage == nil || !cr.IsClusterMode() {
+func createOrUpdateStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator) error {
+	if cr.Spec.Storage == nil {
 		return nil
 	}
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
+	owner := cr.AsOwner()
 	var prev componentObjects
-	if prevCR != nil && (prevCR.Spec.Storage == nil || !prevCR.IsClusterMode()) {
-		prevCR = nil
-	}
+	var prevB *build.ChildBuilder
 	if prevCR != nil {
 		ps := prevCR.Spec.Storage
 		prev = componentObjects{pdb: ps.PodDisruptionBudget, np: ps.NetworkPolicy, vpa: ps.VPA}
+		prevB = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
 	}
 	s := cr.Spec.Storage
 	cur := componentObjects{pdb: s.PodDisruptionBudget, np: s.NetworkPolicy, vpa: s.VPA}
-	if err := createOrUpdateComponentObjects(ctx, rclient, cr, prevCR, storageKind, "StatefulSet", cur, prev); err != nil {
+	if err := createOrUpdateComponentObjects(ctx, rclient, b, prevB, &owner, "StatefulSet", cur, prev); err != nil {
 		return err
 	}
 	if err := createOrUpdateStorageService(ctx, rclient, cr, prevCR); err != nil {
 		return err
 	}
-	return createOrUpdateStorageSTS(ctx, rclient, cr, prevCR, configHash)
+	return createOrUpdateStorageSTS(ctx, rclient, cr, prevCR)
 }
 
 func buildStorageScrape(cr *vmv1.VMEstimator, svc *corev1.Service) *vmv1beta1.VMServiceScrape {
@@ -53,7 +50,7 @@ func buildStorageScrape(cr *vmv1.VMEstimator, svc *corev1.Service) *vmv1beta1.VM
 
 // buildStorageService builds headless service, which provides stable network identities for storage pods
 func buildStorageService(cr *vmv1.VMEstimator) *corev1.Service {
-	b := build.NewChildBuilder(cr, storageKind)
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
 	return build.Service(b, cr.Spec.Storage.Port, func(svc *corev1.Service) {
 		svc.Spec.ClusterIP = corev1.ClusterIPNone
 		svc.Spec.PublishNotReadyAddresses = true
@@ -61,19 +58,17 @@ func buildStorageService(cr *vmv1.VMEstimator) *corev1.Service {
 }
 
 func createOrUpdateStorageService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator) error {
-	var prevSvc, prevInsertSvc, prevAdditionalSvc *corev1.Service
+	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil {
 		prevSvc = buildStorageService(prevCR)
-		prevInsertSvc = buildInsertService(prevCR, prevSvc)
 		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, prevCR.Spec.Storage.ServiceSpec)
 	}
 	svc := buildStorageService(cr)
-	insertSvc := buildInsertService(cr, svc)
 	owner := cr.AsOwner()
 	if err := cr.Spec.Storage.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalSvc := build.AdditionalServiceFromDefault(svc, s)
-		if additionalSvc.Name == svc.Name || additionalSvc.Name == insertSvc.Name {
-			return fmt.Errorf("storage additional service name: %q cannot be the same as %q or %q", additionalSvc.Name, svc.Name, insertSvc.Name)
+		if additionalSvc.Name == svc.Name {
+			return fmt.Errorf("storage additional service name: %q cannot be the same as %q ", additionalSvc.Name, svc.Name)
 		}
 		if err := reconcile.Service(ctx, rclient, additionalSvc, prevAdditionalSvc, &owner); err != nil {
 			return fmt.Errorf("cannot reconcile storage additional service: %w", err)
@@ -85,9 +80,6 @@ func createOrUpdateStorageService(ctx context.Context, rclient client.Client, cr
 	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
 		return fmt.Errorf("cannot reconcile storage service: %w", err)
 	}
-	if err := reconcile.Service(ctx, rclient, insertSvc, prevInsertSvc, &owner); err != nil {
-		return fmt.Errorf("cannot reconcile storage insert service: %w", err)
-	}
 	if !ptr.Deref(cr.Spec.Storage.DisableSelfServiceScrape, false) {
 		svs := buildStorageScrape(cr, svc)
 		prevSvs := buildStorageScrape(prevCR, prevSvc)
@@ -98,62 +90,61 @@ func createOrUpdateStorageService(ctx context.Context, rclient client.Client, cr
 	return nil
 }
 
-func createOrUpdateStorageSTS(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator, configHash string) error {
+func createOrUpdateStorageSTS(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator) error {
 	var prevSts *appsv1.StatefulSet
 	if prevCR != nil {
 		var err error
 		// configuration hash doesn't affect the previous statefulset metadata
-		prevSts, err = buildStorageSTS(prevCR, "")
+		prevSts, err = buildStorageSTS(prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot build prev storage statefulset: %w", err)
 		}
 	}
-	newSts, err := buildStorageSTS(cr, configHash)
+	newSts, err := buildStorageSTS(cr)
 	if err != nil {
 		return err
 	}
 	o := reconcile.StatefulSetOpts{
-		SelectorLabels: cr.SelectorLabels(storageKind),
+		SelectorLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentStorage),
 		UpdateBehavior: cr.Spec.Storage.RollingUpdateStrategyBehavior,
 	}
 	owner := cr.AsOwner()
 	return reconcile.StatefulSet(ctx, rclient, newSts, prevSts, &owner, &o)
 }
 
-func buildStorageSTS(cr *vmv1.VMEstimator, configHash string) (*appsv1.StatefulSet, error) {
+func buildStorageSTS(cr *vmv1.VMEstimator) (*appsv1.StatefulSet, error) {
 	storage := cr.Spec.Storage
 	// storage nodes expose local cardinality estimations at the separate path
 	// in order to keep them away of the default scrape path, since select nodes expose merged estimations
 	args := []string{"-cardinalityMetrics.exposeAt=/cardinality/metrics"}
 	podSpec, err := buildPodTemplate(cr, &podOpts{
-		kind:       storageKind,
-		params:     &storage.CommonAppsParams,
-		probe:      storage,
-		logLevel:   storage.LogLevel,
-		logFormat:  storage.LogFormat,
-		args:       args,
-		configHash: configHash,
+		kind:      vmv1beta1.ClusterComponentStorage,
+		params:    &storage.CommonAppsParams,
+		probe:     storage,
+		logLevel:  storage.LogLevel,
+		logFormat: storage.LogFormat,
+		args:      args,
 	})
 	if err != nil {
 		return nil, err
 	}
 	sts := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.PrefixedName(storageKind),
+			Name:            cr.PrefixedName(vmv1beta1.ClusterComponentStorage),
 			Namespace:       cr.Namespace,
-			Labels:          cr.FinalLabels(storageKind),
+			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentStorage),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.SelectorLabels(storageKind),
+				MatchLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentStorage),
 			},
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: storage.RollingUpdateStrategy,
 			},
 			Template:    *podSpec,
-			ServiceName: cr.PrefixedName(storageKind),
+			ServiceName: cr.PrefixedName(vmv1beta1.ClusterComponentStorage),
 		},
 	}
 	build.StatefulSetAddCommonParams(sts, &storage.CommonAppsParams)

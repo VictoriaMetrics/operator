@@ -60434,10 +60434,6 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - description: deployment mode
-      jsonPath: .spec.mode
-      name: Mode
-      type: string
     - description: replicas of vmestimator storage
       jsonPath: .spec.storage.replicaCount
       name: Storage Count
@@ -60537,22 +60533,6 @@ spec:
                       More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
                     type: object
                 type: object
-              mode:
-                default: single
-                description: |-
-                  Mode defines vmestimator deployment mode.
-                  In single mode the operator runs the vmestimator-single-<name> Deployment with a single replica,
-                  which accepts remote write requests and exposes cardinality estimations, spec.select is ignored.
-                  In cluster mode the operator runs spec.storage.replicaCount storage nodes, which accept remote write requests,
-                  and select nodes, which query all storage nodes, merge their estimations and expose them as metrics.
-                  In both modes remote write requests are accepted by the vmestimator-insert-<name> service
-                  and cardinality estimations are exposed by the vmestimator-<name> service,
-                  so switching the mode doesn't change their URLs.
-                  See https://docs.victoriametrics.com/victoriametrics/vmestimator/#cluster
-                enum:
-                - single
-                - cluster
-                type: string
               paused:
                 description: |-
                   Paused If set to true all actions on the underlying managed objects are not
@@ -60562,7 +60542,6 @@ spec:
                 description: |-
                   Select defines vmestimator select nodes, which query all storage nodes,
                   merge their estimations and expose them as metrics.
-                  It's used only in cluster mode.
                 properties:
                   affinity:
                     description: Affinity If specified, the pod's scheduling constraints.
@@ -61951,10 +61930,8 @@ spec:
                   to use to run all VMEstimator pods
                 type: string
               storage:
-                description: |-
-                  Storage defines vmestimator storage nodes, which accept remote write requests and maintain cardinality estimations.
-                  In single mode it configures the single-replica Deployment instead,
-                  and spec.storage.replicaCount, rollingUpdateStrategy and rollingUpdateStrategyBehavior are ignored.
+                description: Storage defines vmestimator storage nodes, which accept
+                  remote write requests and maintain cardinality estimations.
                 properties:
                   affinity:
                     description: Affinity If specified, the pod's scheduling constraints.

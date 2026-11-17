@@ -59,7 +59,6 @@ func TestOnVMEstimatorDelete(t *testing.T) {
 		&policyv1.PodDisruptionBudget{ObjectMeta: vmEstimatorChildMeta(cr, cr.PrefixedName(storage), storage)},
 		&vmv1beta1.VMServiceScrape{ObjectMeta: vmEstimatorChildMeta(cr, cr.PrefixedName(storage), storage)},
 		&corev1.Service{ObjectMeta: vmEstimatorChildMeta(cr, cr.PrefixedName(storage), storage)},
-		&corev1.Service{ObjectMeta: vmEstimatorChildMeta(cr, cr.PrefixedInsertName(), storage)},
 		&appsv1.Deployment{ObjectMeta: vmEstimatorChildMeta(cr, cr.PrefixedName(sel), sel)},
 		&corev1.Service{ObjectMeta: vmEstimatorChildMeta(cr, cr.PrefixedName(sel), sel)},
 	}

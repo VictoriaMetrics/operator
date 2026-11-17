@@ -18,24 +18,24 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-const selectKind = vmv1beta1.ClusterComponentSelect
-
+// onst vmv1beta1.ClusterComponentSelect = vmv1beta1.ClusterComponentSelect
 func createOrUpdateSelect(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator) error {
-	// select nodes are deployed only in cluster mode
-	if !cr.IsClusterMode() || cr.Spec.Select == nil {
+	if cr.Spec.Select == nil {
 		return nil
 	}
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
+	owner := cr.AsOwner()
 	var prev componentObjects
-	if prevCR != nil && (!prevCR.IsClusterMode() || prevCR.Spec.Select == nil) {
-		prevCR = nil
-	}
+	var prevB *build.ChildBuilder
 	if prevCR != nil {
 		ps := prevCR.Spec.Select
 		prev = componentObjects{pdb: ps.PodDisruptionBudget, np: ps.NetworkPolicy, vpa: ps.VPA}
+		prevB = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
+
 	}
 	s := cr.Spec.Select
 	cur := componentObjects{pdb: s.PodDisruptionBudget, np: s.NetworkPolicy, vpa: s.VPA}
-	if err := createOrUpdateComponentObjects(ctx, rclient, cr, prevCR, selectKind, "Deployment", cur, prev); err != nil {
+	if err := createOrUpdateComponentObjects(ctx, rclient, b, prevB, &owner, "Deployment", cur, prev); err != nil {
 		return err
 	}
 	if err := createOrUpdateSelectHPA(ctx, rclient, cr, prevCR); err != nil {
@@ -51,7 +51,7 @@ func createOrUpdateSelectHPA(ctx context.Context, rclient client.Client, cr, pre
 	if cr.Spec.Select.HPA == nil {
 		return nil
 	}
-	b := build.NewChildBuilder(cr, selectKind)
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
 	targetRef := autoscalingv2.CrossVersionObjectReference{
 		Name:       b.PrefixedName(),
 		Kind:       "Deployment",
@@ -60,7 +60,7 @@ func createOrUpdateSelectHPA(ctx context.Context, rclient client.Client, cr, pre
 	newHPA := build.HPA(b, targetRef, cr.Spec.Select.HPA)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
 	if prevCR != nil && prevCR.Spec.Select.HPA != nil {
-		b = build.NewChildBuilder(prevCR, selectKind)
+		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.Select.HPA)
 	}
 	owner := cr.AsOwner()
@@ -76,10 +76,8 @@ func buildSelectScrape(cr *vmv1.VMEstimator, svc *corev1.Service) *vmv1beta1.VMS
 
 // buildSelectService builds the query service, which exposes merged cardinality estimations of select nodes
 func buildSelectService(cr *vmv1.VMEstimator) *corev1.Service {
-	b := build.NewChildBuilder(cr, selectKind)
-	return build.Service(b, cr.Spec.Select.Port, func(svc *corev1.Service) {
-		svc.Name = cr.PrefixedQueryName()
-	})
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
+	return build.Service(b, cr.Spec.Select.Port, nil)
 }
 
 func createOrUpdateSelectService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator) error {
@@ -153,8 +151,8 @@ func storageNodeURLs(cr *vmv1.VMEstimator) []string {
 	// statefulset has a single replica by default
 	replicas := ptr.Deref(storage.ReplicaCount, 1)
 	urls := make([]string, 0, replicas)
-	for i := int32(0); i < replicas; i++ {
-		addr := vmv1beta1.PodDNSAddress(cr.PrefixedName(storageKind), i, cr.Namespace, storage.Port, cr.Spec.ClusterDomainName)
+	for i := range replicas {
+		addr := vmv1beta1.PodDNSAddress(cr.PrefixedName(vmv1beta1.ClusterComponentStorage), i, cr.Namespace, storage.Port, cr.Spec.ClusterDomainName)
 		urls = append(urls, fmt.Sprintf("%s://%s%s", scheme, addr, pathPrefix))
 	}
 	return urls
@@ -167,7 +165,7 @@ func buildSelectDeployment(cr *vmv1.VMEstimator) (*appsv1.Deployment, error) {
 		args = append(args, fmt.Sprintf("-storageNode=%s", strings.Join(nodes, ",")))
 	}
 	podSpec, err := buildPodTemplate(cr, &podOpts{
-		kind:      selectKind,
+		kind:      vmv1beta1.ClusterComponentSelect,
 		params:    &sel.CommonAppsParams,
 		probe:     sel,
 		logLevel:  sel.LogLevel,
@@ -183,9 +181,9 @@ func buildSelectDeployment(cr *vmv1.VMEstimator) (*appsv1.Deployment, error) {
 	}
 	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.PrefixedName(selectKind),
+			Name:            cr.PrefixedName(vmv1beta1.ClusterComponentSelect),
 			Namespace:       cr.Namespace,
-			Labels:          cr.FinalLabels(selectKind),
+			Labels:          cr.FinalLabels(vmv1beta1.ClusterComponentSelect),
 			Annotations:     cr.FinalAnnotations(),
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
@@ -195,7 +193,7 @@ func buildSelectDeployment(cr *vmv1.VMEstimator) (*appsv1.Deployment, error) {
 				RollingUpdate: sel.RollingUpdate,
 			},
 			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.SelectorLabels(selectKind),
+				MatchLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentSelect),
 			},
 			Template: *podSpec,
 		},

@@ -2,7 +2,6 @@ package vmestimator
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 
 	"gopkg.in/yaml.v2"
@@ -62,11 +61,11 @@ func buildConfigMap(cr *vmv1.VMEstimator, data []byte) *corev1.ConfigMap {
 }
 
 // createOrUpdateConfig reconciles vmestimator configuration and returns its hash
-func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator) (string, error) {
+func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator) error {
 	ac := build.NewAssetsCache(ctx, rclient, map[build.ResourceKind]*build.ResourceCfg{})
 	data, err := buildConfig(cr, ac)
 	if err != nil {
-		return "", err
+		return err
 	}
 	var prevMeta *metav1.ObjectMeta
 	if prevCR != nil {
@@ -75,7 +74,7 @@ func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR
 	}
 	owner := cr.AsOwner()
 	if _, err := reconcile.ConfigMap(ctx, rclient, buildConfigMap(cr, data), prevMeta, &owner); err != nil {
-		return "", fmt.Errorf("cannot reconcile configmap: %w", err)
+		return fmt.Errorf("cannot reconcile configmap: %w", err)
 	}
-	return fmt.Sprintf("%x", sha256.Sum256(data)), nil
+	return nil
 }

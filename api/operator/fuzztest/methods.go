@@ -12,10 +12,10 @@ const unsupportedKindPanic = "BUG unsupported"
 // ArgFunc returns a custom value for argument type at, ok=false falls back to fuzzed value.
 type ArgFunc func(at reflect.Type) (reflect.Value, bool)
 
-// CallMethods invokes every exported method of v with fuzzed arguments: UnmarshalJSON, DeepCopy etc
+// CallMethods invokes every exported method of pointer v with fuzzed arguments: UnmarshalJSON, DeepCopy etc
 func CallMethods(c *randfill.Filler, v any, arg ArgFunc) {
 	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
+	if rv.Kind() != reflect.Pointer || rv.IsNil() {
 		return
 	}
 

@@ -1824,6 +1824,9 @@ func validateHTTPHeaderNames(headers map[string]HTTPHeaderConfig) error {
 }
 
 func (c *HTTPConfig) validateArbitraryFSAccess() error {
+	if c == nil {
+		return nil
+	}
 	var props []string
 	if c.BearerTokenFile != "" {
 		props = append(props, "bearerTokenFile")

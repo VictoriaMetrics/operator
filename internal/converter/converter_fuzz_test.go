@@ -1,6 +1,9 @@
 package converter
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -68,13 +71,32 @@ func FuzzConvert(f *testing.F) {
 			return
 		}
 
-		_, _ = Convert("fuzz", "default", values)
+		stable(t, func() (any, error) { return Convert("fuzz", "default", values) })
 		if v, ok := values.(*VMAuthHelmValues); ok {
-			_, _ = ConvertVMAuthUsers("fuzz", "default", v)
+			stable(t, func() (any, error) { return ConvertVMAuthUsers("fuzz", "default", v) })
 		}
 		if v, ok := values.(*VMAlertHelmValues); ok {
-			_, _, _ = ConvertVMAlert("fuzz", "default", v)
-			_, _ = ConvertVMAlertRules("fuzz", "default", v)
+			stable(t, func() (any, error) {
+				alert, secrets, err := ConvertVMAlert("fuzz", "default", v)
+				return []any{alert, secrets}, err
+			})
+			stable(t, func() (any, error) { return ConvertVMAlertRules("fuzz", "default", v) })
 		}
 	})
+}
+
+// stable runs conv twice; differing results mean nondeterminism or input mutation
+func stable(t *testing.T, conv func() (any, error)) {
+	t.Helper()
+	a, errA := conv()
+	b, errB := conv()
+	if fmt.Sprint(errA) != fmt.Sprint(errB) {
+		t.Fatalf("conversion errors differ: %v != %v", errA, errB)
+	}
+
+	ja, errA := json.Marshal(a)
+	jb, errB := json.Marshal(b)
+	if fmt.Sprint(errA) != fmt.Sprint(errB) || !bytes.Equal(ja, jb) {
+		t.Fatalf("conversion outputs differ:\n%s\n%s", ja, jb)
+	}
 }

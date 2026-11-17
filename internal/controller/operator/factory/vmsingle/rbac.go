@@ -132,7 +132,6 @@ func buildCRB(cr *vmv1beta1.VMSingle) *rbacv1.ClusterRoleBinding {
 			Name:        cr.GetRBACName(),
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
-			Finalizers:  []string{vmv1beta1.FinalizerName},
 		},
 		Subjects: []rbacv1.Subject{
 			{
@@ -155,7 +154,6 @@ func buildCR(cr *vmv1beta1.VMSingle) *rbacv1.ClusterRole {
 			Name:        cr.GetRBACName(),
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
-			Finalizers:  []string{vmv1beta1.FinalizerName},
 		},
 		Rules: getClusterWideRules(cr),
 	}
@@ -196,7 +194,6 @@ func buildRole(cr *vmv1beta1.VMSingle, ns string) *rbacv1.Role {
 			Namespace:   ns,
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
-			Finalizers:  []string{vmv1beta1.FinalizerName},
 		},
 	}
 	if ns == cr.Namespace {
@@ -215,7 +212,6 @@ func buildRB(cr *vmv1beta1.VMSingle, ns string) *rbacv1.RoleBinding {
 			Namespace:   ns,
 			Labels:      cr.FinalLabels(),
 			Annotations: cr.FinalAnnotations(),
-			Finalizers:  []string{vmv1beta1.FinalizerName},
 		},
 		Subjects: []rbacv1.Subject{
 			{

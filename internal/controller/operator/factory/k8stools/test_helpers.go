@@ -141,6 +141,7 @@ func getTestClient(predefinedObjects []runtime.Object, fns *interceptor.Funcs) c
 			&vmv1.VMAnomaly{},
 			&vmv1.VMAnomalyConfig{},
 			&vmv1.VLAgent{},
+			&vmv1.VTAgent{},
 			&gwapiv1.HTTPRoute{},
 			&vpav1.VerticalPodAutoscaler{},
 		).

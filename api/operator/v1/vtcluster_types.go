@@ -654,8 +654,22 @@ func (cr *VTCluster) AsOwner() metav1.OwnerReference {
 
 //nolint:dupl,lll
 func (cr *VTCluster) Validate() error {
+	if storage := cr.Spec.Storage; storage != nil {
+		if storage.ReplicaCount != nil && *storage.ReplicaCount > vmv1beta1.MaxReplicaCount {
+			return fmt.Errorf("storage replicaCount cannot exceed %d", vmv1beta1.MaxReplicaCount)
+		}
+		if storage.HPA != nil && storage.HPA.GetMinReplicas() > vmv1beta1.MaxReplicaCount {
+			return fmt.Errorf("storage hpa.minReplicas cannot exceed %d", vmv1beta1.MaxReplicaCount)
+		}
+		if storage.HPA != nil && storage.HPA.MaxReplicas > vmv1beta1.MaxReplicaCount {
+			return fmt.Errorf("storage hpa.maxReplicas cannot exceed %d", vmv1beta1.MaxReplicaCount)
+		}
+	}
 	if vmv1beta1.MustSkipCRValidation(cr) {
 		return nil
+	}
+	if err := vmv1beta1.ValidateServiceNames(cr.GetAdditionalService, cr.Spec.RequestsLoadBalancer.Enabled); err != nil {
+		return err
 	}
 	if cr.Spec.Insert != nil {
 		vti := cr.Spec.Insert

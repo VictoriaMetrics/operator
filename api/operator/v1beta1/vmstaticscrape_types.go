@@ -67,7 +67,10 @@ func (cr *VMStaticScrape) Validate() error {
 	if MustSkipCRValidation(cr) {
 		return nil
 	}
-	for _, endpoint := range cr.Spec.TargetEndpoints {
+	for i, endpoint := range cr.Spec.TargetEndpoints {
+		if endpoint == nil {
+			return fmt.Errorf("targetEndpoints[%d] must not be nil", i)
+		}
 		if err := endpoint.validate(); err != nil {
 			return err
 		}

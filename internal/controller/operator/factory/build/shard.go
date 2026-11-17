@@ -13,6 +13,8 @@ import (
 const (
 	shardNumPlaceholder = "%SHARD_NUM%"
 	shardLabelName      = "shard-num"
+	// maxShardCount bounds shards, each one runs its own workload and goroutine
+	maxShardCount = 100
 )
 
 type shardOpts interface {
@@ -23,6 +25,7 @@ type shardOpts interface {
 
 // ShardNumIter iterates over shardCount in order defined in backward
 func ShardNumIter(backward bool, shardCount int32) iter.Seq[int32] {
+	shardCount = min(shardCount, maxShardCount)
 	if backward {
 		return func(yield func(int32) bool) {
 			for shardCount > 0 {

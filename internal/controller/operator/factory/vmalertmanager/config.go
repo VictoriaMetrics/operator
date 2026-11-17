@@ -588,7 +588,10 @@ func buildMattermost(rc vmv1beta1.MattermostConfig, ns string, ac *build.AssetsC
 		r.set("webhook_url", u)
 	}
 	var attachments []yaml.MapSlice
-	for _, attachment := range rc.Attachments {
+	for i, attachment := range rc.Attachments {
+		if attachment == nil {
+			return nil, fmt.Errorf("mattermost attachment at index %d is null", i)
+		}
 		var ar rawValue
 		ar.set("fallback", attachment.Fallback)
 		ar.set("color", attachment.Color)
@@ -1515,8 +1518,15 @@ func buildProxyConfig(proxyCfg *vmv1beta1.ProxyConfig, ns string, ac *build.Asse
 	r.set("no_proxy", proxyCfg.NoProxy)
 	r.set("proxy_from_environment", proxyCfg.ProxyFromEnvironment)
 	if len(proxyCfg.ProxyConnectHeader) > 0 {
+		names := make([]string, 0, len(proxyCfg.ProxyConnectHeader))
+		for name := range proxyCfg.ProxyConnectHeader {
+			names = append(names, name)
+		}
+		slices.Sort(names)
+
 		var h yaml.MapSlice
-		for k, vs := range proxyCfg.ProxyConnectHeader {
+		for _, k := range names {
+			vs := proxyCfg.ProxyConnectHeader[k]
 			var secrets []string
 			for i, v := range vs {
 				secret, err := ac.LoadKeyFromSecret(ns, &v)

@@ -163,6 +163,32 @@ test: manifests generate fmt vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
 	cd api/ && go test ./operator/...
 
+FUZZ_TIME ?= 10s
+# FUZZ selects fuzz targets by regexp, e.g. FUZZ=FuzzConverge
+FUZZ ?= ^Fuzz
+# FUZZ_DIR limits fuzzing to packages under it, e.g. FUZZ_DIR=internal/controller/operator/factory/vmauth
+FUZZ_DIR ?= internal
+
+.PHONY: fuzz-test
+fuzz-test: ## Fuzz internal tests
+	@set -e; for package in $$(find $(FUZZ_DIR) -name '*_fuzz_test.go' -printf '%h\n' | sort -u); do \
+		listed=$$(go test ./$$package -list '$(FUZZ)'); \
+		for fuzz in $$(printf '%s\n' "$$listed" | awk '/^Fuzz[A-Za-z0-9_]*$$/ { print }'); do \
+			echo "Running fuzz test: $$fuzz in $$package"; \
+			go test ./$$package -run '^$$' -fuzz "^$$fuzz$$" -fuzztime $(FUZZ_TIME) -parallel 10; \
+		done; \
+	done
+
+.PHONY: fuzz-test-api
+fuzz-test-api: ## Fuzz API validation tests
+	@set -e; for package in $$(find api/operator -name '*_fuzz_test.go' -printf '%h\n' | sort -u); do \
+		package=$${package#api/}; \
+		for fuzz in $$(go -C api test ./$$package -list '^Fuzz' | awk '/^Fuzz[A-Za-z0-9_]*$$/ { print }'); do \
+			echo "Running fuzz test: $$fuzz in api/$$package"; \
+			go -C api test ./$$package -run '^$$' -fuzz "^$$fuzz$$" -fuzztime=500000x; \
+		done; \
+	done
+
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
 	cd api && $(GOLANGCI_LINT) run operator/... & P1=$$!; \

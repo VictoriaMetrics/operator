@@ -763,9 +763,45 @@ func (cr *VMCluster) GetRemoteWriteURL() string {
 	return fmt.Sprintf("%s%s", insertURL, BuildPathWithPrefixFlag(cr.Spec.VMInsert.ExtraArgs, "/insert/multitenant/prometheus/api/v1/write"))
 }
 
+// ValidateServiceNames rejects cluster components sharing an additional service name.
+func ValidateServiceNames(get func(ClusterComponent) *AdditionalServiceSpec, withBalancer bool) error {
+	kinds := []ClusterComponent{ClusterComponentInsert, ClusterComponentSelect, ClusterComponentStorage}
+	if withBalancer {
+		kinds = append(kinds, ClusterComponentBalancer)
+	}
+
+	// components with the same name would overwrite each other's Service forever
+	names := sets.New[string]()
+	for _, kind := range kinds {
+		s := get(kind)
+		if s == nil || s.UseAsDefault || s.Name == "" {
+			continue
+		}
+		if names.Has(s.Name) {
+			return fmt.Errorf("%s: serviceSpec.metadata.name=%q is already used by another component", kind, s.Name)
+		}
+		names.Insert(s.Name)
+	}
+	return nil
+}
+
 func (cr *VMCluster) Validate() error {
+	if storage := cr.Spec.VMStorage; storage != nil {
+		if storage.ReplicaCount != nil && *storage.ReplicaCount > MaxReplicaCount {
+			return fmt.Errorf("vmstorage replicaCount cannot exceed %d", MaxReplicaCount)
+		}
+		if storage.HPA != nil && storage.HPA.GetMinReplicas() > MaxReplicaCount {
+			return fmt.Errorf("vmstorage hpa.minReplicas cannot exceed %d", MaxReplicaCount)
+		}
+		if storage.HPA != nil && storage.HPA.MaxReplicas > MaxReplicaCount {
+			return fmt.Errorf("vmstorage hpa.maxReplicas cannot exceed %d", MaxReplicaCount)
+		}
+	}
 	if MustSkipCRValidation(cr) {
 		return nil
+	}
+	if err := ValidateServiceNames(cr.GetAdditionalService, cr.Spec.RequestsLoadBalancer.Enabled); err != nil {
+		return err
 	}
 	if cr.Spec.VMSelect != nil {
 		vms := cr.Spec.VMSelect

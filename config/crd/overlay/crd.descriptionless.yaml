@@ -886,6 +886,7 @@ spec:
                 type: object
               replicaCount:
                 format: int32
+                maximum: 100
                 type: integer
               resources:
                 properties:
@@ -2060,6 +2061,7 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   replicaCount:
                     format: int32
+                    maximum: 100
                     type: integer
                   resources:
                     properties:
@@ -2854,6 +2856,7 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   replicaCount:
                     format: int32
+                    maximum: 100
                     type: integer
                   resources:
                     properties:
@@ -3920,6 +3923,7 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   replicaCount:
                     format: int32
+                    maximum: 100
                     type: integer
                   resources:
                     properties:
@@ -5530,6 +5534,7 @@ spec:
                         x-kubernetes-preserve-unknown-fields: true
                       replicaCount:
                         format: int32
+                        maximum: 100
                         type: integer
                       resources:
                         properties:
@@ -6709,6 +6714,7 @@ spec:
                             type: object
                           replicaCount:
                             format: int32
+                            maximum: 100
                             type: integer
                           resources:
                             properties:
@@ -7688,6 +7694,7 @@ spec:
                               type: object
                             replicaCount:
                               format: int32
+                              maximum: 100
                               type: integer
                             resources:
                               properties:
@@ -8792,6 +8799,7 @@ spec:
                 type: boolean
               replicaCount:
                 format: int32
+                maximum: 100
                 type: integer
               resources:
                 properties:
@@ -11460,6 +11468,7 @@ spec:
                 type: object
               replicaCount:
                 format: int32
+                maximum: 100
                 type: integer
               resources:
                 properties:
@@ -16574,6 +16583,7 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               replicaCount:
                 format: int32
+                maximum: 100
                 type: integer
               resources:
                 properties:
@@ -18291,6 +18301,7 @@ spec:
                 type: object
               replicaCount:
                 format: int32
+                maximum: 100
                 type: integer
               resources:
                 properties:
@@ -19793,6 +19804,7 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               replicaCount:
                 format: int32
+                maximum: 100
                 type: integer
               resources:
                 properties:
@@ -21825,6 +21837,7 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               replicaCount:
                 format: int32
+                maximum: 100
                 type: integer
               resources:
                 properties:
@@ -23164,6 +23177,7 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   replicaCount:
                     format: int32
+                    maximum: 100
                     type: integer
                   resources:
                     properties:
@@ -23897,6 +23911,7 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   replicaCount:
                     format: int32
+                    maximum: 100
                     type: integer
                   resources:
                     properties:
@@ -25171,6 +25186,7 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   replicaCount:
                     format: int32
+                    maximum: 100
                     type: integer
                   resources:
                     properties:
@@ -27037,6 +27053,7 @@ spec:
                         x-kubernetes-preserve-unknown-fields: true
                       replicaCount:
                         format: int32
+                        maximum: 100
                         type: integer
                       resources:
                         properties:
@@ -28567,6 +28584,7 @@ spec:
                             type: object
                           replicaCount:
                             format: int32
+                            maximum: 100
                             type: integer
                           resources:
                             properties:
@@ -29784,6 +29802,7 @@ spec:
                               type: object
                             replicaCount:
                               format: int32
+                              maximum: 100
                               type: integer
                             resources:
                               properties:
@@ -41099,6 +41118,7 @@ spec:
                 type: boolean
               replicaCount:
                 format: int32
+                maximum: 100
                 type: integer
               resources:
                 properties:
@@ -44523,6 +44543,7 @@ spec:
                 type: object
               replicaCount:
                 format: int32
+                maximum: 100
                 type: integer
               resources:
                 properties:
@@ -46170,6 +46191,7 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   replicaCount:
                     format: int32
+                    maximum: 100
                     type: integer
                   resources:
                     properties:
@@ -46900,6 +46922,7 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   replicaCount:
                     format: int32
+                    maximum: 100
                     type: integer
                   resources:
                     properties:
@@ -47968,6 +47991,7 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   replicaCount:
                     format: int32
+                    maximum: 100
                     type: integer
                   resources:
                     properties:
@@ -48824,6 +48848,7 @@ spec:
                 type: boolean
               replicaCount:
                 format: int32
+                maximum: 100
                 type: integer
               resources:
                 properties:

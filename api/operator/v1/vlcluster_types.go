@@ -805,6 +805,9 @@ func (cr *VLCluster) Validate() error {
 	if vmv1beta1.MustSkipCRValidation(cr) {
 		return nil
 	}
+	if err := vmv1beta1.ValidateServiceNames(cr.GetAdditionalService, cr.Spec.RequestsLoadBalancer.Enabled); err != nil {
+		return err
+	}
 	if cr.Spec.VLInsert != nil {
 		vli := cr.Spec.VLInsert
 		name := cr.PrefixedName(vmv1beta1.ClusterComponentInsert)

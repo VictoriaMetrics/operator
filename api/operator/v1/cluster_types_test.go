@@ -218,3 +218,14 @@ func TestClusterStorageLimits(t *testing.T) {
 	f(&VTCluster{ObjectMeta: metav1.ObjectMeta{Annotations: skip}, Spec: VTClusterSpec{Storage: &VTStorage{HPA: &vmv1beta1.EmbeddedHPA{MaxReplicas: *over}}}})
 	f(&VLCluster{ObjectMeta: metav1.ObjectMeta{Annotations: skip}, Spec: VLClusterSpec{VLStorage: &VLStorage{HPA: &vmv1beta1.EmbeddedHPA{MaxReplicas: *over}}}})
 }
+
+func TestClusterServiceNames(t *testing.T) {
+	f := func(cr interface{ Validate() error }) {
+		t.Helper()
+		assert.ErrorContains(t, cr.Validate(), `serviceSpec.metadata.name="extra" is already used`)
+	}
+
+	extra := &vmv1beta1.AdditionalServiceSpec{EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "extra"}}
+	f(&VTCluster{Spec: VTClusterSpec{Insert: &VTInsert{ServiceSpec: extra}, Select: &VTSelect{ServiceSpec: extra}}})
+	f(&VLCluster{Spec: VLClusterSpec{VLInsert: &VLInsert{ServiceSpec: extra}, VLStorage: &VLStorage{ServiceSpec: extra}}})
+}

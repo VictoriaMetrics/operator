@@ -239,6 +239,24 @@ func TestVMCluster_Validate(t *testing.T) {
 	// empty spec
 	f(VMClusterSpec{}, false)
 
+	// additional services sharing a name
+	extra := func(name string, asDefault bool) *AdditionalServiceSpec {
+		return &AdditionalServiceSpec{UseAsDefault: asDefault, EmbeddedObjectMetadata: EmbeddedObjectMetadata{Name: name}}
+	}
+	f(VMClusterSpec{VMInsert: &VMInsert{ServiceSpec: extra("extra", false)}, VMSelect: &VMSelect{ServiceSpec: extra("extra", false)}}, true)
+	f(VMClusterSpec{
+		VMInsert:             &VMInsert{ServiceSpec: extra("extra", false)},
+		RequestsLoadBalancer: VMAuthLoadBalancer{Enabled: true, Spec: VMAuthLoadBalancerSpec{AdditionalServiceSpec: extra("extra", false)}},
+	}, true)
+
+	// distinct, default-applied or disabled balancer services
+	f(VMClusterSpec{VMInsert: &VMInsert{ServiceSpec: extra("extra-1", false)}, VMSelect: &VMSelect{ServiceSpec: extra("extra-2", false)}}, false)
+	f(VMClusterSpec{VMInsert: &VMInsert{ServiceSpec: extra("extra", true)}, VMSelect: &VMSelect{ServiceSpec: extra("extra", false)}}, false)
+	f(VMClusterSpec{
+		VMInsert:             &VMInsert{ServiceSpec: extra("extra", false)},
+		RequestsLoadBalancer: VMAuthLoadBalancer{Spec: VMAuthLoadBalancerSpec{AdditionalServiceSpec: extra("extra", false)}},
+	}, false)
+
 	// downsampling without license
 	f(VMClusterSpec{
 		Downsampling: &DownsamplingConfig{

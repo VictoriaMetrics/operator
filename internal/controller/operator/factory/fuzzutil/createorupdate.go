@@ -4,6 +4,8 @@ package fuzzutil
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
 	"testing"
 	"testing/synctest"
 
@@ -11,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	"github.com/VictoriaMetrics/operator/api/operator/fuzztest"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -56,9 +59,35 @@ func CreateOrUpdate[T client.Object](f *testing.F, seeds []string, newCR func() 
 
 		// fake clock lets rollout polling time out instantly
 		synctest.Test(t, func(t *testing.T) {
-			_ = run(t.Context(), rclient, cr)
+			if err := run(t.Context(), rclient, cr.DeepCopyObject().(T)); err != nil {
+				return
+			}
+
+			// second run over own result must be a no-op, e.g. no update flapping on unsorted maps
+			c, actions := recordWrites(rclient)
+			_ = run(t.Context(), c, cr.DeepCopyObject().(T))
+			noWrites(t, *actions, "second CreateOrUpdate")
 		})
 	})
+}
+
+// recordWrites wraps c, so calls made through it are appended to the returned actions.
+func recordWrites(c client.Client) (client.Client, *[]k8stools.ClientAction) {
+	actions := &[]k8stools.ClientAction{}
+	return interceptor.NewClient(c.(client.WithWatch), k8stools.NewActionRecordingInterceptor(actions, nil)), actions
+}
+
+// noWrites fails when actions hold anything but reads.
+func noWrites(t testing.TB, actions []k8stools.ClientAction, what string) {
+	var writes []string
+	for _, a := range actions {
+		if a.Verb != "Get" {
+			writes = append(writes, fmt.Sprintf("%s %s %s", a.Verb, a.Kind, a.Resource))
+		}
+	}
+	if len(writes) > 0 {
+		t.Fatalf("%s after convergence wrote:\n%s", what, strings.Join(writes, "\n"))
+	}
 }
 
 // decodeCR builds a CR from JSON data, or fills it from raw bytes when data isn't JSON.

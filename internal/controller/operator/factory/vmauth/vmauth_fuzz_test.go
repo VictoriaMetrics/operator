@@ -55,6 +55,10 @@ func createUsers(ctx context.Context, rclient client.Client) error {
 		user.Namespace = "default"
 		objs = append(objs, user)
 	}
+	// a rerun over own result finds them created
+	if err := rclient.Get(ctx, client.ObjectKeyFromObject(objs[0]), objs[0].DeepCopyObject().(client.Object)); err == nil {
+		return nil
+	}
 	for _, o := range objs {
 		if err := rclient.Create(ctx, o); err != nil {
 			return err

@@ -152,11 +152,16 @@ func converge(t testing.TB, cr, updated client.Object, faults []byte, build func
 		}
 
 		trace := strings.Join(picker.trace, "\n")
-		for range 2 {
-			if _, err := build(raw).Reconcile(ctx, req); err != nil {
-				t.Fatalf("clean reconcile after %s with faults failed: %s\nfaults:\n%s", s.name, err, trace)
-			}
+		if _, err := build(raw).Reconcile(ctx, req); err != nil {
+			t.Fatalf("clean reconcile after %s with faults failed: %s\nfaults:\n%s", s.name, err, trace)
 		}
+
+		// converged state must not be rewritten, e.g. by defaulting that never settles
+		c, actions := recordWrites(raw)
+		if _, err := build(c).Reconcile(ctx, req); err != nil {
+			t.Fatalf("second clean reconcile after %s with faults failed: %s\nfaults:\n%s", s.name, err, trace)
+		}
+		noWrites(t, *actions, fmt.Sprintf("reconcile after %s (faults:\n%s\n)", s.name, trace))
 		if diff := cmp.Diff(wants[i], snapshot(t, raw, cr)); diff != "" {
 			t.Fatalf("state after %s with faults differs from fault-free run (-want +got):\n%s\nfaults:\n%s", s.name, diff, trace)
 		}

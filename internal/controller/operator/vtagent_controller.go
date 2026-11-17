@@ -76,6 +76,7 @@ func (r *VTAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		result, err = handleReconcileErrWithStatus(ctx, r.Client, &instance, result, err)
 	}()
 	// Fetch the VTAgent instance
+	instance.Name, instance.Namespace = req.Name, req.Namespace
 	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
 		err = newGetError(err)
 		return

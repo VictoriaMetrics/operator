@@ -47,18 +47,8 @@ func CreateOrUpdate[T client.Object](f *testing.F, seeds []string, newCR func() 
 		f.Add([]byte(seed), false)
 	}
 	f.Fuzz(func(t *testing.T, data []byte, optionalAPIs bool) {
-		cr := newCR()
-		if err := json.Unmarshal(data, cr); err != nil {
-			fuzztest.New(data).Fill(cr)
-		}
-		cr.SetName(fuzzName)
-		cr.SetNamespace(fuzzNamespace)
-
-		cfg := config.MustGetBaseConfig()
-		defaultCfg := *cfg
-		cfg.VPAAPIEnabled = optionalAPIs
-		cfg.GatewayAPIEnabled = optionalAPIs
-		t.Cleanup(func() { *cfg = defaultCfg })
+		cr := decodeCR(data, newCR)
+		setOptionalAPIs(t, optionalAPIs)
 
 		rclient := k8stools.GetTestClientWithObjects(RefObjects())
 		build.AddDefaults(rclient.Scheme())
@@ -69,4 +59,24 @@ func CreateOrUpdate[T client.Object](f *testing.F, seeds []string, newCR func() 
 			_ = run(t.Context(), rclient, cr)
 		})
 	})
+}
+
+// decodeCR builds a CR from JSON data, or fills it from raw bytes when data isn't JSON.
+func decodeCR[T client.Object](data []byte, newCR func() T) T {
+	cr := newCR()
+	if err := json.Unmarshal(data, cr); err != nil {
+		fuzztest.New(data).Fill(cr)
+	}
+	cr.SetName(fuzzName)
+	cr.SetNamespace(fuzzNamespace)
+	return cr
+}
+
+// setOptionalAPIs toggles VPA and Gateway API support until the test ends.
+func setOptionalAPIs(t *testing.T, on bool) {
+	cfg := config.MustGetBaseConfig()
+	defaultCfg := *cfg
+	cfg.VPAAPIEnabled = on
+	cfg.GatewayAPIEnabled = on
+	t.Cleanup(func() { *cfg = defaultCfg })
 }

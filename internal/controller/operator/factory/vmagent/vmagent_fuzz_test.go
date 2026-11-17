@@ -50,17 +50,20 @@ func FuzzRemoteWriteArgs(f *testing.F) {
 	})
 }
 
+// FuzzSeeds are VMAgent specs shared by fuzz targets.
+var FuzzSeeds = []string{
+	`{}`,
+	`{"spec":{"remoteWrite":[{"url":"http://vm:8428/api/v1/write"}]}}`,
+	`{"spec":{"remoteWrite":[{"url":"http://vm:8428"}],"statefulMode":true,"replicaCount":2,"serviceAccountName":"sa","podDisruptionBudget":{"minAvailable":1},"vpa":{},"hpa":{"minReplicas":1,"maxReplicas":3}}}`,
+	`{"spec":{"remoteWrite":[{"url":"http://vm:8428"}],"shardCount":2,"ingestOnlyMode":true,"streamAggrConfig":{"rules":[{"outputs":["total"],"interval":"1m"}]}}}`,
+	`{"spec":{"remoteWrite":[{"url":"http://vm:8428"}],"replicaCount":2},"status":{"lastAppliedSpec":{"remoteWrite":[{"url":"http://old:8428"}],"replicaCount":1}}}`,
+	`{"spec":{"paused":true}}`,
+	// invalid JSON, filled by fuzztest; failed shard leaked result goroutines
+	`{"s(ec":00080000108"0000`,
+}
+
 func FuzzCreateOrUpdate(f *testing.F) {
-	fuzzutil.CreateOrUpdate(f, []string{
-		`{}`,
-		`{"spec":{"remoteWrite":[{"url":"http://vm:8428/api/v1/write"}]}}`,
-		`{"spec":{"remoteWrite":[{"url":"http://vm:8428"}],"statefulMode":true,"replicaCount":2,"serviceAccountName":"sa","podDisruptionBudget":{"minAvailable":1},"vpa":{},"hpa":{"minReplicas":1,"maxReplicas":3}}}`,
-		`{"spec":{"remoteWrite":[{"url":"http://vm:8428"}],"shardCount":2,"ingestOnlyMode":true,"streamAggrConfig":{"rules":[{"outputs":["total"],"interval":"1m"}]}}}`,
-		`{"spec":{"remoteWrite":[{"url":"http://vm:8428"}],"replicaCount":2},"status":{"lastAppliedSpec":{"remoteWrite":[{"url":"http://old:8428"}],"replicaCount":1}}}`,
-		`{"spec":{"paused":true}}`,
-		// invalid JSON, filled by fuzztest; failed shard leaked result goroutines
-		`{"s(ec":00080000108"0000`,
-	}, func() *vmv1beta1.VMAgent { return &vmv1beta1.VMAgent{} }, func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) error {
+	fuzzutil.CreateOrUpdate(f, FuzzSeeds, func() *vmv1beta1.VMAgent { return &vmv1beta1.VMAgent{} }, func(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAgent) error {
 		return CreateOrUpdate(ctx, cr, rclient)
 	})
 }

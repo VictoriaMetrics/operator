@@ -661,6 +661,9 @@ func (cr *VTCluster) Validate() error {
 		if storage.HPA != nil && storage.HPA.GetMinReplicas() > vmv1beta1.MaxReplicaCount {
 			return fmt.Errorf("storage hpa.minReplicas cannot exceed %d", vmv1beta1.MaxReplicaCount)
 		}
+		if storage.HPA != nil && storage.HPA.MaxReplicas > vmv1beta1.MaxReplicaCount {
+			return fmt.Errorf("storage hpa.maxReplicas cannot exceed %d", vmv1beta1.MaxReplicaCount)
+		}
 	}
 	if vmv1beta1.MustSkipCRValidation(cr) {
 		return nil

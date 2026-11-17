@@ -215,4 +215,6 @@ func TestClusterStorageLimits(t *testing.T) {
 	f(&VTCluster{ObjectMeta: metav1.ObjectMeta{Annotations: skip}, Spec: VTClusterSpec{Storage: &VTStorage{HPA: &vmv1beta1.EmbeddedHPA{MinReplicas: over}}}})
 	f(&VLCluster{Spec: VLClusterSpec{VLStorage: &VLStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: over}}}})
 	f(&VLCluster{ObjectMeta: metav1.ObjectMeta{Annotations: skip}, Spec: VLClusterSpec{VLStorage: &VLStorage{HPA: &vmv1beta1.EmbeddedHPA{MinReplicas: over}}}})
+	f(&VTCluster{ObjectMeta: metav1.ObjectMeta{Annotations: skip}, Spec: VTClusterSpec{Storage: &VTStorage{HPA: &vmv1beta1.EmbeddedHPA{MaxReplicas: *over}}}})
+	f(&VLCluster{ObjectMeta: metav1.ObjectMeta{Annotations: skip}, Spec: VLClusterSpec{VLStorage: &VLStorage{HPA: &vmv1beta1.EmbeddedHPA{MaxReplicas: *over}}}})
 }

@@ -39,7 +39,7 @@ func RefObjects() []runtime.Object {
 	}
 }
 
-// CreateOrUpdate fuzzes run against an empty fake client, panics are the only failure.
+// CreateOrUpdate fuzzes run against a fake client holding only RefObjects, panics are the only failure.
 // Each seed runs with optional APIs (VPA, Gateway API) on and off.
 func CreateOrUpdate[T client.Object](f *testing.F, seeds []string, newCR func() T, run func(context.Context, client.Client, T) error) {
 	for _, seed := range seeds {

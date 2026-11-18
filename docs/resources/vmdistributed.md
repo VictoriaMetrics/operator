@@ -151,7 +151,7 @@ spec:
   vmauth:
     name: my-distributed-vmauth
     spec:
-      replicaCount: 1
+      replicaCount: 2
       unauthorizedUserAccessSpec:
         targetRefs:
           - name: read

@@ -220,6 +220,38 @@ func TestReconcileAndTrackStatus(t *testing.T) {
 	})
 }
 
+func TestReconcileAndTrackStatusLastAppliedSpec(t *testing.T) {
+	prevSpec := vmv1beta1.VMAlertSpec{SelectAllByDefault: true}
+	newSpec := vmv1beta1.VMAlertSpec{SelectAllByDefault: false}
+	nsn := types.NamespacedName{Name: "test-vmalert", Namespace: "default"}
+
+	f := func(cbErr error, want vmv1beta1.VMAlertSpec) {
+		t.Helper()
+		object := &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{Name: nsn.Name, Namespace: nsn.Namespace},
+			Spec:       newSpec,
+			Status:     vmv1beta1.VMAlertStatus{LastAppliedSpec: prevSpec.DeepCopy()},
+		}
+		fclient := k8stools.GetTestClientWithObjects([]runtime.Object{object})
+		_, _ = reconcileAndTrackStatus(context.Background(), fclient, object, "vmalert", func() (ctrl.Result, error) {
+			got := &vmv1beta1.VMAlert{}
+			assert.NoError(t, fclient.Get(context.Background(), nsn, got))
+			assert.Equal(t, prevSpec, *got.Status.LastAppliedSpec)
+			return ctrl.Result{}, cbErr
+		})
+		got := &vmv1beta1.VMAlert{}
+		assert.NoError(t, fclient.Get(context.Background(), nsn, got))
+		assert.Equal(t, want, *got.Status.LastAppliedSpec)
+	}
+
+	// failed reconcile keeps previous spec for cleanup on retry
+	f(fmt.Errorf("some reconciliation error"), prevSpec)
+	f(wait.ErrorInterrupted(fmt.Errorf("timeout")), prevSpec)
+
+	// successful reconcile stores new spec
+	f(nil, newSpec)
+}
+
 // TestVMClusterRemainsExpandingDuringPVCResize verifies that a VMCluster stays
 // in Expanding status when PVC resize is still in progress (waitForPVCReady
 // returns a retryable wait.Interrupted error).

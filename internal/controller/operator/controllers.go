@@ -365,6 +365,12 @@ func isSelectorsMatchesTargetCRD(ctx context.Context, rclient client.Client, sou
 	return true, nil
 }
 
+// objectWithSpecTrack is an object that records its last applied spec
+type objectWithSpecTrack interface {
+	client.Object
+	LastSpecUpdated() bool
+}
+
 type objectWithStatusTrack[T client.Object, ST reconcile.StatusWithMetadata[STC], STC any] interface {
 	client.Object
 	LastSpecUpdated() bool
@@ -399,7 +405,7 @@ func createGenericEventForObject(ctx context.Context, c client.Client, object cl
 	return nil
 }
 
-func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[STC], STC any](
+func reconcileAndTrackStatus[T objectWithSpecTrack, ST reconcile.StatusWithMetadata[STC], STC any](
 	ctx context.Context,
 	c client.Client,
 	object objectWithStatusTrack[T, ST, STC],
@@ -414,7 +420,8 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 		RegisterObjectStatus(object, controllerName, vmv1beta1.UpdateStatusPaused)
 		return
 	}
-	specChanged := object.LastSpecUpdated()
+	// keep previous lastAppliedSpec until success, next reconcile diffs against it to clean up
+	specChanged := object.DeepCopy().LastSpecUpdated()
 	resultStatus := vmv1beta1.UpdateStatusOperational
 	defer func() {
 		if err := reconcile.UpdateObjectStatus(ctx, c, object, resultStatus, resultErr); err != nil {
@@ -447,6 +454,7 @@ func reconcileAndTrackStatus[T client.Object, ST reconcile.StatusWithMetadata[ST
 		resultErr = err
 		return
 	}
+	object.LastSpecUpdated()
 	if specChanged {
 		if err := createGenericEventForObject(ctx, c, object, "reconcile of object finished successfully"); err != nil {
 			logger.WithContext(ctx).Error(err, " cannot create k8s api event")

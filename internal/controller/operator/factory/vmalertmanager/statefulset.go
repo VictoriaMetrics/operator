@@ -647,6 +647,37 @@ func subPathForStorage(s *vmv1beta1.StorageSpec) string {
 
 var utf8MinVersion = semver.MustParse("v0.28.0")
 
+// eventRecorderMinVersion is the first Alertmanager release containing the
+// event-recorder feature, see https://github.com/prometheus/alertmanager/blob/main/CHANGELOG.md
+var eventRecorderMinVersion = semver.MustParse("v0.33.0")
+
+// stdoutOutputMinVersion is the first Alertmanager release supporting the
+// event-recorder's stdout_outputs destination, added later than the base
+// event-recorder feature, see https://github.com/prometheus/alertmanager/commit/85fc7ce83c12c5aa75d7fe5b77db48271dd17965
+var stdoutOutputMinVersion = semver.MustParse("v0.34.0")
+
+// eventRecorderSupported reports whether cr's image version is known to support
+// Alertmanager's event-recorder feature. An unparseable tag is treated as
+// supported, since it may be a non-semver custom build.
+func eventRecorderSupported(cr *vmv1beta1.VMAlertmanager) bool {
+	amVersion, err := semver.NewVersion(cr.Spec.Image.Tag)
+	if err != nil {
+		return true
+	}
+	return amVersion.GreaterThanEqual(eventRecorderMinVersion)
+}
+
+// stdoutOutputSupported reports whether cr's image version is known to support
+// the event-recorder's stdout_outputs destination. An unparseable tag is
+// treated as supported, since it may be a non-semver custom build.
+func stdoutOutputSupported(cr *vmv1beta1.VMAlertmanager) bool {
+	amVersion, err := semver.NewVersion(cr.Spec.Image.Tag)
+	if err != nil {
+		return true
+	}
+	return amVersion.GreaterThanEqual(stdoutOutputMinVersion)
+}
+
 // addFeatureFlags adds features based on alertmanager version
 //
 // https://github.com/prometheus/alertmanager/blob/main/featurecontrol/featurecontrol.go#L23
@@ -658,6 +689,9 @@ func addFeatureFlags(args []string, cr *vmv1beta1.VMAlertmanager) []string {
 	var features []string
 	if amVersion.GreaterThanEqual(utf8MinVersion) {
 		features = append(features, "utf8-strict-mode")
+	}
+	if cr.Spec.EventRecorder != nil && amVersion.GreaterThanEqual(eventRecorderMinVersion) {
+		features = append(features, "event-recorder")
 	}
 	if len(features) > 0 {
 		args = append(args, fmt.Sprintf("--enable-feature=%s", strings.Join(features, ",")))

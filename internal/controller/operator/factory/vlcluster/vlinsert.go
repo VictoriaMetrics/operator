@@ -65,7 +65,7 @@ func createOrUpdatePodDisruptionBudgetForVLInsert(ctx context.Context, rclient c
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.VLInsert.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
-	if prevCR != nil && prevCR.Spec.VLInsert.PodDisruptionBudget != nil {
+	if prevCR != nil && prevCR.Spec.VLInsert != nil && prevCR.Spec.VLInsert.PodDisruptionBudget != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
 		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VLInsert.PodDisruptionBudget)
 	}
@@ -287,7 +287,7 @@ func createOrUpdateVLInsertHPA(ctx context.Context, rclient client.Client, cr, p
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	newHPA := build.HPA(b, targetRef, cr.Spec.VLInsert.HPA)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
-	if prevCR != nil && prevCR.Spec.VLInsert.HPA != nil {
+	if prevCR != nil && prevCR.Spec.VLInsert != nil && prevCR.Spec.VLInsert.HPA != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VLInsert.HPA)
 	}

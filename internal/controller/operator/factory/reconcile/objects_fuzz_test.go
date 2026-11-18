@@ -230,30 +230,18 @@ var reconcileTargets = [...]reconcileTarget{
 	vmAgentKind: newReconcileTarget(func(ctx context.Context, c client.Client, n, p *vmv1beta1.VMAgent, o *metav1.OwnerReference, _ bool) error {
 		return VMAgent(ctx, c, n, p, o)
 	}),
-	vmAlertmanagerConfigKind: newReconcileTarget(func(ctx context.Context, c client.Client, n, p *vmv1beta1.VMAlertmanagerConfig, o *metav1.OwnerReference, flag bool) error {
-		return VMAlertmanagerConfig(ctx, c, n, p, o, flag)
-	}),
+	vmAlertmanagerConfigKind: newReconcileTarget(VMAlertmanagerConfig),
 	vmAuthKind: newReconcileTarget(func(ctx context.Context, c client.Client, n, p *vmv1beta1.VMAuth, o *metav1.OwnerReference, _ bool) error {
 		return VMAuth(ctx, c, n, p, o)
 	}),
 	vmClusterKind: newReconcileTarget(func(ctx context.Context, c client.Client, n, p *vmv1beta1.VMCluster, o *metav1.OwnerReference, _ bool) error {
 		return VMCluster(ctx, c, n, p, o)
 	}),
-	vmPodScrapeKind: newReconcileTarget(func(ctx context.Context, c client.Client, n, p *vmv1beta1.VMPodScrape, o *metav1.OwnerReference, flag bool) error {
-		return VMPodScrape(ctx, c, n, p, o, flag)
-	}),
-	vmProbeKind: newReconcileTarget(func(ctx context.Context, c client.Client, n, p *vmv1beta1.VMProbe, o *metav1.OwnerReference, flag bool) error {
-		return VMProbe(ctx, c, n, p, o, flag)
-	}),
-	vmRuleKind: newReconcileTarget(func(ctx context.Context, c client.Client, n, p *vmv1beta1.VMRule, o *metav1.OwnerReference, flag bool) error {
-		return VMRule(ctx, c, n, p, o, flag)
-	}),
-	vmScrapeConfigKind: newReconcileTarget(func(ctx context.Context, c client.Client, n, p *vmv1beta1.VMScrapeConfig, o *metav1.OwnerReference, flag bool) error {
-		return VMScrapeConfig(ctx, c, n, p, o, flag)
-	}),
-	vmServiceScrapeKind: newReconcileTarget(func(ctx context.Context, c client.Client, n, p *vmv1beta1.VMServiceScrape, o *metav1.OwnerReference, flag bool) error {
-		return VMServiceScrape(ctx, c, n, p, o, flag)
-	}),
+	vmPodScrapeKind:     newReconcileTarget(VMPodScrape),
+	vmProbeKind:         newReconcileTarget(VMProbe),
+	vmRuleKind:          newReconcileTarget(VMRule),
+	vmScrapeConfigKind:  newReconcileTarget(VMScrapeConfig),
+	vmServiceScrapeKind: newReconcileTarget(VMServiceScrape),
 	vmSingleKind: newReconcileTarget(func(ctx context.Context, c client.Client, n, p *vmv1beta1.VMSingle, o *metav1.OwnerReference, _ bool) error {
 		return VMSingle(ctx, c, n, p, o)
 	}),

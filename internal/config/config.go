@@ -52,7 +52,7 @@ var (
 		// renovate: datasource=github-releases depName=VictoriaMetrics/operator
 		"VM_OPERATOR_VERSION": getVersion("v0.75.2"),
 		// renovate: datasource=github-releases depName=prometheus/alertmanager
-		"VM_ALERTMANAGER_VERSION": "v0.34.2",
+		"VM_ALERTMANAGER_VERSION": "v0.35.0",
 	}
 )
 
@@ -158,6 +158,10 @@ type BaseOperatorConf struct {
 	// remove the pod from rotation before the process shuts down.
 	// Set to false before upgrading the operator to prevent rolling updates on existing resources.
 	EnableDefaultPreStopHook bool `default:"true" env:"VM_ENABLE_DEFAULT_PRESTOP_HOOK"`
+	// VMAlertmanagerSlackPostUpdatesToThreadSupport declares that the alertmanager image supports slack_configs post_updates_to_thread regardless of its tag.
+	// By default the field is accepted only when the tag parses as a version >= v0.35.0, where alertmanager added support;
+	// older alertmanager rejects the unknown field. Set to true for digest-only or custom tags that are known to support it.
+	VMAlertmanagerSlackPostUpdatesToThreadSupport bool `default:"false" env:"VM_VMALERTMANAGER_SLACK_POST_UPDATES_TO_THREAD_SUPPORT"`
 	// ConfigDataBudgetBytes sets the maximum number of bytes allowed for compressed data
 	// in a generated Kubernetes Secret or ConfigMap (e.g. scrape-config overflow buckets,
 	// vmalert rule ConfigMaps). When zero the budget is computed automatically from the

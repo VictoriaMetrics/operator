@@ -145,6 +145,9 @@ func (pos *parsedObjects) buildConfig(cr *vmv1beta1.VMAlertmanager, data []byte,
 			}
 			var receiverCfgs []receiver
 			for _, r := range cfg.Spec.Receivers {
+				if err := validateReceiverVersion(cr, r); err != nil {
+					return err
+				}
 				result := receiver{
 					Name: buildCRPrefixedName(cfg, r.Name),
 				}
@@ -387,6 +390,19 @@ func buildCRPrefixedName(cr *vmv1beta1.VMAlertmanagerConfig, name string) string
 		return name
 	}
 	return fmt.Sprintf("%s-%s-%s", cr.Namespace, cr.Name, name)
+}
+
+// validateReceiverVersion rejects receiver options that are not supported by the Alertmanager version of cr.
+// The check runs per VMAlertmanager, since a VMAlertmanagerConfig may be selected by several of them.
+func validateReceiverVersion(cr *vmv1beta1.VMAlertmanager, r vmv1beta1.Receiver) error {
+	for i, c := range r.SlackConfigs {
+		// any non-nil value is rendered, and older versions reject unknown fields
+		if c.PostUpdatesToThread != nil && !postUpdatesToThreadSupported(cr) {
+			return fmt.Errorf("receiver %q: slack_configs[%d].post_updates_to_thread requires alertmanager >= %s, got image tag %q; set VM_VMALERTMANAGER_SLACK_POST_UPDATES_TO_THREAD_SUPPORT=true if the image supports it",
+				r.Name, i, postUpdatesToThreadMinVersion.Original(), cr.Spec.Image.Tag)
+		}
+	}
+	return nil
 }
 
 func buildReceiver(
@@ -971,6 +987,9 @@ func buildSlack(gc *globalConfig, rc vmv1beta1.SlackConfig, ns string, ac *build
 	r.set("short_fields", rc.ShortFields)
 	if rc.UpdateMessage != nil {
 		r.set("update_message", rc.UpdateMessage)
+	}
+	if rc.PostUpdatesToThread != nil {
+		r.set("post_updates_to_thread", rc.PostUpdatesToThread)
 	}
 	r.set("mrkdwn_in", rc.MrkdwnIn)
 	var actions []yaml.MapSlice

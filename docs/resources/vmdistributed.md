@@ -159,6 +159,8 @@ spec:
   zoneCommon:
     vmagent:
       spec:
+          nodeSelector:
+            topology.kubernetes.io/zone: %ZONE%
         replicaCount: 1
     vmsingle:
       spec:

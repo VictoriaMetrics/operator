@@ -66,6 +66,9 @@ func (cr *VMNodeScrape) Validate() error {
 	if MustSkipCRValidation(cr) {
 		return nil
 	}
+	if _, err := metav1.LabelSelectorAsSelector(&cr.Spec.Selector); err != nil {
+		return err
+	}
 	return cr.Spec.validate()
 }
 

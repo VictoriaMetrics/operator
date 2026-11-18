@@ -12,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -704,6 +705,42 @@ func TestBuildNotifiers(t *testing.T) {
 		},
 		wantErr: true,
 	})
+}
+
+func TestVMAlertHTTPListeners(t *testing.T) {
+	cr := &vmv1beta1.VMAlert{
+		ObjectMeta: metav1.ObjectMeta{Name: "alert", Namespace: "default"},
+		Spec: vmv1beta1.VMAlertSpec{
+			Datasource: vmv1beta1.VMAlertDatasourceSpec{URL: "http://vmsingle"},
+			CommonAppsParams: vmv1beta1.CommonAppsParams{HTTPListeners: []vmv1beta1.HTTPListener{{
+				Name: "https", Port: 8081, TLS: &vmv1beta1.HTTPListenerTLS{CertFile: "/tls/crt", KeyFile: "/tls/key"},
+			}}},
+		},
+	}
+	cl := k8stools.GetTestClientWithObjects(nil)
+	build.AddDefaults(cl.Scheme())
+	cl.Scheme().Default(cr)
+	ctx := context.Background()
+	ac := getAssetsCache(ctx, cl, cr)
+	pod, err := newPodSpec(cr, nil, ac)
+	if !assert.NoError(t, err) {
+		return
+	}
+	container := pod.Template.Spec.Containers[0]
+	assert.Subset(t, container.Args, []string{
+		"-httpListenAddr=:8080,:8081", "-tls=false,true",
+		"-tlsCertFile=,/tls/crt", "-tlsKeyFile=,/tls/key",
+	})
+	assert.Contains(t, container.Ports, corev1.ContainerPort{Name: "https", Protocol: corev1.ProtocolTCP, ContainerPort: 8081})
+
+	if !assert.NoError(t, createOrUpdateService(ctx, cl, cr, nil)) {
+		return
+	}
+	var svc corev1.Service
+	if !assert.NoError(t, cl.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: cr.Namespace}, &svc)) {
+		return
+	}
+	assert.Contains(t, svc.Spec.Ports, corev1.ServicePort{Name: "https", Protocol: corev1.ProtocolTCP, Port: 8081, TargetPort: intstr.FromInt32(8081)})
 }
 
 func TestCreateOrUpdateService(t *testing.T) {

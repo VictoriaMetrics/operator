@@ -321,7 +321,7 @@ func (cr *VTSingle) Validate() error {
 	if specPort == "" {
 		specPort = "10428"
 	}
-	if err := cr.Spec.GRPCSpec.Validate(specPort); err != nil {
+	if err := cr.Spec.GRPCSpec.Validate(specPort, &cr.Spec.CommonAppsParams); err != nil {
 		return err
 	}
 	if err := cr.Spec.Validate(); err != nil {

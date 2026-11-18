@@ -331,6 +331,44 @@ spec:
                 type: array
               hostNetwork:
                 type: boolean
+              httpListeners:
+                items:
+                  properties:
+                    name:
+                      maxLength: 15
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    port:
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    tls:
+                      properties:
+                        certFile:
+                          minLength: 1
+                          type: string
+                        keyFile:
+                          minLength: 1
+                          type: string
+                        mtls:
+                          type: boolean
+                        mtlsCAFile:
+                          type: string
+                      required:
+                      - certFile
+                      - keyFile
+                      type: object
+                    useProxyProtocol:
+                      type: boolean
+                  required:
+                  - name
+                  - port
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               image:
                 properties:
                   pullPolicy:
@@ -1769,6 +1807,44 @@ spec:
                   hpa:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  httpListeners:
+                    items:
+                      properties:
+                        name:
+                          maxLength: 15
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        tls:
+                          properties:
+                            certFile:
+                              minLength: 1
+                              type: string
+                            keyFile:
+                              minLength: 1
+                              type: string
+                            mtls:
+                              type: boolean
+                            mtlsCAFile:
+                              type: string
+                          required:
+                          - certFile
+                          - keyFile
+                          type: object
+                        useProxyProtocol:
+                          type: boolean
+                      required:
+                      - name
+                      - port
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   image:
                     properties:
                       pullPolicy:
@@ -2563,6 +2639,44 @@ spec:
                   hpa:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  httpListeners:
+                    items:
+                      properties:
+                        name:
+                          maxLength: 15
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        tls:
+                          properties:
+                            certFile:
+                              minLength: 1
+                              type: string
+                            keyFile:
+                              minLength: 1
+                              type: string
+                            mtls:
+                              type: boolean
+                            mtlsCAFile:
+                              type: string
+                          required:
+                          - certFile
+                          - keyFile
+                          type: object
+                        useProxyProtocol:
+                          type: boolean
+                      required:
+                      - name
+                      - port
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   image:
                     properties:
                       pullPolicy:
@@ -3608,6 +3722,44 @@ spec:
                         format: int32
                         type: integer
                     type: object
+                  httpListeners:
+                    items:
+                      properties:
+                        name:
+                          maxLength: 15
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        tls:
+                          properties:
+                            certFile:
+                              minLength: 1
+                              type: string
+                            keyFile:
+                              minLength: 1
+                              type: string
+                            mtls:
+                              type: boolean
+                            mtlsCAFile:
+                              type: string
+                          required:
+                          - certFile
+                          - keyFile
+                          type: object
+                        useProxyProtocol:
+                          type: boolean
+                      required:
+                      - name
+                      - port
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   image:
                     properties:
                       pullPolicy:
@@ -5045,6 +5197,44 @@ spec:
                             format: int32
                             type: integer
                         type: object
+                      httpListeners:
+                        items:
+                          properties:
+                            name:
+                              maxLength: 15
+                              pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                              type: string
+                            port:
+                              format: int32
+                              maximum: 65535
+                              minimum: 1
+                              type: integer
+                            tls:
+                              properties:
+                                certFile:
+                                  minLength: 1
+                                  type: string
+                                keyFile:
+                                  minLength: 1
+                                  type: string
+                                mtls:
+                                  type: boolean
+                                mtlsCAFile:
+                                  type: string
+                              required:
+                              - certFile
+                              - keyFile
+                              type: object
+                            useProxyProtocol:
+                              type: boolean
+                          required:
+                          - name
+                          - port
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - name
+                        x-kubernetes-list-type: map
                       httpRoute:
                         properties:
                           annotations:
@@ -6546,6 +6736,44 @@ spec:
                             type: array
                           hostNetwork:
                             type: boolean
+                          httpListeners:
+                            items:
+                              properties:
+                                name:
+                                  maxLength: 15
+                                  pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                                  type: string
+                                port:
+                                  format: int32
+                                  maximum: 65535
+                                  minimum: 1
+                                  type: integer
+                                tls:
+                                  properties:
+                                    certFile:
+                                      minLength: 1
+                                      type: string
+                                    keyFile:
+                                      minLength: 1
+                                      type: string
+                                    mtls:
+                                      type: boolean
+                                    mtlsCAFile:
+                                      type: string
+                                  required:
+                                  - certFile
+                                  - keyFile
+                                  type: object
+                                useProxyProtocol:
+                                  type: boolean
+                              required:
+                              - name
+                              - port
+                              type: object
+                            type: array
+                            x-kubernetes-list-map-keys:
+                            - name
+                            x-kubernetes-list-type: map
                           image:
                             properties:
                               pullPolicy:
@@ -7525,6 +7753,44 @@ spec:
                               type: array
                             hostNetwork:
                               type: boolean
+                            httpListeners:
+                              items:
+                                properties:
+                                  name:
+                                    maxLength: 15
+                                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                                    type: string
+                                  port:
+                                    format: int32
+                                    maximum: 65535
+                                    minimum: 1
+                                    type: integer
+                                  tls:
+                                    properties:
+                                      certFile:
+                                        minLength: 1
+                                        type: string
+                                      keyFile:
+                                        minLength: 1
+                                        type: string
+                                      mtls:
+                                        type: boolean
+                                      mtlsCAFile:
+                                        type: string
+                                    required:
+                                    - certFile
+                                    - keyFile
+                                    type: object
+                                  useProxyProtocol:
+                                    type: boolean
+                                required:
+                                - name
+                                - port
+                                type: object
+                              type: array
+                              x-kubernetes-list-map-keys:
+                              - name
+                              x-kubernetes-list-type: map
                             image:
                               properties:
                                 pullPolicy:
@@ -8484,6 +8750,44 @@ spec:
                 type: array
               hostNetwork:
                 type: boolean
+              httpListeners:
+                items:
+                  properties:
+                    name:
+                      maxLength: 15
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    port:
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    tls:
+                      properties:
+                        certFile:
+                          minLength: 1
+                          type: string
+                        keyFile:
+                          minLength: 1
+                          type: string
+                        mtls:
+                          type: boolean
+                        mtlsCAFile:
+                          type: string
+                      required:
+                      - certFile
+                      - keyFile
+                      type: object
+                    useProxyProtocol:
+                      type: boolean
+                  required:
+                  - name
+                  - port
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               image:
                 properties:
                   pullPolicy:
@@ -10333,6 +10637,44 @@ spec:
                     format: int32
                     type: integer
                 type: object
+              httpListeners:
+                items:
+                  properties:
+                    name:
+                      maxLength: 15
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    port:
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    tls:
+                      properties:
+                        certFile:
+                          minLength: 1
+                          type: string
+                        keyFile:
+                          minLength: 1
+                          type: string
+                        mtls:
+                          type: boolean
+                        mtlsCAFile:
+                          type: string
+                      required:
+                      - certFile
+                      - keyFile
+                      type: object
+                    useProxyProtocol:
+                      type: boolean
+                  required:
+                  - name
+                  - port
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               ignoreNamespaceSelectors:
                 type: boolean
               image:
@@ -16258,6 +16600,44 @@ spec:
                 type: array
               hostNetwork:
                 type: boolean
+              httpListeners:
+                items:
+                  properties:
+                    name:
+                      maxLength: 15
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    port:
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    tls:
+                      properties:
+                        certFile:
+                          minLength: 1
+                          type: string
+                        keyFile:
+                          minLength: 1
+                          type: string
+                        mtls:
+                          type: boolean
+                        mtlsCAFile:
+                          type: string
+                      required:
+                      - certFile
+                      - keyFile
+                      type: object
+                    useProxyProtocol:
+                      type: boolean
+                  required:
+                  - name
+                  - port
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               image:
                 properties:
                   pullPolicy:
@@ -17602,6 +17982,44 @@ spec:
                 type: array
               hostNetwork:
                 type: boolean
+              httpListeners:
+                items:
+                  properties:
+                    name:
+                      maxLength: 15
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    port:
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    tls:
+                      properties:
+                        certFile:
+                          minLength: 1
+                          type: string
+                        keyFile:
+                          minLength: 1
+                          type: string
+                        mtls:
+                          type: boolean
+                        mtlsCAFile:
+                          type: string
+                      required:
+                      - certFile
+                      - keyFile
+                      type: object
+                    useProxyProtocol:
+                      type: boolean
+                  required:
+                  - name
+                  - port
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               image:
                 properties:
                   pullPolicy:
@@ -19117,6 +19535,44 @@ spec:
                 type: array
               hostNetwork:
                 type: boolean
+              httpListeners:
+                items:
+                  properties:
+                    name:
+                      maxLength: 15
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    port:
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    tls:
+                      properties:
+                        certFile:
+                          minLength: 1
+                          type: string
+                        keyFile:
+                          minLength: 1
+                          type: string
+                        mtls:
+                          type: boolean
+                        mtlsCAFile:
+                          type: string
+                      required:
+                      - certFile
+                      - keyFile
+                      type: object
+                    useProxyProtocol:
+                      type: boolean
+                  required:
+                  - name
+                  - port
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               image:
                 properties:
                   pullPolicy:
@@ -21340,6 +21796,44 @@ spec:
                     format: int32
                     type: integer
                 type: object
+              httpListeners:
+                items:
+                  properties:
+                    name:
+                      maxLength: 15
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    port:
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    tls:
+                      properties:
+                        certFile:
+                          minLength: 1
+                          type: string
+                        keyFile:
+                          minLength: 1
+                          type: string
+                        mtls:
+                          type: boolean
+                        mtlsCAFile:
+                          type: string
+                      required:
+                      - certFile
+                      - keyFile
+                      type: object
+                    useProxyProtocol:
+                      type: boolean
+                  required:
+                  - name
+                  - port
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               httpRoute:
                 properties:
                   annotations:
@@ -22862,6 +23356,44 @@ spec:
                   hpa:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  httpListeners:
+                    items:
+                      properties:
+                        name:
+                          maxLength: 15
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        tls:
+                          properties:
+                            certFile:
+                              minLength: 1
+                              type: string
+                            keyFile:
+                              minLength: 1
+                              type: string
+                            mtls:
+                              type: boolean
+                            mtlsCAFile:
+                              type: string
+                          required:
+                          - certFile
+                          - keyFile
+                          type: object
+                        useProxyProtocol:
+                          type: boolean
+                      required:
+                      - name
+                      - port
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   image:
                     properties:
                       pullPolicy:
@@ -23599,6 +24131,44 @@ spec:
                   hpa:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  httpListeners:
+                    items:
+                      properties:
+                        name:
+                          maxLength: 15
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        tls:
+                          properties:
+                            certFile:
+                              minLength: 1
+                              type: string
+                            keyFile:
+                              minLength: 1
+                              type: string
+                            mtls:
+                              type: boolean
+                            mtlsCAFile:
+                              type: string
+                          required:
+                          - certFile
+                          - keyFile
+                          type: object
+                        useProxyProtocol:
+                          type: boolean
+                      required:
+                      - name
+                      - port
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   image:
                     properties:
                       pullPolicy:
@@ -24863,6 +25433,44 @@ spec:
                         format: int32
                         type: integer
                     type: object
+                  httpListeners:
+                    items:
+                      properties:
+                        name:
+                          maxLength: 15
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        tls:
+                          properties:
+                            certFile:
+                              minLength: 1
+                              type: string
+                            keyFile:
+                              minLength: 1
+                              type: string
+                            mtls:
+                              type: boolean
+                            mtlsCAFile:
+                              type: string
+                          required:
+                          - certFile
+                          - keyFile
+                          type: object
+                        useProxyProtocol:
+                          type: boolean
+                      required:
+                      - name
+                      - port
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   image:
                     properties:
                       pullPolicy:
@@ -26552,6 +27160,44 @@ spec:
                             format: int32
                             type: integer
                         type: object
+                      httpListeners:
+                        items:
+                          properties:
+                            name:
+                              maxLength: 15
+                              pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                              type: string
+                            port:
+                              format: int32
+                              maximum: 65535
+                              minimum: 1
+                              type: integer
+                            tls:
+                              properties:
+                                certFile:
+                                  minLength: 1
+                                  type: string
+                                keyFile:
+                                  minLength: 1
+                                  type: string
+                                mtls:
+                                  type: boolean
+                                mtlsCAFile:
+                                  type: string
+                              required:
+                              - certFile
+                              - keyFile
+                              type: object
+                            useProxyProtocol:
+                              type: boolean
+                          required:
+                          - name
+                          - port
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - name
+                        x-kubernetes-list-type: map
                       httpRoute:
                         properties:
                           annotations:
@@ -28397,6 +29043,44 @@ spec:
                                 format: int32
                                 type: integer
                             type: object
+                          httpListeners:
+                            items:
+                              properties:
+                                name:
+                                  maxLength: 15
+                                  pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                                  type: string
+                                port:
+                                  format: int32
+                                  maximum: 65535
+                                  minimum: 1
+                                  type: integer
+                                tls:
+                                  properties:
+                                    certFile:
+                                      minLength: 1
+                                      type: string
+                                    keyFile:
+                                      minLength: 1
+                                      type: string
+                                    mtls:
+                                      type: boolean
+                                    mtlsCAFile:
+                                      type: string
+                                  required:
+                                  - certFile
+                                  - keyFile
+                                  type: object
+                                useProxyProtocol:
+                                  type: boolean
+                              required:
+                              - name
+                              - port
+                              type: object
+                            type: array
+                            x-kubernetes-list-map-keys:
+                            - name
+                            x-kubernetes-list-type: map
                           image:
                             properties:
                               pullPolicy:
@@ -29614,6 +30298,44 @@ spec:
                                   format: int32
                                   type: integer
                               type: object
+                            httpListeners:
+                              items:
+                                properties:
+                                  name:
+                                    maxLength: 15
+                                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                                    type: string
+                                  port:
+                                    format: int32
+                                    maximum: 65535
+                                    minimum: 1
+                                    type: integer
+                                  tls:
+                                    properties:
+                                      certFile:
+                                        minLength: 1
+                                        type: string
+                                      keyFile:
+                                        minLength: 1
+                                        type: string
+                                      mtls:
+                                        type: boolean
+                                      mtlsCAFile:
+                                        type: string
+                                    required:
+                                    - certFile
+                                    - keyFile
+                                    type: object
+                                  useProxyProtocol:
+                                    type: boolean
+                                required:
+                                - name
+                                - port
+                                type: object
+                              type: array
+                              x-kubernetes-list-map-keys:
+                              - name
+                              x-kubernetes-list-type: map
                             image:
                               properties:
                                 pullPolicy:
@@ -40457,6 +41179,44 @@ spec:
                 type: array
               hostNetwork:
                 type: boolean
+              httpListeners:
+                items:
+                  properties:
+                    name:
+                      maxLength: 15
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    port:
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    tls:
+                      properties:
+                        certFile:
+                          minLength: 1
+                          type: string
+                        keyFile:
+                          minLength: 1
+                          type: string
+                        mtls:
+                          type: boolean
+                        mtlsCAFile:
+                          type: string
+                      required:
+                      - certFile
+                      - keyFile
+                      type: object
+                    useProxyProtocol:
+                      type: boolean
+                  required:
+                  - name
+                  - port
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               ignoreNamespaceSelectors:
                 type: boolean
               image:
@@ -44028,6 +44788,44 @@ spec:
                 type: array
               hostNetwork:
                 type: boolean
+              httpListeners:
+                items:
+                  properties:
+                    name:
+                      maxLength: 15
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    port:
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    tls:
+                      properties:
+                        certFile:
+                          minLength: 1
+                          type: string
+                        keyFile:
+                          minLength: 1
+                          type: string
+                        mtls:
+                          type: boolean
+                        mtlsCAFile:
+                          type: string
+                      required:
+                      - certFile
+                      - keyFile
+                      type: object
+                    useProxyProtocol:
+                      type: boolean
+                  required:
+                  - name
+                  - port
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               image:
                 properties:
                   pullPolicy:
@@ -45879,6 +46677,44 @@ spec:
                   hpa:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  httpListeners:
+                    items:
+                      properties:
+                        name:
+                          maxLength: 15
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        tls:
+                          properties:
+                            certFile:
+                              minLength: 1
+                              type: string
+                            keyFile:
+                              minLength: 1
+                              type: string
+                            mtls:
+                              type: boolean
+                            mtlsCAFile:
+                              type: string
+                          required:
+                          - certFile
+                          - keyFile
+                          type: object
+                        useProxyProtocol:
+                          type: boolean
+                      required:
+                      - name
+                      - port
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   image:
                     properties:
                       pullPolicy:
@@ -46609,6 +47445,44 @@ spec:
                   hpa:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  httpListeners:
+                    items:
+                      properties:
+                        name:
+                          maxLength: 15
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        tls:
+                          properties:
+                            certFile:
+                              minLength: 1
+                              type: string
+                            keyFile:
+                              minLength: 1
+                              type: string
+                            mtls:
+                              type: boolean
+                            mtlsCAFile:
+                              type: string
+                          required:
+                          - certFile
+                          - keyFile
+                          type: object
+                        useProxyProtocol:
+                          type: boolean
+                      required:
+                      - name
+                      - port
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   image:
                     properties:
                       pullPolicy:
@@ -47656,6 +48530,44 @@ spec:
                         format: int32
                         type: integer
                     type: object
+                  httpListeners:
+                    items:
+                      properties:
+                        name:
+                          maxLength: 15
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        tls:
+                          properties:
+                            certFile:
+                              minLength: 1
+                              type: string
+                            keyFile:
+                              minLength: 1
+                              type: string
+                            mtls:
+                              type: boolean
+                            mtlsCAFile:
+                              type: string
+                          required:
+                          - certFile
+                          - keyFile
+                          type: object
+                        useProxyProtocol:
+                          type: boolean
+                      required:
+                      - name
+                      - port
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   image:
                     properties:
                       pullPolicy:
@@ -48538,6 +49450,44 @@ spec:
                 type: array
               hostNetwork:
                 type: boolean
+              httpListeners:
+                items:
+                  properties:
+                    name:
+                      maxLength: 15
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    port:
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    tls:
+                      properties:
+                        certFile:
+                          minLength: 1
+                          type: string
+                        keyFile:
+                          minLength: 1
+                          type: string
+                        mtls:
+                          type: boolean
+                        mtlsCAFile:
+                          type: string
+                      required:
+                      - certFile
+                      - keyFile
+                      type: object
+                    useProxyProtocol:
+                      type: boolean
+                  required:
+                  - name
+                  - port
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               image:
                 properties:
                   pullPolicy:

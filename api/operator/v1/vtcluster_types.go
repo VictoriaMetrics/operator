@@ -677,7 +677,7 @@ func (cr *VTCluster) Validate() error {
 		if vti.Port != "" {
 			insertPort = vti.Port
 		}
-		if err := vti.GRPCSpec.Validate(insertPort); err != nil {
+		if err := vti.GRPCSpec.Validate(insertPort, &vti.CommonAppsParams); err != nil {
 			return fmt.Errorf("insert: %w", err)
 		}
 		if err := vti.Validate(); err != nil {
@@ -746,6 +746,9 @@ func (cr *VTCluster) Validate() error {
 		name := cr.PrefixedName(vmv1beta1.ClusterComponentBalancer)
 		if rlb.AdditionalServiceSpec != nil && rlb.AdditionalServiceSpec.Name == name {
 			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
+		}
+		if err := rlb.Validate(); err != nil {
+			return fmt.Errorf("requestsLoadBalancer: %w", err)
 		}
 	}
 

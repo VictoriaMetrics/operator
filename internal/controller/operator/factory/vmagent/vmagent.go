@@ -77,6 +77,7 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil {
 		prevSvc = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
+			build.AddHTTPListenerServicePorts(svc, prevCR.Spec.HTTPListeners)
 			if prevCR.Spec.StatefulMode {
 				svc.Spec.ClusterIP = "None"
 			}
@@ -85,6 +86,7 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 		prevAdditionalSvc = build.AdditionalServiceFromDefault(prevSvc, cr.Spec.ServiceSpec)
 	}
 	svc := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
+		build.AddHTTPListenerServicePorts(svc, cr.Spec.HTTPListeners)
 		if cr.Spec.StatefulMode {
 			svc.Spec.ClusterIP = "None"
 		}
@@ -570,6 +572,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretC
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
+	ports = build.AddHTTPListenerPorts(ports, cr.Spec.HTTPListeners)
 	ports = build.AppendInsertPorts(ports, cr.Spec.InsertPorts)
 
 	var crMounts []corev1.VolumeMount
@@ -709,6 +712,7 @@ func newPodSpec(cr *vmv1beta1.VMAgent, ac *build.AssetsCache, extraConfigSecretC
 
 	args = build.AppendArgsForInsertPorts(args, cr.Spec.InsertPorts)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
+	args = build.AddHTTPListenerArgs(args, cr.Spec.HTTPListeners)
 	build.SortArgs(args)
 
 	vmagentContainer := corev1.Container{

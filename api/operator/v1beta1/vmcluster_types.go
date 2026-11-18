@@ -439,6 +439,18 @@ type InsertPorts struct {
 	OpenTSDBPort string `json:"openTSDBPort,omitempty"`
 }
 
+func (ip *InsertPorts) namedPorts() []namedPort {
+	if ip == nil {
+		return nil
+	}
+	return []namedPort{
+		{"insertPorts.graphitePort", ip.GraphitePort},
+		{"insertPorts.influxPort", ip.InfluxPort},
+		{"insertPorts.openTSDBHTTPPort", ip.OpenTSDBHTTPPort},
+		{"insertPorts.openTSDBPort", ip.OpenTSDBPort},
+	}
+}
+
 type VMInsert struct {
 	// ComponentVersion defines default images tag for this component.
 	// it can be overwritten with component specific image.tag value.
@@ -791,6 +803,9 @@ func (cr *VMCluster) Validate() error {
 		if err := vms.Validate(); err != nil {
 			return fmt.Errorf("vmselect: %w", err)
 		}
+		if err := vms.validateListenerConflicts(namedPort{"clusterNativeListenPort", vms.ClusterNativePort}); err != nil {
+			return fmt.Errorf("vmselect: %w", err)
+		}
 		storageNodes := sets.New[string]()
 		if cr.Spec.VMStorage != nil && !vms.Discovery.OrDefault(cr.Spec.Discovery).enabled() {
 			storageName := cr.PrefixedName(ClusterComponentStorage)
@@ -836,6 +851,10 @@ func (cr *VMCluster) Validate() error {
 		if err := vmi.Validate(); err != nil {
 			return fmt.Errorf("vminsert: %w", err)
 		}
+		insertPorts := append(vmi.InsertPorts.namedPorts(), namedPort{"clusterNativeListenPort", vmi.ClusterNativePort})
+		if err := vmi.validateListenerConflicts(insertPorts...); err != nil {
+			return fmt.Errorf("vminsert: %w", err)
+		}
 	}
 	if err := cr.Spec.Downsampling.validate(cr.Spec.License); err != nil {
 		return err
@@ -872,6 +891,13 @@ func (cr *VMCluster) Validate() error {
 			}
 		}
 		if err := vms.Validate(); err != nil {
+			return fmt.Errorf("vmstorage: %w", err)
+		}
+		storagePorts := []namedPort{{"vmInsertPort", vms.VMInsertPort}, {"vmSelectPort", vms.VMSelectPort}}
+		if vms.VMBackup != nil {
+			storagePorts = append(storagePorts, namedPort{"vmBackup.port", vms.VMBackup.Port})
+		}
+		if err := vms.validateListenerConflicts(storagePorts...); err != nil {
 			return fmt.Errorf("vmstorage: %w", err)
 		}
 	}

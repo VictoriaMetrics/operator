@@ -527,7 +527,10 @@ func (cr *VMAuth) Validate() error {
 	if err := cr.Spec.Validate(); err != nil {
 		return err
 	}
-	return nil
+	return cr.Spec.validateListenerConflicts(
+		namedPort{"internalListenPort", cr.Spec.InternalListenPort},
+		cr.Spec.configReloaderPort(),
+	)
 }
 
 // EmbeddedHTTPRoute describes httproute configuration options.

@@ -421,7 +421,7 @@ func (cr *VMAlert) Validate() error {
 	if err := cr.Spec.Validate(); err != nil {
 		return err
 	}
-	return nil
+	return cr.Spec.validateListenerConflicts(cr.Spec.configReloaderPort())
 }
 
 func (cr *VMAlert) SelectorLabels() map[string]string {

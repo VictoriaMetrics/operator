@@ -252,7 +252,7 @@ func (cr *VMAgent) Validate() error {
 	if err := cr.Spec.Validate(); err != nil {
 		return err
 	}
-	return nil
+	return cr.Spec.validateListenerConflicts(append(cr.Spec.InsertPorts.namedPorts(), cr.Spec.configReloaderPort())...)
 }
 
 // IsSharded returns true if sharding is enabled

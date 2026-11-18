@@ -1163,17 +1163,6 @@ func TestBuildConfigReloaderContainer(t *testing.T) {
 	})
 }
 
-func TestConfigReloaderHTTPPort(t *testing.T) {
-	assert.Equal(t, int32(8435), configReloaderHTTPPort(nil))
-	assert.Equal(t, int32(8435), configReloaderHTTPPort(map[string]string{}))
-	assert.Equal(t, int32(8436), configReloaderHTTPPort(map[string]string{"http.listenAddr": "127.0.0.1:8436"}))
-	assert.Equal(t, int32(8436), configReloaderHTTPPort(map[string]string{"http.listenAddr": ":8436"}))
-	assert.Equal(t, int32(8437), configReloaderHTTPPort(map[string]string{"http.listenAddr": "[::1]:8437"}))
-	assert.Equal(t, int32(8435), configReloaderHTTPPort(map[string]string{"http.listenAddr": "hostname-only"}))
-	assert.Equal(t, int32(8435), configReloaderHTTPPort(map[string]string{"http.listenAddr": "127.0.0.1:0"}))
-	assert.Equal(t, int32(8435), configReloaderHTTPPort(map[string]string{"http.listenAddr": "127.0.0.1:70000"}))
-}
-
 func TestConfigReloaderWatchTargetPairing(t *testing.T) {
 	type watchTarget struct {
 		mountPath string

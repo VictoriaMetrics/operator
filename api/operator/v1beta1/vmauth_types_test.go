@@ -130,6 +130,33 @@ spec:
 	})
 }
 
+func TestVMAuthValidateHTTPListenerInternalPort(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		internalPort string
+		wantErr      string
+	}{
+		{"colliding ports", "8428", "httpListeners name=\"extra\" port=8428 conflicts with internalListenPort"},
+		{"distinct ports", "8429", ""},
+		{"no internal listener", "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cr := &VMAuth{Spec: VMAuthSpec{
+				InternalListenPort: tc.internalPort,
+				CommonAppsParams: CommonAppsParams{
+					Port:          "8427",
+					HTTPListeners: []HTTPListener{{Name: "extra", Port: 8428}},
+				},
+			}}
+			if tc.wantErr == "" {
+				assert.NoError(t, cr.Validate())
+			} else {
+				assert.ErrorContains(t, cr.Validate(), tc.wantErr)
+			}
+		})
+	}
+}
+
 func TestVMAuth_PrefixedName(t *testing.T) {
 	f := func(name string, omit bool, want string) {
 		t.Helper()

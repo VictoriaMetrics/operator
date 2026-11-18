@@ -2,7 +2,6 @@ package build
 
 import (
 	"fmt"
-	"net"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -365,24 +364,6 @@ const (
 	ConfigReloaderPortName = "reloader-http"
 )
 
-// configReloaderHTTPPort returns the HTTP listen port from ConfigReloaderExtraArgs["http.listenAddr"]
-// (forms :PORT, IP:PORT, [IPv6]:PORT). Missing or invalid values fall back to ConfigReloaderDefaultPort.
-func configReloaderHTTPPort(extraArgs map[string]string) int32 {
-	addr, ok := extraArgs["http.listenAddr"]
-	if !ok || addr == "" {
-		return ConfigReloaderDefaultPort
-	}
-	_, portStr, err := net.SplitHostPort(addr)
-	if err != nil {
-		return ConfigReloaderDefaultPort
-	}
-	port, err := strconv.Atoi(portStr)
-	if err != nil || port < 1 || port > 65535 {
-		return ConfigReloaderDefaultPort
-	}
-	return int32(port)
-}
-
 func configReloaderJobRelabeling() vmv1beta1.EndpointRelabelings {
 	return vmv1beta1.EndpointRelabelings{
 		RelabelConfigs: []*vmv1beta1.RelabelConfig{
@@ -510,7 +491,8 @@ func ConfigReloaderContainer(opts ConfigReloaderOpts) corev1.Container {
 	if !opts.IsInit {
 		c.Name = "config-reloader"
 		c.TerminationMessagePolicy = corev1.TerminationMessageFallbackToLogsOnError
-		addPortProbesToConfigReloaderContainer(&c, configReloaderHTTPPort(p.ConfigReloaderExtraArgs))
+		port, _ := strconv.ParseInt(p.ConfigReloaderPort(), 10, 32)
+		addPortProbesToConfigReloaderContainer(&c, int32(port))
 		addConfigReloadAuthKeyToReloader(&c, p)
 	}
 	return c

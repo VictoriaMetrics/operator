@@ -703,6 +703,59 @@ spec:
                 description: HostNetwork controls whether the pod may use the node
                   network namespace
                 type: boolean
+              httpListeners:
+                description: |-
+                  HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                  Ignored by VMAlertmanager and VMAnomaly.
+                items:
+                  description: HTTPListener defines an additional HTTP listener
+                  properties:
+                    name:
+                      description: Name of the container port and service port
+                      maxLength: 15
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    port:
+                      description: Port to listen on
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    tls:
+                      description: TLS enables TLS for the listener
+                      properties:
+                        certFile:
+                          description: CertFile is a path to the TLS certificate file
+                          minLength: 1
+                          type: string
+                        keyFile:
+                          description: KeyFile is a path to the TLS key file
+                          minLength: 1
+                          type: string
+                        mtls:
+                          description: MTLS enables client certificate verification.
+                            Enterprise feature
+                          type: boolean
+                        mtlsCAFile:
+                          description: MTLSCAFile is a path to the CA file for client
+                            certificate verification, system CAs are used if empty
+                          type: string
+                      required:
+                      - certFile
+                      - keyFile
+                      type: object
+                    useProxyProtocol:
+                      description: UseProxyProtocol enables PROXY protocol for the
+                        listener
+                      type: boolean
+                  required:
+                  - name
+                  - port
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               image:
                 description: |-
                   Image - docker image settings
@@ -3573,6 +3626,61 @@ spec:
                     description: Configures horizontal pod autoscaling.
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  httpListeners:
+                    description: |-
+                      HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                      Ignored by VMAlertmanager and VMAnomaly.
+                    items:
+                      description: HTTPListener defines an additional HTTP listener
+                      properties:
+                        name:
+                          description: Name of the container port and service port
+                          maxLength: 15
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          description: Port to listen on
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        tls:
+                          description: TLS enables TLS for the listener
+                          properties:
+                            certFile:
+                              description: CertFile is a path to the TLS certificate
+                                file
+                              minLength: 1
+                              type: string
+                            keyFile:
+                              description: KeyFile is a path to the TLS key file
+                              minLength: 1
+                              type: string
+                            mtls:
+                              description: MTLS enables client certificate verification.
+                                Enterprise feature
+                              type: boolean
+                            mtlsCAFile:
+                              description: MTLSCAFile is a path to the CA file for
+                                client certificate verification, system CAs are used
+                                if empty
+                              type: string
+                          required:
+                          - certFile
+                          - keyFile
+                          type: object
+                        useProxyProtocol:
+                          description: UseProxyProtocol enables PROXY protocol for
+                            the listener
+                          type: boolean
+                      required:
+                      - name
+                      - port
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   image:
                     description: |-
                       Image - docker image settings
@@ -5146,6 +5254,61 @@ spec:
                     description: Configures horizontal pod autoscaling.
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  httpListeners:
+                    description: |-
+                      HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                      Ignored by VMAlertmanager and VMAnomaly.
+                    items:
+                      description: HTTPListener defines an additional HTTP listener
+                      properties:
+                        name:
+                          description: Name of the container port and service port
+                          maxLength: 15
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          description: Port to listen on
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        tls:
+                          description: TLS enables TLS for the listener
+                          properties:
+                            certFile:
+                              description: CertFile is a path to the TLS certificate
+                                file
+                              minLength: 1
+                              type: string
+                            keyFile:
+                              description: KeyFile is a path to the TLS key file
+                              minLength: 1
+                              type: string
+                            mtls:
+                              description: MTLS enables client certificate verification.
+                                Enterprise feature
+                              type: boolean
+                            mtlsCAFile:
+                              description: MTLSCAFile is a path to the CA file for
+                                client certificate verification, system CAs are used
+                                if empty
+                              type: string
+                          required:
+                          - certFile
+                          - keyFile
+                          type: object
+                        useProxyProtocol:
+                          description: UseProxyProtocol enables PROXY protocol for
+                            the listener
+                          type: boolean
+                      required:
+                      - name
+                      - port
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   image:
                     description: |-
                       Image - docker image settings
@@ -7173,6 +7336,61 @@ spec:
                         format: int32
                         type: integer
                     type: object
+                  httpListeners:
+                    description: |-
+                      HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                      Ignored by VMAlertmanager and VMAnomaly.
+                    items:
+                      description: HTTPListener defines an additional HTTP listener
+                      properties:
+                        name:
+                          description: Name of the container port and service port
+                          maxLength: 15
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          description: Port to listen on
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        tls:
+                          description: TLS enables TLS for the listener
+                          properties:
+                            certFile:
+                              description: CertFile is a path to the TLS certificate
+                                file
+                              minLength: 1
+                              type: string
+                            keyFile:
+                              description: KeyFile is a path to the TLS key file
+                              minLength: 1
+                              type: string
+                            mtls:
+                              description: MTLS enables client certificate verification.
+                                Enterprise feature
+                              type: boolean
+                            mtlsCAFile:
+                              description: MTLSCAFile is a path to the CA file for
+                                client certificate verification, system CAs are used
+                                if empty
+                              type: string
+                          required:
+                          - certFile
+                          - keyFile
+                          type: object
+                        useProxyProtocol:
+                          description: UseProxyProtocol enables PROXY protocol for
+                            the listener
+                          type: boolean
+                      required:
+                      - name
+                      - port
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   image:
                     description: |-
                       Image - docker image settings
@@ -9922,6 +10140,62 @@ spec:
                             format: int32
                             type: integer
                         type: object
+                      httpListeners:
+                        description: |-
+                          HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                          Ignored by VMAlertmanager and VMAnomaly.
+                        items:
+                          description: HTTPListener defines an additional HTTP listener
+                          properties:
+                            name:
+                              description: Name of the container port and service
+                                port
+                              maxLength: 15
+                              pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                              type: string
+                            port:
+                              description: Port to listen on
+                              format: int32
+                              maximum: 65535
+                              minimum: 1
+                              type: integer
+                            tls:
+                              description: TLS enables TLS for the listener
+                              properties:
+                                certFile:
+                                  description: CertFile is a path to the TLS certificate
+                                    file
+                                  minLength: 1
+                                  type: string
+                                keyFile:
+                                  description: KeyFile is a path to the TLS key file
+                                  minLength: 1
+                                  type: string
+                                mtls:
+                                  description: MTLS enables client certificate verification.
+                                    Enterprise feature
+                                  type: boolean
+                                mtlsCAFile:
+                                  description: MTLSCAFile is a path to the CA file
+                                    for client certificate verification, system CAs
+                                    are used if empty
+                                  type: string
+                              required:
+                              - certFile
+                              - keyFile
+                              type: object
+                            useProxyProtocol:
+                              description: UseProxyProtocol enables PROXY protocol
+                                for the listener
+                              type: boolean
+                          required:
+                          - name
+                          - port
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - name
+                        x-kubernetes-list-type: map
                       httpRoute:
                         description: HTTPRoute enables httproute configuration for
                           VMAuth.
@@ -13106,6 +13380,64 @@ spec:
                             description: HostNetwork controls whether the pod may
                               use the node network namespace
                             type: boolean
+                          httpListeners:
+                            description: |-
+                              HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                              Ignored by VMAlertmanager and VMAnomaly.
+                            items:
+                              description: HTTPListener defines an additional HTTP
+                                listener
+                              properties:
+                                name:
+                                  description: Name of the container port and service
+                                    port
+                                  maxLength: 15
+                                  pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                                  type: string
+                                port:
+                                  description: Port to listen on
+                                  format: int32
+                                  maximum: 65535
+                                  minimum: 1
+                                  type: integer
+                                tls:
+                                  description: TLS enables TLS for the listener
+                                  properties:
+                                    certFile:
+                                      description: CertFile is a path to the TLS certificate
+                                        file
+                                      minLength: 1
+                                      type: string
+                                    keyFile:
+                                      description: KeyFile is a path to the TLS key
+                                        file
+                                      minLength: 1
+                                      type: string
+                                    mtls:
+                                      description: MTLS enables client certificate
+                                        verification. Enterprise feature
+                                      type: boolean
+                                    mtlsCAFile:
+                                      description: MTLSCAFile is a path to the CA
+                                        file for client certificate verification,
+                                        system CAs are used if empty
+                                      type: string
+                                  required:
+                                  - certFile
+                                  - keyFile
+                                  type: object
+                                useProxyProtocol:
+                                  description: UseProxyProtocol enables PROXY protocol
+                                    for the listener
+                                  type: boolean
+                              required:
+                              - name
+                              - port
+                              type: object
+                            type: array
+                            x-kubernetes-list-map-keys:
+                            - name
+                            x-kubernetes-list-type: map
                           image:
                             description: |-
                               Image - docker image settings
@@ -15252,6 +15584,64 @@ spec:
                               description: HostNetwork controls whether the pod may
                                 use the node network namespace
                               type: boolean
+                            httpListeners:
+                              description: |-
+                                HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                                Ignored by VMAlertmanager and VMAnomaly.
+                              items:
+                                description: HTTPListener defines an additional HTTP
+                                  listener
+                                properties:
+                                  name:
+                                    description: Name of the container port and service
+                                      port
+                                    maxLength: 15
+                                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                                    type: string
+                                  port:
+                                    description: Port to listen on
+                                    format: int32
+                                    maximum: 65535
+                                    minimum: 1
+                                    type: integer
+                                  tls:
+                                    description: TLS enables TLS for the listener
+                                    properties:
+                                      certFile:
+                                        description: CertFile is a path to the TLS
+                                          certificate file
+                                        minLength: 1
+                                        type: string
+                                      keyFile:
+                                        description: KeyFile is a path to the TLS
+                                          key file
+                                        minLength: 1
+                                        type: string
+                                      mtls:
+                                        description: MTLS enables client certificate
+                                          verification. Enterprise feature
+                                        type: boolean
+                                      mtlsCAFile:
+                                        description: MTLSCAFile is a path to the CA
+                                          file for client certificate verification,
+                                          system CAs are used if empty
+                                        type: string
+                                    required:
+                                    - certFile
+                                    - keyFile
+                                    type: object
+                                  useProxyProtocol:
+                                    description: UseProxyProtocol enables PROXY protocol
+                                      for the listener
+                                    type: boolean
+                                required:
+                                - name
+                                - port
+                                type: object
+                              type: array
+                              x-kubernetes-list-map-keys:
+                              - name
+                              x-kubernetes-list-type: map
                             image:
                               description: |-
                                 Image - docker image settings
@@ -17177,6 +17567,59 @@ spec:
                 description: HostNetwork controls whether the pod may use the node
                   network namespace
                 type: boolean
+              httpListeners:
+                description: |-
+                  HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                  Ignored by VMAlertmanager and VMAnomaly.
+                items:
+                  description: HTTPListener defines an additional HTTP listener
+                  properties:
+                    name:
+                      description: Name of the container port and service port
+                      maxLength: 15
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    port:
+                      description: Port to listen on
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    tls:
+                      description: TLS enables TLS for the listener
+                      properties:
+                        certFile:
+                          description: CertFile is a path to the TLS certificate file
+                          minLength: 1
+                          type: string
+                        keyFile:
+                          description: KeyFile is a path to the TLS key file
+                          minLength: 1
+                          type: string
+                        mtls:
+                          description: MTLS enables client certificate verification.
+                            Enterprise feature
+                          type: boolean
+                        mtlsCAFile:
+                          description: MTLSCAFile is a path to the CA file for client
+                            certificate verification, system CAs are used if empty
+                          type: string
+                      required:
+                      - certFile
+                      - keyFile
+                      type: object
+                    useProxyProtocol:
+                      description: UseProxyProtocol enables PROXY protocol for the
+                        listener
+                      type: boolean
+                  required:
+                  - name
+                  - port
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               image:
                 description: |-
                   Image - docker image settings
@@ -20858,6 +21301,59 @@ spec:
                     format: int32
                     type: integer
                 type: object
+              httpListeners:
+                description: |-
+                  HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                  Ignored by VMAlertmanager and VMAnomaly.
+                items:
+                  description: HTTPListener defines an additional HTTP listener
+                  properties:
+                    name:
+                      description: Name of the container port and service port
+                      maxLength: 15
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    port:
+                      description: Port to listen on
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    tls:
+                      description: TLS enables TLS for the listener
+                      properties:
+                        certFile:
+                          description: CertFile is a path to the TLS certificate file
+                          minLength: 1
+                          type: string
+                        keyFile:
+                          description: KeyFile is a path to the TLS key file
+                          minLength: 1
+                          type: string
+                        mtls:
+                          description: MTLS enables client certificate verification.
+                            Enterprise feature
+                          type: boolean
+                        mtlsCAFile:
+                          description: MTLSCAFile is a path to the CA file for client
+                            certificate verification, system CAs are used if empty
+                          type: string
+                      required:
+                      - certFile
+                      - keyFile
+                      type: object
+                    useProxyProtocol:
+                      description: UseProxyProtocol enables PROXY protocol for the
+                        listener
+                      type: boolean
+                  required:
+                  - name
+                  - port
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               ignoreNamespaceSelectors:
                 description: |-
                   IgnoreNamespaceSelectors if set to true will ignore NamespaceSelector settings from
@@ -32328,6 +32824,59 @@ spec:
                 description: HostNetwork controls whether the pod may use the node
                   network namespace
                 type: boolean
+              httpListeners:
+                description: |-
+                  HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                  Ignored by VMAlertmanager and VMAnomaly.
+                items:
+                  description: HTTPListener defines an additional HTTP listener
+                  properties:
+                    name:
+                      description: Name of the container port and service port
+                      maxLength: 15
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    port:
+                      description: Port to listen on
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    tls:
+                      description: TLS enables TLS for the listener
+                      properties:
+                        certFile:
+                          description: CertFile is a path to the TLS certificate file
+                          minLength: 1
+                          type: string
+                        keyFile:
+                          description: KeyFile is a path to the TLS key file
+                          minLength: 1
+                          type: string
+                        mtls:
+                          description: MTLS enables client certificate verification.
+                            Enterprise feature
+                          type: boolean
+                        mtlsCAFile:
+                          description: MTLSCAFile is a path to the CA file for client
+                            certificate verification, system CAs are used if empty
+                          type: string
+                      required:
+                      - certFile
+                      - keyFile
+                      type: object
+                    useProxyProtocol:
+                      description: UseProxyProtocol enables PROXY protocol for the
+                        listener
+                      type: boolean
+                  required:
+                  - name
+                  - port
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               image:
                 description: |-
                   Image - docker image settings
@@ -35007,6 +35556,59 @@ spec:
                 description: HostNetwork controls whether the pod may use the node
                   network namespace
                 type: boolean
+              httpListeners:
+                description: |-
+                  HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                  Ignored by VMAlertmanager and VMAnomaly.
+                items:
+                  description: HTTPListener defines an additional HTTP listener
+                  properties:
+                    name:
+                      description: Name of the container port and service port
+                      maxLength: 15
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    port:
+                      description: Port to listen on
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    tls:
+                      description: TLS enables TLS for the listener
+                      properties:
+                        certFile:
+                          description: CertFile is a path to the TLS certificate file
+                          minLength: 1
+                          type: string
+                        keyFile:
+                          description: KeyFile is a path to the TLS key file
+                          minLength: 1
+                          type: string
+                        mtls:
+                          description: MTLS enables client certificate verification.
+                            Enterprise feature
+                          type: boolean
+                        mtlsCAFile:
+                          description: MTLSCAFile is a path to the CA file for client
+                            certificate verification, system CAs are used if empty
+                          type: string
+                      required:
+                      - certFile
+                      - keyFile
+                      type: object
+                    useProxyProtocol:
+                      description: UseProxyProtocol enables PROXY protocol for the
+                        listener
+                      type: boolean
+                  required:
+                  - name
+                  - port
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               image:
                 description: |-
                   Image - docker image settings
@@ -38009,6 +38611,59 @@ spec:
                 description: HostNetwork controls whether the pod may use the node
                   network namespace
                 type: boolean
+              httpListeners:
+                description: |-
+                  HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                  Ignored by VMAlertmanager and VMAnomaly.
+                items:
+                  description: HTTPListener defines an additional HTTP listener
+                  properties:
+                    name:
+                      description: Name of the container port and service port
+                      maxLength: 15
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    port:
+                      description: Port to listen on
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    tls:
+                      description: TLS enables TLS for the listener
+                      properties:
+                        certFile:
+                          description: CertFile is a path to the TLS certificate file
+                          minLength: 1
+                          type: string
+                        keyFile:
+                          description: KeyFile is a path to the TLS key file
+                          minLength: 1
+                          type: string
+                        mtls:
+                          description: MTLS enables client certificate verification.
+                            Enterprise feature
+                          type: boolean
+                        mtlsCAFile:
+                          description: MTLSCAFile is a path to the CA file for client
+                            certificate verification, system CAs are used if empty
+                          type: string
+                      required:
+                      - certFile
+                      - keyFile
+                      type: object
+                    useProxyProtocol:
+                      description: UseProxyProtocol enables PROXY protocol for the
+                        listener
+                      type: boolean
+                  required:
+                  - name
+                  - port
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               image:
                 description: |-
                   Image - docker image settings
@@ -42249,6 +42904,59 @@ spec:
                     format: int32
                     type: integer
                 type: object
+              httpListeners:
+                description: |-
+                  HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                  Ignored by VMAlertmanager and VMAnomaly.
+                items:
+                  description: HTTPListener defines an additional HTTP listener
+                  properties:
+                    name:
+                      description: Name of the container port and service port
+                      maxLength: 15
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    port:
+                      description: Port to listen on
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    tls:
+                      description: TLS enables TLS for the listener
+                      properties:
+                        certFile:
+                          description: CertFile is a path to the TLS certificate file
+                          minLength: 1
+                          type: string
+                        keyFile:
+                          description: KeyFile is a path to the TLS key file
+                          minLength: 1
+                          type: string
+                        mtls:
+                          description: MTLS enables client certificate verification.
+                            Enterprise feature
+                          type: boolean
+                        mtlsCAFile:
+                          description: MTLSCAFile is a path to the CA file for client
+                            certificate verification, system CAs are used if empty
+                          type: string
+                      required:
+                      - certFile
+                      - keyFile
+                      type: object
+                    useProxyProtocol:
+                      description: UseProxyProtocol enables PROXY protocol for the
+                        listener
+                      type: boolean
+                  required:
+                  - name
+                  - port
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               httpRoute:
                 description: HTTPRoute enables httproute configuration for VMAuth.
                 properties:
@@ -45334,6 +46042,61 @@ spec:
                       version 2.
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  httpListeners:
+                    description: |-
+                      HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                      Ignored by VMAlertmanager and VMAnomaly.
+                    items:
+                      description: HTTPListener defines an additional HTTP listener
+                      properties:
+                        name:
+                          description: Name of the container port and service port
+                          maxLength: 15
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          description: Port to listen on
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        tls:
+                          description: TLS enables TLS for the listener
+                          properties:
+                            certFile:
+                              description: CertFile is a path to the TLS certificate
+                                file
+                              minLength: 1
+                              type: string
+                            keyFile:
+                              description: KeyFile is a path to the TLS key file
+                              minLength: 1
+                              type: string
+                            mtls:
+                              description: MTLS enables client certificate verification.
+                                Enterprise feature
+                              type: boolean
+                            mtlsCAFile:
+                              description: MTLSCAFile is a path to the CA file for
+                                client certificate verification, system CAs are used
+                                if empty
+                              type: string
+                          required:
+                          - certFile
+                          - keyFile
+                          type: object
+                        useProxyProtocol:
+                          description: UseProxyProtocol enables PROXY protocol for
+                            the listener
+                          type: boolean
+                      required:
+                      - name
+                      - port
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   image:
                     description: |-
                       Image - docker image settings
@@ -46803,6 +47566,61 @@ spec:
                       Note, enabling this option disables vmselect to vmselect communication. In most cases it's not an issue.
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  httpListeners:
+                    description: |-
+                      HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                      Ignored by VMAlertmanager and VMAnomaly.
+                    items:
+                      description: HTTPListener defines an additional HTTP listener
+                      properties:
+                        name:
+                          description: Name of the container port and service port
+                          maxLength: 15
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          description: Port to listen on
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        tls:
+                          description: TLS enables TLS for the listener
+                          properties:
+                            certFile:
+                              description: CertFile is a path to the TLS certificate
+                                file
+                              minLength: 1
+                              type: string
+                            keyFile:
+                              description: KeyFile is a path to the TLS key file
+                              minLength: 1
+                              type: string
+                            mtls:
+                              description: MTLS enables client certificate verification.
+                                Enterprise feature
+                              type: boolean
+                            mtlsCAFile:
+                              description: MTLSCAFile is a path to the CA file for
+                                client certificate verification, system CAs are used
+                                if empty
+                              type: string
+                          required:
+                          - certFile
+                          - keyFile
+                          type: object
+                        useProxyProtocol:
+                          description: UseProxyProtocol enables PROXY protocol for
+                            the listener
+                          type: boolean
+                      required:
+                      - name
+                      - port
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   image:
                     description: |-
                       Image - docker image settings
@@ -49363,6 +50181,61 @@ spec:
                         format: int32
                         type: integer
                     type: object
+                  httpListeners:
+                    description: |-
+                      HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                      Ignored by VMAlertmanager and VMAnomaly.
+                    items:
+                      description: HTTPListener defines an additional HTTP listener
+                      properties:
+                        name:
+                          description: Name of the container port and service port
+                          maxLength: 15
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          description: Port to listen on
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        tls:
+                          description: TLS enables TLS for the listener
+                          properties:
+                            certFile:
+                              description: CertFile is a path to the TLS certificate
+                                file
+                              minLength: 1
+                              type: string
+                            keyFile:
+                              description: KeyFile is a path to the TLS key file
+                              minLength: 1
+                              type: string
+                            mtls:
+                              description: MTLS enables client certificate verification.
+                                Enterprise feature
+                              type: boolean
+                            mtlsCAFile:
+                              description: MTLSCAFile is a path to the CA file for
+                                client certificate verification, system CAs are used
+                                if empty
+                              type: string
+                          required:
+                          - certFile
+                          - keyFile
+                          type: object
+                        useProxyProtocol:
+                          description: UseProxyProtocol enables PROXY protocol for
+                            the listener
+                          type: boolean
+                      required:
+                      - name
+                      - port
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   image:
                     description: |-
                       Image - docker image settings
@@ -52606,6 +53479,62 @@ spec:
                             format: int32
                             type: integer
                         type: object
+                      httpListeners:
+                        description: |-
+                          HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                          Ignored by VMAlertmanager and VMAnomaly.
+                        items:
+                          description: HTTPListener defines an additional HTTP listener
+                          properties:
+                            name:
+                              description: Name of the container port and service
+                                port
+                              maxLength: 15
+                              pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                              type: string
+                            port:
+                              description: Port to listen on
+                              format: int32
+                              maximum: 65535
+                              minimum: 1
+                              type: integer
+                            tls:
+                              description: TLS enables TLS for the listener
+                              properties:
+                                certFile:
+                                  description: CertFile is a path to the TLS certificate
+                                    file
+                                  minLength: 1
+                                  type: string
+                                keyFile:
+                                  description: KeyFile is a path to the TLS key file
+                                  minLength: 1
+                                  type: string
+                                mtls:
+                                  description: MTLS enables client certificate verification.
+                                    Enterprise feature
+                                  type: boolean
+                                mtlsCAFile:
+                                  description: MTLSCAFile is a path to the CA file
+                                    for client certificate verification, system CAs
+                                    are used if empty
+                                  type: string
+                              required:
+                              - certFile
+                              - keyFile
+                              type: object
+                            useProxyProtocol:
+                              description: UseProxyProtocol enables PROXY protocol
+                                for the listener
+                              type: boolean
+                          required:
+                          - name
+                          - port
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - name
+                        x-kubernetes-list-type: map
                       httpRoute:
                         description: HTTPRoute enables httproute configuration for
                           VMAuth.
@@ -56427,6 +57356,64 @@ spec:
                                 format: int32
                                 type: integer
                             type: object
+                          httpListeners:
+                            description: |-
+                              HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                              Ignored by VMAlertmanager and VMAnomaly.
+                            items:
+                              description: HTTPListener defines an additional HTTP
+                                listener
+                              properties:
+                                name:
+                                  description: Name of the container port and service
+                                    port
+                                  maxLength: 15
+                                  pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                                  type: string
+                                port:
+                                  description: Port to listen on
+                                  format: int32
+                                  maximum: 65535
+                                  minimum: 1
+                                  type: integer
+                                tls:
+                                  description: TLS enables TLS for the listener
+                                  properties:
+                                    certFile:
+                                      description: CertFile is a path to the TLS certificate
+                                        file
+                                      minLength: 1
+                                      type: string
+                                    keyFile:
+                                      description: KeyFile is a path to the TLS key
+                                        file
+                                      minLength: 1
+                                      type: string
+                                    mtls:
+                                      description: MTLS enables client certificate
+                                        verification. Enterprise feature
+                                      type: boolean
+                                    mtlsCAFile:
+                                      description: MTLSCAFile is a path to the CA
+                                        file for client certificate verification,
+                                        system CAs are used if empty
+                                      type: string
+                                  required:
+                                  - certFile
+                                  - keyFile
+                                  type: object
+                                useProxyProtocol:
+                                  description: UseProxyProtocol enables PROXY protocol
+                                    for the listener
+                                  type: boolean
+                              required:
+                              - name
+                              - port
+                              type: object
+                            type: array
+                            x-kubernetes-list-map-keys:
+                            - name
+                            x-kubernetes-list-type: map
                           image:
                             description: |-
                               Image - docker image settings
@@ -59050,6 +60037,64 @@ spec:
                                   format: int32
                                   type: integer
                               type: object
+                            httpListeners:
+                              description: |-
+                                HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                                Ignored by VMAlertmanager and VMAnomaly.
+                              items:
+                                description: HTTPListener defines an additional HTTP
+                                  listener
+                                properties:
+                                  name:
+                                    description: Name of the container port and service
+                                      port
+                                    maxLength: 15
+                                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                                    type: string
+                                  port:
+                                    description: Port to listen on
+                                    format: int32
+                                    maximum: 65535
+                                    minimum: 1
+                                    type: integer
+                                  tls:
+                                    description: TLS enables TLS for the listener
+                                    properties:
+                                      certFile:
+                                        description: CertFile is a path to the TLS
+                                          certificate file
+                                        minLength: 1
+                                        type: string
+                                      keyFile:
+                                        description: KeyFile is a path to the TLS
+                                          key file
+                                        minLength: 1
+                                        type: string
+                                      mtls:
+                                        description: MTLS enables client certificate
+                                          verification. Enterprise feature
+                                        type: boolean
+                                      mtlsCAFile:
+                                        description: MTLSCAFile is a path to the CA
+                                          file for client certificate verification,
+                                          system CAs are used if empty
+                                        type: string
+                                    required:
+                                    - certFile
+                                    - keyFile
+                                    type: object
+                                  useProxyProtocol:
+                                    description: UseProxyProtocol enables PROXY protocol
+                                      for the listener
+                                    type: boolean
+                                required:
+                                - name
+                                - port
+                                type: object
+                              type: array
+                              x-kubernetes-list-map-keys:
+                              - name
+                              x-kubernetes-list-type: map
                             image:
                               description: |-
                                 Image - docker image settings
@@ -79083,6 +80128,59 @@ spec:
                 description: HostNetwork controls whether the pod may use the node
                   network namespace
                 type: boolean
+              httpListeners:
+                description: |-
+                  HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                  Ignored by VMAlertmanager and VMAnomaly.
+                items:
+                  description: HTTPListener defines an additional HTTP listener
+                  properties:
+                    name:
+                      description: Name of the container port and service port
+                      maxLength: 15
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    port:
+                      description: Port to listen on
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    tls:
+                      description: TLS enables TLS for the listener
+                      properties:
+                        certFile:
+                          description: CertFile is a path to the TLS certificate file
+                          minLength: 1
+                          type: string
+                        keyFile:
+                          description: KeyFile is a path to the TLS key file
+                          minLength: 1
+                          type: string
+                        mtls:
+                          description: MTLS enables client certificate verification.
+                            Enterprise feature
+                          type: boolean
+                        mtlsCAFile:
+                          description: MTLSCAFile is a path to the CA file for client
+                            certificate verification, system CAs are used if empty
+                          type: string
+                      required:
+                      - certFile
+                      - keyFile
+                      type: object
+                    useProxyProtocol:
+                      description: UseProxyProtocol enables PROXY protocol for the
+                        listener
+                      type: boolean
+                  required:
+                  - name
+                  - port
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               ignoreNamespaceSelectors:
                 description: |-
                   IgnoreNamespaceSelectors if set to true will ignore NamespaceSelector settings from
@@ -86045,6 +87143,59 @@ spec:
                 description: HostNetwork controls whether the pod may use the node
                   network namespace
                 type: boolean
+              httpListeners:
+                description: |-
+                  HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                  Ignored by VMAlertmanager and VMAnomaly.
+                items:
+                  description: HTTPListener defines an additional HTTP listener
+                  properties:
+                    name:
+                      description: Name of the container port and service port
+                      maxLength: 15
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    port:
+                      description: Port to listen on
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    tls:
+                      description: TLS enables TLS for the listener
+                      properties:
+                        certFile:
+                          description: CertFile is a path to the TLS certificate file
+                          minLength: 1
+                          type: string
+                        keyFile:
+                          description: KeyFile is a path to the TLS key file
+                          minLength: 1
+                          type: string
+                        mtls:
+                          description: MTLS enables client certificate verification.
+                            Enterprise feature
+                          type: boolean
+                        mtlsCAFile:
+                          description: MTLSCAFile is a path to the CA file for client
+                            certificate verification, system CAs are used if empty
+                          type: string
+                      required:
+                      - certFile
+                      - keyFile
+                      type: object
+                    useProxyProtocol:
+                      description: UseProxyProtocol enables PROXY protocol for the
+                        listener
+                      type: boolean
+                  required:
+                  - name
+                  - port
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               image:
                 description: |-
                   Image - docker image settings
@@ -89667,6 +90818,61 @@ spec:
                     description: Configures horizontal pod autoscaling.
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  httpListeners:
+                    description: |-
+                      HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                      Ignored by VMAlertmanager and VMAnomaly.
+                    items:
+                      description: HTTPListener defines an additional HTTP listener
+                      properties:
+                        name:
+                          description: Name of the container port and service port
+                          maxLength: 15
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          description: Port to listen on
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        tls:
+                          description: TLS enables TLS for the listener
+                          properties:
+                            certFile:
+                              description: CertFile is a path to the TLS certificate
+                                file
+                              minLength: 1
+                              type: string
+                            keyFile:
+                              description: KeyFile is a path to the TLS key file
+                              minLength: 1
+                              type: string
+                            mtls:
+                              description: MTLS enables client certificate verification.
+                                Enterprise feature
+                              type: boolean
+                            mtlsCAFile:
+                              description: MTLSCAFile is a path to the CA file for
+                                client certificate verification, system CAs are used
+                                if empty
+                              type: string
+                          required:
+                          - certFile
+                          - keyFile
+                          type: object
+                        useProxyProtocol:
+                          description: UseProxyProtocol enables PROXY protocol for
+                            the listener
+                          type: boolean
+                      required:
+                      - name
+                      - port
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   image:
                     description: |-
                       Image - docker image settings
@@ -91119,6 +92325,61 @@ spec:
                     description: Configures horizontal pod autoscaling.
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  httpListeners:
+                    description: |-
+                      HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                      Ignored by VMAlertmanager and VMAnomaly.
+                    items:
+                      description: HTTPListener defines an additional HTTP listener
+                      properties:
+                        name:
+                          description: Name of the container port and service port
+                          maxLength: 15
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          description: Port to listen on
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        tls:
+                          description: TLS enables TLS for the listener
+                          properties:
+                            certFile:
+                              description: CertFile is a path to the TLS certificate
+                                file
+                              minLength: 1
+                              type: string
+                            keyFile:
+                              description: KeyFile is a path to the TLS key file
+                              minLength: 1
+                              type: string
+                            mtls:
+                              description: MTLS enables client certificate verification.
+                                Enterprise feature
+                              type: boolean
+                            mtlsCAFile:
+                              description: MTLSCAFile is a path to the CA file for
+                                client certificate verification, system CAs are used
+                                if empty
+                              type: string
+                          required:
+                          - certFile
+                          - keyFile
+                          type: object
+                        useProxyProtocol:
+                          description: UseProxyProtocol enables PROXY protocol for
+                            the listener
+                          type: boolean
+                      required:
+                      - name
+                      - port
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   image:
                     description: |-
                       Image - docker image settings
@@ -93152,6 +94413,61 @@ spec:
                         format: int32
                         type: integer
                     type: object
+                  httpListeners:
+                    description: |-
+                      HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                      Ignored by VMAlertmanager and VMAnomaly.
+                    items:
+                      description: HTTPListener defines an additional HTTP listener
+                      properties:
+                        name:
+                          description: Name of the container port and service port
+                          maxLength: 15
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          description: Port to listen on
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        tls:
+                          description: TLS enables TLS for the listener
+                          properties:
+                            certFile:
+                              description: CertFile is a path to the TLS certificate
+                                file
+                              minLength: 1
+                              type: string
+                            keyFile:
+                              description: KeyFile is a path to the TLS key file
+                              minLength: 1
+                              type: string
+                            mtls:
+                              description: MTLS enables client certificate verification.
+                                Enterprise feature
+                              type: boolean
+                            mtlsCAFile:
+                              description: MTLSCAFile is a path to the CA file for
+                                client certificate verification, system CAs are used
+                                if empty
+                              type: string
+                          required:
+                          - certFile
+                          - keyFile
+                          type: object
+                        useProxyProtocol:
+                          description: UseProxyProtocol enables PROXY protocol for
+                            the listener
+                          type: boolean
+                      required:
+                      - name
+                      - port
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   image:
                     description: |-
                       Image - docker image settings
@@ -94882,6 +96198,59 @@ spec:
                 description: HostNetwork controls whether the pod may use the node
                   network namespace
                 type: boolean
+              httpListeners:
+                description: |-
+                  HTTPListeners defines additional HTTP listeners served next to the primary one at Port.
+                  Ignored by VMAlertmanager and VMAnomaly.
+                items:
+                  description: HTTPListener defines an additional HTTP listener
+                  properties:
+                    name:
+                      description: Name of the container port and service port
+                      maxLength: 15
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      type: string
+                    port:
+                      description: Port to listen on
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    tls:
+                      description: TLS enables TLS for the listener
+                      properties:
+                        certFile:
+                          description: CertFile is a path to the TLS certificate file
+                          minLength: 1
+                          type: string
+                        keyFile:
+                          description: KeyFile is a path to the TLS key file
+                          minLength: 1
+                          type: string
+                        mtls:
+                          description: MTLS enables client certificate verification.
+                            Enterprise feature
+                          type: boolean
+                        mtlsCAFile:
+                          description: MTLSCAFile is a path to the CA file for client
+                            certificate verification, system CAs are used if empty
+                          type: string
+                      required:
+                      - certFile
+                      - keyFile
+                      type: object
+                    useProxyProtocol:
+                      description: UseProxyProtocol enables PROXY protocol for the
+                        listener
+                      type: boolean
+                  required:
+                  - name
+                  - port
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               image:
                 description: |-
                   Image - docker image settings

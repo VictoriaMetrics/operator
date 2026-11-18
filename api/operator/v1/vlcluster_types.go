@@ -19,6 +19,7 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -330,8 +331,8 @@ type SyslogServerSpec struct {
 	UDPListeners []*SyslogUDPListener `json:"udpListeners,omitempty"`
 }
 
-// Validate checks syntax of the syslog listeners configuration
-func (s *SyslogServerSpec) Validate() error {
+// Validate checks syslog listeners and HTTP port collisions.
+func (s *SyslogServerSpec) Validate(httpPort string, p *vmv1beta1.CommonAppsParams) error {
 	if s == nil {
 		return nil
 	}
@@ -340,9 +341,27 @@ func (s *SyslogServerSpec) Validate() error {
 	// Reject them, otherwise the effective TLS configuration of a listener
 	// silently differs from the defined one
 	refIdx := -1
+	tcpPorts := make(map[int32]int)
 	for idx, tcp := range s.TCPListeners {
 		if tcp == nil {
 			continue
+		}
+		if prev, ok := tcpPorts[tcp.ListenPort]; ok {
+			return fmt.Errorf("syslogSpec.tcpListeners[%d].listenPort=%d duplicates syslogSpec.tcpListeners[%d].listenPort", idx, tcp.ListenPort, prev)
+		}
+		tcpPorts[tcp.ListenPort] = idx
+		if strconv.Itoa(int(tcp.ListenPort)) == httpPort {
+			return fmt.Errorf("syslogSpec.tcpListeners[%d].listenPort=%d must not be equal to the HTTP listen port=%s", idx, tcp.ListenPort, httpPort)
+		}
+		for _, listener := range p.HTTPListeners {
+			if listener.Port == tcp.ListenPort {
+				return fmt.Errorf("httpListeners name=%q port=%d conflicts with syslogSpec.tcpListeners[%d].listenPort", listener.Name, listener.Port, idx)
+			}
+		}
+		for _, port := range p.ExtraArgsHTTPPorts() {
+			if port == tcp.ListenPort {
+				return fmt.Errorf("extraArgs.httpListenAddr port=%d conflicts with syslogSpec.tcpListeners[%d].listenPort", port, idx)
+			}
 		}
 		if err := tcp.TLSConfig.Validate(); err != nil {
 			return fmt.Errorf("syslogSpec.tcpListeners[%d]: %w", idx, err)
@@ -365,6 +384,18 @@ func (s *SyslogServerSpec) Validate() error {
 				"since application uses a single list of cipher suites for all syslog TCP listeners",
 				idx, tcp.TLSConfig.CipherSuites, refIdx, ref.CipherSuites)
 		}
+	}
+
+	// each UDP listener binds its own socket, duplicate ports fail at startup
+	udpPorts := make(map[int32]int)
+	for idx, udp := range s.UDPListeners {
+		if udp == nil {
+			continue
+		}
+		if prev, ok := udpPorts[udp.ListenPort]; ok {
+			return fmt.Errorf("syslogSpec.udpListeners[%d].listenPort=%d duplicates syslogSpec.udpListeners[%d].listenPort", idx, udp.ListenPort, prev)
+		}
+		udpPorts[udp.ListenPort] = idx
 	}
 	return nil
 }
@@ -810,7 +841,11 @@ func (cr *VLCluster) Validate() error {
 				return err
 			}
 		}
-		if err := vli.SyslogSpec.Validate(); err != nil {
+		insertPort := "9481"
+		if vli.Port != "" {
+			insertPort = vli.Port
+		}
+		if err := vli.SyslogSpec.Validate(insertPort, &vli.CommonAppsParams); err != nil {
 			return fmt.Errorf("vlinsert: %w", err)
 		}
 		if err := vli.Validate(); err != nil {
@@ -878,6 +913,9 @@ func (cr *VLCluster) Validate() error {
 		name := cr.PrefixedName(vmv1beta1.ClusterComponentBalancer)
 		if rlb.AdditionalServiceSpec != nil && rlb.AdditionalServiceSpec.Name == name {
 			return fmt.Errorf(".serviceSpec.Name cannot be equal to prefixed name=%q", name)
+		}
+		if err := rlb.Validate(); err != nil {
+			return fmt.Errorf("requestsLoadBalancer: %w", err)
 		}
 	}
 

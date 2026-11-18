@@ -6,6 +6,7 @@ import (
 	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -14,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -816,6 +818,94 @@ func TestCreateOrUpdate(t *testing.T) {
 				"managed-by":                  "vm-operator",
 			}, svc.Labels)
 		}})
+}
+
+func TestCreateOrUpdate_HTTPListeners(t *testing.T) {
+	cr := &vmv1.VLCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "listeners", Namespace: "default"},
+		Spec: vmv1.VLClusterSpec{
+			VLInsert: &vmv1.VLInsert{CommonAppsParams: vmv1beta1.CommonAppsParams{
+				HTTPListeners: []vmv1beta1.HTTPListener{
+					{Name: "plain", Port: 9482},
+					{Name: "secure", Port: 9483, TLS: &vmv1beta1.HTTPListenerTLS{CertFile: "/tls/crt", KeyFile: "/tls/key"}},
+				},
+			}},
+			VLSelect: &vmv1.VLSelect{CommonAppsParams: vmv1beta1.CommonAppsParams{
+				HTTPListeners: []vmv1beta1.HTTPListener{{Name: "secure", Port: 9472, TLS: &vmv1beta1.HTTPListenerTLS{CertFile: "/tls/crt", KeyFile: "/tls/key"}}},
+			}},
+			VLStorage: &vmv1.VLStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{
+				HTTPListeners: []vmv1beta1.HTTPListener{{Name: "secure", Port: 9492, TLS: &vmv1beta1.HTTPListenerTLS{CertFile: "/tls/crt", KeyFile: "/tls/key"}}},
+			}},
+			RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+				Enabled: true,
+				Spec: vmv1beta1.VMAuthLoadBalancerSpec{CommonAppsParams: vmv1beta1.CommonAppsParams{
+					HTTPListeners: []vmv1beta1.HTTPListener{{Name: "secure", Port: 8428, TLS: &vmv1beta1.HTTPListenerTLS{CertFile: "/tls/crt", KeyFile: "/tls/key"}}},
+				}},
+			},
+		},
+	}
+	fclient := k8stools.GetTestClientWithObjects(nil)
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+	ctx := context.Background()
+
+	synctest.Test(t, func(t *testing.T) {
+		require.NoError(t, CreateOrUpdate(ctx, fclient, cr.DeepCopy()))
+	})
+
+	for _, tc := range []struct {
+		name      string
+		component vmv1beta1.ClusterComponent
+		stateful  bool
+		basePort  int32
+		listeners []corev1.ContainerPort
+		addr      string
+		tls       string
+		cert      string
+		key       string
+	}{
+		{"vlinsert", vmv1beta1.ClusterComponentInsert, false, 9481, []corev1.ContainerPort{{Name: "plain", Protocol: corev1.ProtocolTCP, ContainerPort: 9482}, {Name: "secure", Protocol: corev1.ProtocolTCP, ContainerPort: 9483}}, "-httpListenAddr=:9481,:9482,:9483", "-tls=false,false,true", "-tlsCertFile=,,/tls/crt", "-tlsKeyFile=,,/tls/key"},
+		{"vlselect", vmv1beta1.ClusterComponentSelect, false, 9471, []corev1.ContainerPort{{Name: "secure", Protocol: corev1.ProtocolTCP, ContainerPort: 9472}}, "-httpListenAddr=:9471,:9472", "-tls=false,true", "-tlsCertFile=,/tls/crt", "-tlsKeyFile=,/tls/key"},
+		{"vlstorage", vmv1beta1.ClusterComponentStorage, true, 9491, []corev1.ContainerPort{{Name: "secure", Protocol: corev1.ProtocolTCP, ContainerPort: 9492}}, "-httpListenAddr=:9491,:9492", "-tls=false,true", "-tlsCertFile=,/tls/crt", "-tlsKeyFile=,/tls/key"},
+		{"vmauth_lb", vmv1beta1.ClusterComponentBalancer, false, 8427, []corev1.ContainerPort{{Name: "secure", Protocol: corev1.ProtocolTCP, ContainerPort: 8428}}, "-httpListenAddr=:8427,:8428", "-tls=false,true", "-tlsCertFile=,/tls/crt", "-tlsKeyFile=,/tls/key"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			key := types.NamespacedName{Name: cr.PrefixedName(tc.component), Namespace: cr.Namespace}
+			var containers []corev1.Container
+			if tc.stateful {
+				var sts appsv1.StatefulSet
+				require.NoError(t, fclient.Get(ctx, key, &sts))
+				containers = sts.Spec.Template.Spec.Containers
+			} else {
+				var dep appsv1.Deployment
+				require.NoError(t, fclient.Get(ctx, key, &dep))
+				containers = dep.Spec.Template.Spec.Containers
+			}
+			require.Len(t, containers, 1)
+			container := containers[0]
+			assert.Contains(t, container.Args, tc.addr)
+			assert.Contains(t, container.Args, tc.tls)
+			assert.Contains(t, container.Args, tc.cert)
+			assert.Contains(t, container.Args, tc.key)
+			assert.Equal(t, append([]corev1.ContainerPort{{Name: "http", Protocol: corev1.ProtocolTCP, ContainerPort: tc.basePort}}, tc.listeners...), container.Ports)
+
+			var svc corev1.Service
+			if tc.component == vmv1beta1.ClusterComponentInsert || tc.component == vmv1beta1.ClusterComponentSelect {
+				key.Name = cr.PrefixedInternalName(tc.component)
+			}
+			require.NoError(t, fclient.Get(ctx, key, &svc))
+			ports := []corev1.ServicePort{{Name: "http", Protocol: corev1.ProtocolTCP, Port: tc.basePort, TargetPort: intstr.FromInt32(tc.basePort)}}
+			for _, listener := range tc.listeners {
+				ports = append(ports, corev1.ServicePort{Name: listener.Name, Protocol: corev1.ProtocolTCP, Port: listener.ContainerPort, TargetPort: intstr.FromInt32(listener.ContainerPort)})
+			}
+			assert.Equal(t, ports, svc.Spec.Ports)
+			if tc.component == vmv1beta1.ClusterComponentInsert || tc.component == vmv1beta1.ClusterComponentSelect {
+				key.Name = cr.PrefixedName(tc.component)
+				require.NoError(t, fclient.Get(ctx, key, &svc))
+				assert.Equal(t, []corev1.ServicePort{{Name: "http", Protocol: corev1.ProtocolTCP, Port: tc.basePort, TargetPort: intstr.FromInt32(8427)}}, svc.Spec.Ports)
+			}
+		})
+	}
 }
 
 func TestCreateOrUpdate_Paused(t *testing.T) {

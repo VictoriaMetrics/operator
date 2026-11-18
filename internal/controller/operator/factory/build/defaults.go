@@ -2,6 +2,7 @@ package build
 
 import (
 	"strings"
+	"sync"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -30,6 +31,25 @@ type commonParams struct {
 
 func getCfg() *config.BaseOperatorConf {
 	return config.MustGetBaseConfig()
+}
+
+var defaultsScheme = sync.OnceValue(func() *runtime.Scheme {
+	s := runtime.NewScheme()
+	AddDefaults(s)
+	return s
+})
+
+type validatable interface {
+	runtime.Object
+	Validate() error
+}
+
+// ValidateWithDefaults validates a copy of obj with operator defaults applied.
+// Admission requests carry the spec before defaulting, e.g. empty spec.port.
+func ValidateWithDefaults(obj validatable) error {
+	cp := obj.DeepCopyObject().(validatable)
+	defaultsScheme().Default(cp)
+	return cp.Validate()
 }
 
 // AddDefaults adds defaulting functions to the runtimeScheme

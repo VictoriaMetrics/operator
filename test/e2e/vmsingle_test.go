@@ -148,6 +148,24 @@ var _ = Describe("test vmsingle Controller", Label("vm", "single"), func() {
 						Expect(createdDeploy.Spec.Template.Spec.Containers).To(HaveLen(1))
 						Expect(createdDeploy.Spec.Template.Spec.Containers[0].Ports).To(HaveLen(8))
 					}),
+				Entry("with additional http listener", "http-listeners", false,
+					&vmv1beta1.VMSingle{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+						},
+						Spec: vmv1beta1.VMSingleSpec{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ReplicaCount:  ptr.To[int32](1),
+								HTTPListeners: []vmv1beta1.HTTPListener{{Name: "extra", Port: 8409}},
+							},
+							RetentionPeriod: "1",
+						},
+					},
+					func(cr *vmv1beta1.VMSingle) {
+						expectHTTPRequestToSucceed(ctx, httpRequestOpts{
+							dstURL: fmt.Sprintf("http://%s.%s.svc:8409/health", cr.PrefixedName(), namespace),
+						})
+					}),
 				Entry("with empty resources and vmbackup ", "create-wo-resource-w-backup", true,
 					&vmv1beta1.VMSingle{
 						ObjectMeta: metav1.ObjectMeta{

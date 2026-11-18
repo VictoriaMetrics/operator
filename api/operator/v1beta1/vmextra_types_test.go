@@ -347,6 +347,171 @@ func TestCommonAppsParamsValidate(t *testing.T) {
 	}, true)
 }
 
+func TestHTTPListenersValidate(t *testing.T) {
+	f := func(p CommonAppsParams, wantErr string) {
+		t.Helper()
+		err := p.Validate()
+		if wantErr == "" {
+			assert.NoError(t, err)
+			return
+		}
+		assert.ErrorContains(t, err, wantErr)
+	}
+	tlsListener := HTTPListener{Name: "https", Port: 8443, TLS: &HTTPListenerTLS{CertFile: "/tls/crt", KeyFile: "/tls/key"}}
+
+	// valid listeners
+	f(CommonAppsParams{Port: "8428", HTTPListeners: []HTTPListener{
+		{Name: "plain", Port: 8429, UseProxyProtocol: true},
+		tlsListener,
+		{Name: "mtls", Port: 8444, TLS: &HTTPListenerTLS{CertFile: "/tls/crt", KeyFile: "/tls/key", MTLS: true, MTLSCAFile: "/tls/ca"}},
+	}}, "")
+
+	// listeners in both httpListeners and extraArgs
+	f(CommonAppsParams{
+		ExtraArgs:     map[string]string{"httpListenAddr": ":8428,:8429"},
+		HTTPListeners: []HTTPListener{tlsListener},
+	}, "cannot be combined with listeners defined in extraArgs.httpListenAddr")
+	f(CommonAppsParams{
+		ExtraArgs:     map[string]string{"tls": "true,false"},
+		HTTPListeners: []HTTPListener{tlsListener},
+	}, "cannot be combined with listeners defined in extraArgs.tls")
+
+	// single primary listener value in extraArgs is allowed unless its port conflicts
+	f(CommonAppsParams{
+		ExtraArgs:     map[string]string{"tls": "true"},
+		HTTPListeners: []HTTPListener{tlsListener},
+	}, "")
+	f(CommonAppsParams{
+		ExtraArgs:     map[string]string{"httpListenAddr": ":8429"},
+		HTTPListeners: []HTTPListener{{Name: "plain", Port: 8429}},
+	}, "port=8429 is already in use")
+	f(CommonAppsParams{
+		ExtraArgs:     map[string]string{"httpListenAddr": "[::1]:8443"},
+		HTTPListeners: []HTTPListener{tlsListener},
+	}, "port=8443 is already in use")
+	f(CommonAppsParams{
+		Port:          "8428",
+		ExtraArgs:     map[string]string{"httpListenAddr": ":8428"},
+		HTTPListeners: []HTTPListener{{Name: "plain", Port: 8429}},
+	}, "")
+	f(CommonAppsParams{
+		Port:          "8428",
+		ExtraArgs:     map[string]string{"httpListenAddr": ":9000"},
+		HTTPListeners: []HTTPListener{{Name: "plain", Port: 8429}},
+	}, "extraArgs.httpListenAddr port=9000 must match port=8428")
+
+	// reserved name
+	f(CommonAppsParams{HTTPListeners: []HTTPListener{{Name: "8080", Port: 8429}}}, "is invalid")
+	f(CommonAppsParams{HTTPListeners: []HTTPListener{{Name: "a--b", Port: 8429}}}, "is invalid")
+	f(CommonAppsParams{HTTPListeners: []HTTPListener{{Name: "http", Port: 8429}}}, "is reserved")
+	f(CommonAppsParams{HTTPListeners: []HTTPListener{{Name: "syslog-tcp-0", Port: 8429}}}, "is reserved")
+
+	// duplicated name
+	f(CommonAppsParams{HTTPListeners: []HTTPListener{tlsListener, tlsListener}}, "is duplicated")
+
+	// port conflicts with primary port
+	f(CommonAppsParams{Port: "8443", HTTPListeners: []HTTPListener{tlsListener}}, "port=8443 is already in use")
+}
+
+func TestConfigReloaderPort(t *testing.T) {
+	f := func(addr, want string) {
+		t.Helper()
+		p := CommonConfigReloaderParams{}
+		if addr != "" {
+			p.ConfigReloaderExtraArgs = map[string]string{"http.listenAddr": addr}
+		}
+		assert.Equal(t, want, p.ConfigReloaderPort())
+	}
+
+	f("", "8435")
+	f(":8436", "8436")
+	f("[::1]:8437", "8437")
+	f("hostname-only", "8435")
+	f("127.0.0.1:0", "8435")
+	f("127.0.0.1:70000", "8435")
+}
+
+func TestHTTPListenersSidecarPortConflicts(t *testing.T) {
+	f := func(cr interface{ Validate() error }, wantErr string) {
+		t.Helper()
+		err := cr.Validate()
+		if wantErr == "" {
+			assert.NoError(t, err)
+			return
+		}
+		assert.ErrorContains(t, err, wantErr)
+	}
+	listeners := func(port int32) CommonAppsParams {
+		return CommonAppsParams{Port: "8427", HTTPListeners: []HTTPListener{{Name: "extra", Port: port}}}
+	}
+
+	// config-reloader default and custom ports
+	f(&VMAuth{Spec: VMAuthSpec{CommonAppsParams: listeners(8435)}}, `port=8435 conflicts with config-reloader port`)
+	f(&VMAuth{Spec: VMAuthSpec{
+		CommonAppsParams:           listeners(8435),
+		CommonConfigReloaderParams: CommonConfigReloaderParams{ConfigReloaderExtraArgs: map[string]string{"http.listenAddr": ":8436"}},
+	}}, "")
+	f(&VMAuth{Spec: VMAuthSpec{
+		CommonAppsParams:           listeners(8436),
+		CommonConfigReloaderParams: CommonConfigReloaderParams{ConfigReloaderExtraArgs: map[string]string{"http.listenAddr": ":8436"}},
+	}}, `port=8436 conflicts with config-reloader port`)
+
+	// alertmanager cluster mesh port
+	f(&VMAlertmanager{Spec: VMAlertmanagerSpec{CommonAppsParams: listeners(9094)}}, `port=9094 conflicts with cluster mesh port`)
+	f(&VMAlertmanager{Spec: VMAlertmanagerSpec{CommonAppsParams: listeners(8435)}}, `port=8435 conflicts with config-reloader port`)
+
+	// vmstorage vmbackupmanager sidecar
+	f(&VMCluster{Spec: VMClusterSpec{RetentionPeriod: "1", VMStorage: &VMStorage{
+		CommonAppsParams: listeners(8300),
+		VMBackup:         &VMBackup{Port: "8300", AcceptEULA: true},
+	}}}, `vmstorage: httpListeners name="extra" port=8300 conflicts with vmBackup.port`)
+
+	// vmstorage cluster-native ports
+	f(&VMCluster{Spec: VMClusterSpec{RetentionPeriod: "1", VMStorage: &VMStorage{
+		CommonAppsParams: listeners(8400),
+		VMInsertPort:     "8400",
+	}}}, `vmstorage: httpListeners name="extra" port=8400 conflicts with vmInsertPort`)
+	f(&VMCluster{Spec: VMClusterSpec{RetentionPeriod: "1", VMStorage: &VMStorage{
+		CommonAppsParams: listeners(8401),
+		VMSelectPort:     "8401",
+	}}}, `vmstorage: httpListeners name="extra" port=8401 conflicts with vmSelectPort`)
+
+	// insert ports
+	f(&VMAgent{Spec: VMAgentSpec{
+		CommonAppsParams: listeners(2003),
+		RemoteWrite:      []VMAgentRemoteWriteSpec{{URL: "http://example.com"}},
+		InsertPorts:      &InsertPorts{GraphitePort: "2003"},
+	}}, `port=2003 conflicts with insertPorts.graphitePort`)
+	f(&VMCluster{Spec: VMClusterSpec{RetentionPeriod: "1", VMInsert: &VMInsert{
+		CommonAppsParams: listeners(8089),
+		InsertPorts:      &InsertPorts{InfluxPort: "8089"},
+	}}}, `vminsert: httpListeners name="extra" port=8089 conflicts with insertPorts.influxPort`)
+
+	// clusternative ports
+	f(&VMCluster{Spec: VMClusterSpec{RetentionPeriod: "1", VMInsert: &VMInsert{
+		CommonAppsParams:  listeners(8400),
+		ClusterNativePort: "8400",
+	}}}, `vminsert: httpListeners name="extra" port=8400 conflicts with clusterNativeListenPort`)
+	f(&VMCluster{Spec: VMClusterSpec{RetentionPeriod: "1", VMSelect: &VMSelect{
+		CommonAppsParams:  listeners(8401),
+		ClusterNativePort: "8401",
+	}}}, `vmselect: httpListeners name="extra" port=8401 conflicts with clusterNativeListenPort`)
+	f(&VMCluster{Spec: VMClusterSpec{RetentionPeriod: "1", VMInsert: &VMInsert{
+		CommonAppsParams:  listeners(8402),
+		ClusterNativePort: "8400",
+	}}}, "")
+
+	// primary port
+	f(&VMCluster{Spec: VMClusterSpec{RetentionPeriod: "1", VMInsert: &VMInsert{
+		CommonAppsParams:  CommonAppsParams{Port: "8428"},
+		ClusterNativePort: "8428",
+	}}}, `vminsert: port=8428 conflicts with clusterNativeListenPort`)
+	f(&VMCluster{Spec: VMClusterSpec{RetentionPeriod: "1", VMSelect: &VMSelect{
+		CommonAppsParams:  CommonAppsParams{Port: "8428"},
+		ClusterNativePort: "8428",
+	}}}, `vmselect: port=8428 conflicts with clusterNativeListenPort`)
+}
+
 func TestVLogs_PrefixedName(t *testing.T) {
 	f := func(name string, omit bool, want string) {
 		t.Helper()

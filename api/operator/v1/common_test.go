@@ -1,11 +1,17 @@
 package v1
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+)
 
 func TestOTLPGRPCSpec_Validate(t *testing.T) {
 	f := func(g *OTLPGRPCSpec, httpPort string, wantErr bool) {
 		t.Helper()
-		err := g.Validate(httpPort)
+		err := g.Validate(httpPort, &vmv1beta1.CommonAppsParams{})
 		if wantErr && err == nil {
 			t.Fatalf("expected error, got nil")
 		}
@@ -22,6 +28,46 @@ func TestOTLPGRPCSpec_Validate(t *testing.T) {
 
 	// colliding with the HTTP port
 	f(&OTLPGRPCSpec{ListenPort: 10429}, "10429", true)
+
+	// colliding with legacy extraArgs.httpListenAddr listener
+	p := &vmv1beta1.CommonAppsParams{ExtraArgs: map[string]string{"httpListenAddr": ":10429,:4317"}}
+	assert.ErrorContains(t, (&OTLPGRPCSpec{ListenPort: 4317}).Validate("10429", p), "conflicts with extraArgs.httpListenAddr port=4317")
+	assert.NoError(t, (&OTLPGRPCSpec{ListenPort: 4318}).Validate("10429", p))
+}
+
+func TestHTTPListenersGRPCPortValidate(t *testing.T) {
+	listeners := []vmv1beta1.HTTPListener{{Name: "extra", Port: 4317}}
+	for _, tc := range []struct {
+		name     string
+		validate func() error
+	}{
+		{"VTAgent", func() error {
+			return (&VTAgent{Spec: VTAgentSpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{HTTPListeners: listeners},
+				RemoteWrite:      []VTAgentRemoteWriteSpec{{URL: "http://example.com"}},
+				GRPCSpec:         &OTLPGRPCSpec{ListenPort: 4317},
+			}}).Validate()
+		}},
+		{"VTSingle", func() error {
+			return (&VTSingle{Spec: VTSingleSpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{HTTPListeners: listeners},
+				GRPCSpec:         &OTLPGRPCSpec{ListenPort: 4317},
+			}}).Validate()
+		}},
+		{"VTCluster insert", func() error {
+			return (&VTCluster{Spec: VTClusterSpec{Insert: &VTInsert{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{HTTPListeners: listeners},
+				GRPCSpec:         &OTLPGRPCSpec{ListenPort: 4317},
+			}}}).Validate()
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.ErrorContains(t, tc.validate(), "grpcSpec.listenPort=4317 conflicts with httpListeners port=4317")
+			listeners[0].Port = 4318
+			assert.NoError(t, tc.validate())
+			listeners[0].Port = 4317
+		})
+	}
 }
 
 func TestTLSServerConfig_Validate(t *testing.T) {
@@ -63,7 +109,7 @@ func TestTLSServerConfig_Validate(t *testing.T) {
 func TestSyslogServerSpec_Validate(t *testing.T) {
 	f := func(s *SyslogServerSpec, wantErr bool) {
 		t.Helper()
-		err := s.Validate()
+		err := s.Validate("", &vmv1beta1.CommonAppsParams{})
 		if wantErr && err == nil {
 			t.Fatalf("expected error, got nil")
 		}

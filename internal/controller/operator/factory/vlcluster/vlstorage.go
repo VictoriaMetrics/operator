@@ -81,6 +81,7 @@ func buildVLStorageScrape(cr *vmv1.VLCluster, svc *corev1.Service) *vmv1beta1.VM
 func createOrUpdateVLStorageService(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLCluster) error {
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
 	svc := build.Service(b, cr.Spec.VLStorage.Port, func(svc *corev1.Service) {
+		build.AddHTTPListenerServicePorts(svc, cr.Spec.VLStorage.HTTPListeners)
 		svc.Spec.ClusterIP = "None"
 		svc.Spec.PublishNotReadyAddresses = true
 	})
@@ -88,6 +89,7 @@ func createOrUpdateVLStorageService(ctx context.Context, rclient client.Client, 
 	if prevCR != nil && prevCR.Spec.VLStorage != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
 		prevSvc = build.Service(b, prevCR.Spec.VLStorage.Port, func(svc *corev1.Service) {
+			build.AddHTTPListenerServicePorts(svc, prevCR.Spec.VLStorage.HTTPListeners)
 			svc.Spec.ClusterIP = "None"
 			svc.Spec.PublishNotReadyAddresses = true
 		})
@@ -280,6 +282,7 @@ func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) 
 			ContainerPort: intstr.Parse(cr.Spec.VLStorage.Port).IntVal,
 		},
 	}
+	ports = build.AddHTTPListenerPorts(ports, cr.Spec.VLStorage.HTTPListeners)
 	volumes := make([]corev1.Volume, 0)
 	vmMounts := make([]corev1.VolumeMount, 0)
 
@@ -329,6 +332,7 @@ func buildVLStoragePodSpec(cr *vmv1.VLCluster) (*corev1.PodTemplateSpec, error) 
 	}
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.VLStorage.ExtraArgs, "-")
+	args = build.AddHTTPListenerArgs(args, cr.Spec.VLStorage.HTTPListeners)
 	build.SortArgs(args)
 	vmstorageContainer := corev1.Container{
 		Name:                     "vlstorage",

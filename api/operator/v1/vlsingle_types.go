@@ -319,7 +319,11 @@ func (cr *VLSingle) Validate() error {
 			return err
 		}
 	}
-	if err := cr.Spec.SyslogSpec.Validate(); err != nil {
+	specPort := cr.Spec.Port
+	if specPort == "" {
+		specPort = "9428"
+	}
+	if err := cr.Spec.SyslogSpec.Validate(specPort, &cr.Spec.CommonAppsParams); err != nil {
 		return err
 	}
 	if err := cr.Spec.Validate(); err != nil {

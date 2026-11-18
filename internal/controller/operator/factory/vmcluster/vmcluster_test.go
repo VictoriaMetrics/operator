@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -1799,6 +1800,78 @@ spec:
 			},
 		},
 	})
+}
+
+func TestVMClusterHTTPListeners(t *testing.T) {
+	listener := func(name string, port int32) []vmv1beta1.HTTPListener {
+		return []vmv1beta1.HTTPListener{{Name: name, Port: port, TLS: &vmv1beta1.HTTPListenerTLS{CertFile: "/tls/crt", KeyFile: "/tls/key"}}}
+	}
+	cr := &vmv1beta1.VMCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "default"},
+		Spec: vmv1beta1.VMClusterSpec{
+			VMSelect:  &vmv1beta1.VMSelect{CommonAppsParams: vmv1beta1.CommonAppsParams{HTTPListeners: listener("select-tls", 8491)}},
+			VMInsert:  &vmv1beta1.VMInsert{CommonAppsParams: vmv1beta1.CommonAppsParams{HTTPListeners: listener("insert-tls", 8492)}},
+			VMStorage: &vmv1beta1.VMStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{HTTPListeners: listener("storage-tls", 8493)}},
+			RequestsLoadBalancer: vmv1beta1.VMAuthLoadBalancer{
+				Enabled: true,
+				Spec: vmv1beta1.VMAuthLoadBalancerSpec{CommonAppsParams: vmv1beta1.CommonAppsParams{
+					HTTPListeners: listener("balancer-tls", 8494),
+				}},
+			},
+		},
+	}
+	cl := k8stools.GetTestClientWithObjects(nil)
+	build.AddDefaults(cl.Scheme())
+	cl.Scheme().Default(cr)
+	cases := []struct {
+		name        string
+		port        int32
+		primaryPort string
+		pod         func() (*corev1.PodTemplateSpec, error)
+		svc         func() *corev1.Service
+	}{
+		{"select-tls", 8491, cr.Spec.VMSelect.Port, func() (*corev1.PodTemplateSpec, error) { return makePodSpecForVMSelect(cr) }, func() *corev1.Service { return buildVMSelectService(cr) }},
+		{"insert-tls", 8492, cr.Spec.VMInsert.Port, func() (*corev1.PodTemplateSpec, error) { return makePodSpecForVMInsert(cr) }, func() *corev1.Service { return buildVMInsertService(cr) }},
+		{"storage-tls", 8493, cr.Spec.VMStorage.Port, func() (*corev1.PodTemplateSpec, error) { return makePodSpecForVMStorage(context.Background(), cr) }, func() *corev1.Service { return buildVMStorageService(cr) }},
+		{"balancer-tls", 8494, cr.Spec.RequestsLoadBalancer.Spec.Port,
+			func() (*corev1.PodTemplateSpec, error) {
+				deployment, err := buildVMAuthLBDeployment(cr)
+				if err != nil {
+					return nil, err
+				}
+				return &deployment.Spec.Template, nil
+			},
+			func() *corev1.Service {
+				ctx := context.Background()
+				if !assert.NoError(t, createOrUpdateVMAuthLBService(ctx, cl, cr, nil)) {
+					return nil
+				}
+				var svc corev1.Service
+				if !assert.NoError(t, cl.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(vmv1beta1.ClusterComponentBalancer), Namespace: cr.Namespace}, &svc)) {
+					return nil
+				}
+				return &svc
+			}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			pod, err := tc.pod()
+			if !assert.NoError(t, err) {
+				return
+			}
+			container := pod.Spec.Containers[0]
+			assert.Subset(t, container.Args, []string{
+				"-httpListenAddr=:" + tc.primaryPort + ",:" + strconv.Itoa(int(tc.port)),
+				"-tls=false,true", "-tlsCertFile=,/tls/crt", "-tlsKeyFile=,/tls/key",
+			})
+			assert.Contains(t, container.Ports, corev1.ContainerPort{Name: tc.name, Protocol: corev1.ProtocolTCP, ContainerPort: tc.port})
+			svc := tc.svc()
+			if !assert.NotNil(t, svc) {
+				return
+			}
+			assert.Contains(t, svc.Spec.Ports, corev1.ServicePort{Name: tc.name, Protocol: corev1.ProtocolTCP, Port: tc.port, TargetPort: intstr.FromInt32(tc.port)})
+		})
+	}
 }
 
 func TestVMClusterDiscoveryArgs(t *testing.T) {

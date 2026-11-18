@@ -718,3 +718,34 @@ func TestAddDefaultMetadata(t *testing.T) {
 		"existing-annotation": "existing-value",
 	}, obj.Annotations)
 }
+
+func TestValidateWithDefaults(t *testing.T) {
+	f := func(port string, listenerPort int32, wantErr bool) {
+		t.Helper()
+		cr := &vmv1beta1.VMSingle{
+			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+			Spec: vmv1beta1.VMSingleSpec{
+				CommonAppsParams: vmv1beta1.CommonAppsParams{
+					Port:          port,
+					HTTPListeners: []vmv1beta1.HTTPListener{{Name: "extra", Port: listenerPort}},
+				},
+			},
+		}
+		err := ValidateWithDefaults(cr)
+		if wantErr {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+		}
+		assert.Empty(t, cr.Spec.Port, "input must not be defaulted")
+	}
+
+	// conflicts with defaulted spec.port
+	f("", 8429, true)
+
+	// conflicts with http-alias port of defaulted spec.port
+	f("", 8428, true)
+
+	// no conflict
+	f("", 9000, false)
+}

@@ -46,7 +46,7 @@ func (*VMClusterCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1be
 		err = errors.New(obj.Status.ParsingSpecError)
 		return
 	}
-	if err = obj.Validate(); err != nil {
+	if err = build.ValidateWithDefaults(obj); err != nil {
 		return
 	}
 	if obj.Spec.VMStorage != nil && obj.Spec.VMStorage.VMBackup != nil && obj.Spec.VMStorage.VMBackup.AcceptEULA {
@@ -63,7 +63,7 @@ func (*VMClusterCustomValidator) ValidateUpdate(ctx context.Context, _, newObj *
 		err = errors.New(newObj.Status.ParsingSpecError)
 		return
 	}
-	if err = newObj.Validate(); err != nil {
+	if err = build.ValidateWithDefaults(newObj); err != nil {
 		return
 	}
 	if newObj.Spec.VMStorage != nil && newObj.Spec.VMStorage.VMBackup != nil && newObj.Spec.VMStorage.VMBackup.AcceptEULA {

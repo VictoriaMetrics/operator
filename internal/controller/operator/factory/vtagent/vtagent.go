@@ -44,12 +44,14 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 	var prevService, prevAdditionalService *corev1.Service
 	if prevCR != nil {
 		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
+			build.AddHTTPListenerServicePorts(svc, prevCR.Spec.HTTPListeners)
 			svc.Spec.ClusterIP = "None"
 			build.AddOTLPGRPCPortToService(svc, prevCR.Spec.GRPCSpec)
 		})
 		prevAdditionalService = build.AdditionalServiceFromDefault(prevService, prevCR.Spec.ServiceSpec)
 	}
 	newService := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
+		build.AddHTTPListenerServicePorts(svc, cr.Spec.HTTPListeners)
 		svc.Spec.ClusterIP = "None"
 		build.AddOTLPGRPCPortToService(svc, cr.Spec.GRPCSpec)
 	})
@@ -260,6 +262,7 @@ func newPodSpec(cr *vmv1.VTAgent) (*corev1.PodSpec, error) {
 	envs = append(envs, cr.Spec.ExtraEnvs...)
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
+	ports = build.AddHTTPListenerPorts(ports, cr.Spec.HTTPListeners)
 	ports = build.AddOTLPGRPCPortTo(ports, cr.Spec.GRPCSpec)
 
 	vtMounts = append(vtMounts, cr.Spec.VolumeMounts...)
@@ -302,6 +305,7 @@ func newPodSpec(cr *vmv1.VTAgent) (*corev1.PodSpec, error) {
 	}
 	volumes, vtMounts = addRemoteWriteAssetsToVolumes(volumes, vtMounts, cr)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
+	args = build.AddHTTPListenerArgs(args, cr.Spec.HTTPListeners)
 	build.SortArgs(args)
 
 	vtagentContainer := corev1.Container{

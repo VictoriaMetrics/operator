@@ -176,6 +176,7 @@ func buildVTInsertPodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) {
 			ContainerPort: intstr.Parse(cr.Spec.Insert.Port).IntVal,
 		},
 	}
+	ports = build.AddHTTPListenerPorts(ports, cr.Spec.Insert.HTTPListeners)
 	ports = build.AddOTLPGRPCPortTo(ports, cr.Spec.Insert.GRPCSpec)
 
 	volumes := make([]corev1.Volume, 0)
@@ -220,6 +221,7 @@ func buildVTInsertPodSpec(cr *vmv1.VTCluster) (*corev1.PodTemplateSpec, error) {
 	}
 
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.Insert.ExtraArgs, "-")
+	args = build.AddHTTPListenerArgs(args, cr.Spec.Insert.HTTPListeners)
 	build.SortArgs(args)
 
 	insertContainers := corev1.Container{
@@ -372,6 +374,7 @@ func createOrUpdateVTInsertService(ctx context.Context, rclient client.Client, c
 func buildVTInsertService(cr *vmv1.VTCluster) *corev1.Service {
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	svc := build.Service(b, cr.Spec.Insert.Port, func(svc *corev1.Service) {
+		build.AddHTTPListenerServicePorts(svc, cr.Spec.Insert.HTTPListeners)
 		build.AddOTLPGRPCPortToService(svc, cr.Spec.Insert.GRPCSpec)
 	})
 	if cr.Spec.RequestsLoadBalancer.Enabled && !cr.Spec.RequestsLoadBalancer.DisableInsertBalancing {

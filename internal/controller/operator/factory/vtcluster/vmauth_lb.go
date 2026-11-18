@@ -203,15 +203,16 @@ func buildVMauthLBDeployment(cr *vmv1.VTCluster) (*appsv1.Deployment, error) {
 	}
 
 	args = build.AddExtraArgsOverrideDefaults(args, spec.ExtraArgs, "-")
+	args = build.AddHTTPListenerArgs(args, spec.HTTPListeners)
 	vmauthLBCnt := corev1.Container{
 		Name: "vmauth",
-		Ports: []corev1.ContainerPort{
+		Ports: build.AddHTTPListenerPorts([]corev1.ContainerPort{
 			{
 				Protocol:      corev1.ProtocolTCP,
 				Name:          "http",
 				ContainerPort: intstr.Parse(spec.Port).IntVal,
 			},
-		},
+		}, spec.HTTPListeners),
 		Args:            args,
 		Env:             spec.ExtraEnvs,
 		EnvFrom:         spec.ExtraEnvsFrom,
@@ -296,9 +297,13 @@ func createOrUpdateVMAuthLBService(ctx context.Context, rclient client.Client, c
 	var prevSvc *corev1.Service
 	if prevCR != nil && prevCR.Spec.RequestsLoadBalancer.Enabled {
 		b := builder(prevCR)
-		prevSvc = build.Service(b, prevCR.Spec.RequestsLoadBalancer.Spec.Port, nil)
+		prevSvc = build.Service(b, prevCR.Spec.RequestsLoadBalancer.Spec.Port, func(svc *corev1.Service) {
+			build.AddHTTPListenerServicePorts(svc, prevCR.Spec.RequestsLoadBalancer.Spec.HTTPListeners)
+		})
 	}
-	svc := build.Service(b, cr.Spec.RequestsLoadBalancer.Spec.Port, nil)
+	svc := build.Service(b, cr.Spec.RequestsLoadBalancer.Spec.Port, func(svc *corev1.Service) {
+		build.AddHTTPListenerServicePorts(svc, cr.Spec.RequestsLoadBalancer.Spec.HTTPListeners)
+	})
 	owner := cr.AsOwner()
 	if err := reconcile.Service(ctx, rclient, svc, prevSvc, &owner); err != nil {
 		return fmt.Errorf("cannot reconcile vmauthlb service: %w", err)

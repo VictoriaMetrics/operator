@@ -246,6 +246,7 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle, extraConfigSecretCo
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
+	ports = build.AddHTTPListenerPorts(ports, cr.Spec.HTTPListeners)
 	ports = build.AppendInsertPorts(ports, cr.Spec.InsertPorts)
 
 	var crMounts []corev1.VolumeMount
@@ -398,6 +399,7 @@ func newPodSpec(ctx context.Context, cr *vmv1beta1.VMSingle, extraConfigSecretCo
 	args = build.LicenseArgsTo(args, cr.Spec.License, vmv1beta1.SecretsDir)
 	volumes, vmMounts = build.OpenShiftServiceCAVolumeTo(volumes, vmMounts)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
+	args = build.AddHTTPListenerArgs(args, cr.Spec.HTTPListeners)
 	build.SortArgs(args)
 	vmsingleContainer := corev1.Container{
 		Name:                     "vmsingle",
@@ -550,6 +552,7 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 		}
 	}
 	svc := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
+		build.AddHTTPListenerServicePorts(svc, cr.Spec.HTTPListeners)
 		addExtraPorts(svc, cr.Spec.VMBackup)
 		build.AppendInsertPortsToService(cr.Spec.InsertPorts, svc)
 	})
@@ -557,6 +560,7 @@ func createOrUpdateService(ctx context.Context, rclient client.Client, cr, prevC
 	var prevSvc, prevAdditionalSvc *corev1.Service
 	if prevCR != nil {
 		prevSvc = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
+			build.AddHTTPListenerServicePorts(svc, prevCR.Spec.HTTPListeners)
 			addExtraPorts(svc, prevCR.Spec.VMBackup)
 			build.AppendInsertPortsToService(prevCR.Spec.InsertPorts, svc)
 		})

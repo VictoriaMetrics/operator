@@ -164,6 +164,8 @@ spec:
         replicaCount: 1
     vmsingle:
       spec:
+          nodeSelector:
+            topology.kubernetes.io/zone: %ZONE%
         retentionPeriod: "30d"
   zones:
     - name: zone-a

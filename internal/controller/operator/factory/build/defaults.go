@@ -34,6 +34,7 @@ func getCfg() *config.BaseOperatorConf {
 
 // AddDefaults adds defaulting functions to the runtimeScheme
 func AddDefaults(scheme *runtime.Scheme) {
+	scheme.AddTypeDefaultingFunc(&networkingv1.NetworkPolicy{}, addNetworkPolicyDefaults)
 	scheme.AddTypeDefaultingFunc(&corev1.Service{}, addServiceDefaults)
 	scheme.AddTypeDefaultingFunc(&appsv1.Deployment{}, addDeploymentDefaults)
 	scheme.AddTypeDefaultingFunc(&appsv1.StatefulSet{}, addStatefulsetDefaults)
@@ -62,6 +63,32 @@ func AddDefaults(scheme *runtime.Scheme) {
 	scheme.AddTypeDefaultingFunc(&networkingv1.Ingress{}, addDefaultMetadata)
 	scheme.AddTypeDefaultingFunc(&gwapiv1.HTTPRoute{}, addDefaultMetadata)
 	scheme.AddTypeDefaultingFunc(&corev1.Secret{}, addDefaultMetadata)
+}
+
+func addNetworkPolicyDefaults(objI any) {
+	np := objI.(*networkingv1.NetworkPolicy)
+	// Defaults are set according to https://github.com/kubernetes/kubernetes/blob/v1.37.2/pkg/apis/networking/v1/defaults.go#L38-L46
+	if len(np.Spec.PolicyTypes) == 0 {
+		np.Spec.PolicyTypes = []networkingv1.PolicyType{networkingv1.PolicyTypeIngress}
+		if len(np.Spec.Egress) > 0 {
+			np.Spec.PolicyTypes = append(np.Spec.PolicyTypes, networkingv1.PolicyTypeEgress)
+		}
+	}
+
+	// Defaults are set according to https://github.com/kubernetes/kubernetes/blob/v1.37.2/pkg/apis/networking/v1/defaults.go#L30-L36
+	defaultPorts := func(ports []networkingv1.NetworkPolicyPort) {
+		for i := range ports {
+			if ports[i].Protocol == nil {
+				ports[i].Protocol = ptr.To(corev1.ProtocolTCP)
+			}
+		}
+	}
+	for i := range np.Spec.Ingress {
+		defaultPorts(np.Spec.Ingress[i].Ports)
+	}
+	for i := range np.Spec.Egress {
+		defaultPorts(np.Spec.Egress[i].Ports)
+	}
 }
 
 func addVMDistributedDefaults(objI any) {

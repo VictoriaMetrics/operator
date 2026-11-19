@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/utils/ptr"
 	k8syaml "sigs.k8s.io/yaml"
@@ -2175,4 +2176,179 @@ func TestConvertImageVariant(t *testing.T) {
 	f(ImageValues{Tag: "v1.0.0"}, "v1.0.0")
 	f(ImageValues{Variant: "cluster"}, "")
 	f(ImageValues{}, "")
+}
+
+func TestConvertHTTPListeners(t *testing.T) {
+	type opts struct {
+		chart     string
+		values    string
+		component func(cr any) (port string, extraArgs map[string]string, svc *vmv1beta1.AdditionalServiceSpec)
+		wantPort  string
+		wantArgs  map[string]string
+		wantPorts []corev1.ServicePort
+		wantErr   string
+	}
+	f := func(o opts) {
+		t.Helper()
+		values, err := UnmarshalValues([]byte(o.values), o.chart)
+		require.NoError(t, err)
+		cr, err := Convert("test", "default", values)
+		if o.wantErr != "" {
+			require.ErrorContains(t, err, o.wantErr)
+			return
+		}
+		require.NoError(t, err)
+		port, extraArgs, svc := o.component(cr)
+		assert.Equal(t, o.wantPort, port)
+		assert.Equal(t, o.wantArgs, extraArgs)
+		if o.wantPorts == nil {
+			if svc != nil {
+				assert.Empty(t, svc.Spec.Ports)
+			}
+			return
+		}
+		require.NotNil(t, svc)
+		assert.True(t, svc.UseAsDefault)
+		assert.Equal(t, o.wantPorts, svc.Spec.Ports)
+	}
+	vlselect := func(cr any) (string, map[string]string, *vmv1beta1.AdditionalServiceSpec) {
+		s := cr.(*vmv1.VLCluster).Spec.VLSelect
+		return s.Port, s.ExtraArgs, s.ServiceSpec
+	}
+	vmagent := func(cr any) (string, map[string]string, *vmv1beta1.AdditionalServiceSpec) {
+		s := cr.(*vmv1beta1.VMAgent).Spec
+		return s.Port, s.ExtraArgs, s.ServiceSpec
+	}
+
+	// https://github.com/VictoriaMetrics/operator/issues/2428
+	f(opts{
+		chart: "victoria-logs-cluster",
+		values: `
+vlselect:
+  http:
+  - name: mtls
+    value: ":9409"
+    tls: true
+    tlsCertFile: /etc/tls/vlselect/tls.crt
+    tlsKeyFile: /etc/tls/vlselect/tls.key
+    mtls: true
+    mtlsCAFile: /etc/tls/vlselect/ca.crt
+  - name: http
+    primary: true
+    value: ":9471"
+    tls: false
+    tlsCertFile: ""
+`,
+		component: vlselect,
+		wantPort:  "9471",
+		wantArgs: map[string]string{
+			"httpListenAddr": ":9471,:9409",
+			"tls":            "false,true",
+			"tlsCertFile":    ",/etc/tls/vlselect/tls.crt",
+			"tlsKeyFile":     ",/etc/tls/vlselect/tls.key",
+			"mtls":           "false,true",
+			"mtlsCAFile":     ",/etc/tls/vlselect/ca.crt",
+		},
+		wantPorts: []corev1.ServicePort{
+			{Name: "mtls", Protocol: corev1.ProtocolTCP, Port: 9409, TargetPort: intstr.FromInt32(9409)},
+		},
+	})
+
+	// a single listener sets only the port and its non-empty flags, which override extraArgs
+	f(opts{
+		chart: "victoria-logs-cluster",
+		values: `
+vlselect:
+  extraArgs:
+    tls: "false"
+  http:
+  - name: http
+    primary: true
+    value: ":8080"
+    tls: true
+    tlsCertFile: /c.crt
+    tlsKeyFile: ""
+`,
+		component: vlselect,
+		wantPort:  "8080",
+		wantArgs:  map[string]string{"tls": "true", "tlsCertFile": "/c.crt"},
+	})
+
+	// a host-bound address must be kept in httpListenAddr
+	f(opts{
+		chart: "victoria-logs-cluster",
+		values: `
+vlselect:
+  http:
+  - name: http
+    primary: true
+    value: "127.0.0.1:8080"
+`,
+		component: vlselect,
+		wantPort:  "8080",
+		wantArgs:  map[string]string{"httpListenAddr": "127.0.0.1:8080"},
+	})
+
+	// extraArgs.httpListenAddr makes the charts ignore the http list
+	f(opts{
+		chart: "victoria-metrics-agent",
+		values: `
+extraArgs:
+  httpListenAddr: [":9000", ":9001"]
+http:
+- name: other
+  primary: true
+  value: ":8429"
+  tls: true
+`,
+		component: vmagent,
+		wantPort:  "9000",
+		wantArgs:  map[string]string{"httpListenAddr": ":9000,:9001"},
+	})
+
+	// top-level http of vmagent
+	f(opts{
+		chart: "victoria-metrics-agent",
+		values: `
+http:
+- name: http
+  primary: true
+  value: ":8429"
+`,
+		component: vmagent,
+		wantPort:  "8429",
+	})
+
+	// errors the charts fail on too
+	f(opts{
+		chart:   "victoria-logs-cluster",
+		values:  "vlselect:\n  http:\n  - name: http\n    value: \":9471\"\n",
+		wantErr: "vlselect: at least one item in `http` must have `primary: true`",
+	})
+	f(opts{
+		chart:   "victoria-logs-cluster",
+		values:  "vlselect:\n  http:\n  - name: a\n    primary: true\n    value: \":1\"\n  - name: b\n    primary: true\n    value: \":2\"\n",
+		wantErr: "more than one primary",
+	})
+	f(opts{
+		chart:   "victoria-logs-cluster",
+		values:  "vlselect:\n  http:\n  - primary: true\n    value: \":1\"\n",
+		wantErr: "`name` is not set for `http` idx 0",
+	})
+	f(opts{
+		chart:   "victoria-logs-cluster",
+		values:  "vlselect:\n  http:\n  - name: http\n    primary: true\n    value: \"9471\"\n",
+		wantErr: "missing port in address",
+	})
+	// errors specific to the operator
+	f(opts{
+		chart:   "victoria-logs-cluster",
+		values:  "vlselect:\n  http:\n  - name: main\n    primary: true\n    value: \":1\"\n  - name: http\n    value: \":2\"\n",
+		wantErr: "reserves the Service port name `http`",
+	})
+	f(opts{
+		chart:   "victoria-logs-cluster",
+		values:  "vlselect:\n  http:\n  - name: http\n    primary: true\n    value: \":1\"\n  - name: b\n    value: \":2\"\n    tlsCipherSuites: \"a,b\"\n",
+		wantErr: "contains a comma",
+	})
 }

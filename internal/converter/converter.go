@@ -17,6 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/utils/ptr"
 	k8syaml "sigs.k8s.io/yaml"
@@ -90,6 +91,7 @@ type VMAgentHelmValues struct {
 	PodSecurityContext *corev1.PodSecurityContext    `yaml:"podSecurityContext,omitempty" json:"podSecurityContext,omitempty"`
 	SecurityContext    *corev1.SecurityContext       `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
 	RemoteWrite        []VMAgentRemoteWriteValues    `yaml:"remoteWrite,omitempty" json:"remoteWrite,omitempty"`
+	HTTP               []map[string]interface{}      `yaml:"http,omitempty" json:"http,omitempty"`
 	ServiceAccount     *ServiceAccount               `yaml:"serviceAccount,omitempty" json:"serviceAccount,omitempty"`
 	License            *LicenseValues                `yaml:"license,omitempty" json:"license,omitempty"`
 }
@@ -223,6 +225,7 @@ type VMAlertServerValues struct {
 	RemoteRead         *VMAlertHTTPAuthValues        `yaml:"remoteRead,omitempty" json:"remoteRead,omitempty"`
 	Datasource         VMAlertHTTPAuthValues         `yaml:"datasource,omitempty" json:"datasource,omitempty"`
 	Config             *VMAlertConfigValues          `yaml:"config,omitempty" json:"config,omitempty"`
+	HTTP               []map[string]interface{}      `yaml:"http,omitempty" json:"http,omitempty"`
 }
 
 // VMAlertConfigValues represents vmalert's own native rule config (the chart's
@@ -501,12 +504,13 @@ type VLAgentHelmValues struct {
 	SecurityContext           *corev1.SecurityContext           `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
 	PodSecurityContext        *corev1.PodSecurityContext        `yaml:"podSecurityContext,omitempty" json:"podSecurityContext,omitempty"`
 	PriorityClassName         string                            `yaml:"priorityClassName,omitempty" json:"priorityClassName,omitempty"`
-	ExtraArgs                 map[string]string                 `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
+	ExtraArgs                 map[string]interface{}            `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
 	Env                       []corev1.EnvVar                   `yaml:"env,omitempty" json:"env,omitempty"`
 	ExtraVolumes              []corev1.Volume                   `yaml:"extraVolumes,omitempty" json:"extraVolumes,omitempty"`
 	ExtraVolumeMounts         []corev1.VolumeMount              `yaml:"extraVolumeMounts,omitempty" json:"extraVolumeMounts,omitempty"`
 	Resources                 *corev1.ResourceRequirements      `yaml:"resources,omitempty" json:"resources,omitempty"`
 	RemoteWrite               []VLAgentRemoteWriteValues        `yaml:"remoteWrite" json:"remoteWrite"`
+	HTTP                      []map[string]interface{}          `yaml:"http,omitempty" json:"http,omitempty"`
 	MaxDiskUsagePerURL        string                            `yaml:"maxDiskUsagePerURL,omitempty" json:"maxDiskUsagePerURL,omitempty"`
 	PersistentVolume          *PersistentVolumeValues           `yaml:"persistentVolume,omitempty" json:"persistentVolume,omitempty"`
 }
@@ -525,12 +529,13 @@ type VTAgentHelmValues struct {
 	SecurityContext           *corev1.SecurityContext           `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
 	PodSecurityContext        *corev1.PodSecurityContext        `yaml:"podSecurityContext,omitempty" json:"podSecurityContext,omitempty"`
 	PriorityClassName         string                            `yaml:"priorityClassName,omitempty" json:"priorityClassName,omitempty"`
-	ExtraArgs                 map[string]string                 `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
+	ExtraArgs                 map[string]interface{}            `yaml:"extraArgs,omitempty" json:"extraArgs,omitempty"`
 	Env                       []corev1.EnvVar                   `yaml:"env,omitempty" json:"env,omitempty"`
 	ExtraVolumes              []corev1.Volume                   `yaml:"extraVolumes,omitempty" json:"extraVolumes,omitempty"`
 	ExtraVolumeMounts         []corev1.VolumeMount              `yaml:"extraVolumeMounts,omitempty" json:"extraVolumeMounts,omitempty"`
 	Resources                 *corev1.ResourceRequirements      `yaml:"resources,omitempty" json:"resources,omitempty"`
 	RemoteWrite               []VTAgentRemoteWriteValues        `yaml:"remoteWrite" json:"remoteWrite"`
+	HTTP                      []map[string]interface{}          `yaml:"http,omitempty" json:"http,omitempty"`
 	MaxDiskUsagePerURL        string                            `yaml:"maxDiskUsagePerURL,omitempty" json:"maxDiskUsagePerURL,omitempty"`
 	PersistentVolume          *PersistentVolumeValues           `yaml:"persistentVolume,omitempty" json:"persistentVolume,omitempty"`
 	ServiceAccount            *ServiceAccount                   `yaml:"serviceAccount,omitempty" json:"serviceAccount,omitempty"`
@@ -615,6 +620,7 @@ type ServerValues struct {
 	SecurityContext    *corev1.SecurityContext       `yaml:"securityContext,omitempty" json:"securityContext,omitempty"`
 	PersistentVolume   *PersistentVolumeValues       `yaml:"persistentVolume,omitempty" json:"persistentVolume,omitempty"`
 	Service            *ServiceValues                `yaml:"service,omitempty" json:"service,omitempty"`
+	HTTP               []map[string]interface{}      `yaml:"http,omitempty" json:"http,omitempty"`
 }
 
 type ImageValues struct {
@@ -1258,7 +1264,7 @@ func convertCommonConfig(values ServerValues, global GlobalValues) (commonConfig
 	if len(values.ExtraArgs) > 0 {
 		cfg.ExtraArgs = make(map[string]string)
 		for k, v := range values.ExtraArgs {
-			cfg.ExtraArgs[k] = fmt.Sprint(v)
+			cfg.ExtraArgs[k] = extraArgValue(v)
 		}
 	}
 
@@ -1315,7 +1321,224 @@ func convertCommonConfig(values ServerValues, global GlobalValues) (commonConfig
 
 	cfg.ServiceSpec = convertService(values.Service)
 
+	listeners, err := convertHTTPListeners(values.HTTP, cfg.ExtraArgs)
+	if err != nil {
+		return cfg, err
+	}
+	if listeners != nil {
+		cfg.Port = listeners.port
+		if len(listeners.args) > 0 {
+			if cfg.ExtraArgs == nil {
+				cfg.ExtraArgs = make(map[string]string, len(listeners.args))
+			}
+			// the charts let flags of the `http` list override the same extraArgs
+			maps.Copy(cfg.ExtraArgs, listeners.args)
+		}
+		if len(listeners.servicePorts) > 0 {
+			if cfg.ServiceSpec == nil {
+				cfg.ServiceSpec = &vmv1beta1.AdditionalServiceSpec{UseAsDefault: true}
+			}
+			cfg.ServiceSpec.Spec.Ports = append(cfg.ServiceSpec.Spec.Ports, listeners.servicePorts...)
+		}
+	}
+
 	return cfg, nil
+}
+
+// extraArgValue renders a chart extraArgs value the way the operator expects it
+func extraArgValue(v any) string {
+	switch v := v.(type) {
+	case []any:
+		parts := make([]string, len(v))
+		for i, item := range v {
+			parts[i] = extraArgValue(item)
+		}
+		return strings.Join(parts, ",")
+	case float64:
+		// numbers are decoded as float64, which fmt prints in exponent notation when large
+		return strconv.FormatFloat(v, 'f', -1, 64)
+	case nil:
+		return ""
+	default:
+		return fmt.Sprint(v)
+	}
+}
+
+const httpListenAddrFlag = "httpListenAddr"
+
+// httpListeners is a chart's `http` list converted to the operator's fields.
+type httpListeners struct {
+	// port is the port of the primary listener, used for spec.port.
+	port string
+	// args are the flags the listeners need besides spec.port.
+	args map[string]string
+	// servicePorts are the Service ports of the non-primary listeners.
+	servicePorts []corev1.ServicePort
+}
+
+// convertHTTPListeners converts a chart's `http` list, rendered by the charts with the
+// vm.http.args helper of victoria-metrics-common, into spec.port, extraArgs and Service ports.
+// When extraArgs already sets httpListenAddr, the charts ignore the `http` list and so does this
+// function: only spec.port is derived from the first address.
+//
+// The operator derives the probe scheme from the first value of the tls flag, so the primary
+// listener is always moved to the first position.
+//
+// A single listener without `value` keeps the operator's default port. With several listeners,
+// every listener needs `value`, since httpListenAddr must list all the addresses.
+func convertHTTPListeners(listeners []map[string]any, extraArgs map[string]string) (*httpListeners, error) {
+	if addr := extraArgs[httpListenAddrFlag]; addr != "" {
+		first, _, _ := strings.Cut(addr, ",")
+		_, port, err := splitListenAddr(first)
+		if err != nil {
+			return nil, fmt.Errorf("cannot convert extraArgs.%s=%q: %w", httpListenAddrFlag, addr, err)
+		}
+		return &httpListeners{port: port}, nil
+	}
+	if len(listeners) == 0 {
+		return nil, nil
+	}
+
+	primary := -1
+	for i, l := range listeners {
+		if extraArgValue(l["name"]) == "" {
+			return nil, fmt.Errorf("`name` is not set for `http` idx %d", i)
+		}
+		if extraArgValue(l["value"]) == "" && len(listeners) > 1 {
+			return nil, fmt.Errorf("`value` is not set for `http` item %q, it is required when there are several listeners", extraArgValue(l["name"]))
+		}
+		if p, _ := l["primary"].(bool); p {
+			if primary >= 0 {
+				return nil, fmt.Errorf("found more than one primary address in `http`, which is not allowed")
+			}
+			primary = i
+		}
+	}
+	if primary < 0 {
+		return nil, fmt.Errorf("at least one item in `http` must have `primary: true`")
+	}
+	// Mind the trick:
+	// The chart renders the flags in list order and finds the primary listener by its
+	// `primary: true` key, see https://github.com/VictoriaMetrics/helm-charts/blob/75044e7e34aef6e6382f9fc92af34700a7270d3d/charts/victoria-metrics-common/templates/_pod.tpl#L43.
+	// The operator gets only the flags, so it treats position 0 as the primary listener:
+	// it reads the first value of `tls` and `httpListenAddr.useProxyProtocol` for the
+	// probes and scrape of spec.port, with plain HTTP when unset.
+	// So the primary listener needs to be moved to the first place, and the others keep their order.
+	ordered := make([]map[string]any, 0, len(listeners))
+	ordered = append(ordered, listeners[primary])
+	ordered = append(ordered, listeners[:primary]...)
+	ordered = append(ordered, listeners[primary+1:]...)
+
+	result := &httpListeners{}
+	type flagValues struct {
+		values   []string
+		isBool   bool
+		hasValue bool
+	}
+	flags := make(map[string]*flagValues)
+	needAddrFlag := len(ordered) > 1
+	for i, l := range ordered {
+		name := extraArgValue(l["name"])
+		value := extraArgValue(l["value"])
+		var host, port string
+		if value != "" {
+			var err error
+			host, port, err = splitListenAddr(value)
+			if err != nil {
+				return nil, fmt.Errorf("cannot convert `http` item %q with value=%q: %w", name, value, err)
+			}
+		}
+		if host != "" {
+			// the operator passes only a port, the address must be kept to bind the given host
+			needAddrFlag = true
+		}
+		if i == 0 {
+			result.port = port
+		} else {
+			// the operator always exposes the primary port as `http` and lets a port of the same
+			// name in serviceSpec replace it
+			if name == "http" {
+				return nil, fmt.Errorf("cannot convert non-primary `http` item %q: the operator reserves the Service port name `http` for the primary listener, rename the item", name)
+			}
+			portNum, _ := strconv.ParseInt(port, 10, 32)
+			result.servicePorts = append(result.servicePorts, corev1.ServicePort{
+				Name:       name,
+				Protocol:   corev1.ProtocolTCP,
+				Port:       int32(portNum),
+				TargetPort: intstr.FromInt32(int32(portNum)),
+			})
+		}
+		for k, v := range l {
+			switch k {
+			case "name", "primary":
+				continue
+			case "value":
+				k, v = httpListenAddrFlag, value
+			}
+			f := flags[k]
+			if f == nil {
+				f = &flagValues{values: make([]string, len(ordered))}
+				flags[k] = f
+			}
+			switch v := v.(type) {
+			case bool:
+				f.isBool = true
+				f.hasValue = f.hasValue || v
+			default:
+				f.hasValue = f.hasValue || extraArgValue(v) != ""
+			}
+			s := extraArgValue(v)
+			if strings.Contains(s, ",") {
+				return nil, fmt.Errorf("cannot convert `http` item %q: %s=%q contains a comma, which cannot be passed in a comma-separated list of the operator's extraArgs", name, k, s)
+			}
+			f.values[i] = s
+		}
+	}
+
+	for k, f := range flags {
+		// the charts drop flags without values, the same as for every listener
+		if !f.hasValue || (k == httpListenAddrFlag && !needAddrFlag) {
+			continue
+		}
+		values := f.values
+		if f.isBool {
+			for i, v := range values {
+				if v == "" {
+					values[i] = "false"
+				}
+			}
+		} else {
+			for len(values) > 0 && values[len(values)-1] == "" {
+				values = values[:len(values)-1]
+			}
+		}
+		if result.args == nil {
+			result.args = make(map[string]string)
+		}
+		result.args[k] = strings.Join(values, ",")
+	}
+	return result, nil
+}
+
+// splitListenAddr returns the host and the port of a listen address such as `:8428`. An
+// all-interfaces host is returned empty.
+func splitListenAddr(addr string) (string, string, error) {
+	host, port, err := net.SplitHostPort(strings.TrimSpace(addr))
+	if err != nil {
+		return "", "", err
+	}
+	n, err := strconv.ParseInt(port, 10, 32)
+	if err != nil {
+		return "", "", fmt.Errorf("cannot parse port %q: %w", port, err)
+	}
+	if n < 1 || n > 65535 {
+		return "", "", fmt.Errorf("port %d must be between 1 and 65535", n)
+	}
+	switch host {
+	case "0.0.0.0", "::":
+		host = ""
+	}
+	return host, port, nil
 }
 
 // convertContainerSecurityContext maps the subset of corev1.SecurityContext fields that the
@@ -1475,6 +1698,7 @@ func convertVMSingleSpec(values *VMSingleHelmValues) (*vmv1beta1.VMSingleSpec, e
 
 	spec.ReplicaCount = cfg.ReplicaCount
 	spec.Image = cfg.Image
+	spec.Port = cfg.Port
 	spec.ExtraArgs = cfg.ExtraArgs
 	spec.ExtraEnvs = cfg.ExtraEnvs
 	spec.Resources = cfg.Resources
@@ -1614,6 +1838,7 @@ func convertVMAlertSpec(values *VMAlertHelmValues, name string) (*vmv1beta1.VMAl
 		Labels:             values.Server.Labels,
 		PodSecurityContext: values.Server.PodSecurityContext.toCoreV1(),
 		SecurityContext:    values.Server.SecurityContext.toCoreV1(),
+		HTTP:               values.Server.HTTP,
 	}, values.Global)
 	if err != nil {
 		return nil, nil, err
@@ -1621,6 +1846,7 @@ func convertVMAlertSpec(values *VMAlertHelmValues, name string) (*vmv1beta1.VMAl
 
 	spec.ReplicaCount = cfg.ReplicaCount
 	spec.Image = cfg.Image
+	spec.Port = cfg.Port
 	spec.ExtraArgs = cfg.ExtraArgs
 	spec.ExtraEnvs = cfg.ExtraEnvs
 	spec.Volumes = cfg.Volumes
@@ -1704,6 +1930,7 @@ func convertVMAgentSpec(values *VMAgentHelmValues) (*vmv1beta1.VMAgentSpec, erro
 		Labels:             values.Labels,
 		PodSecurityContext: values.PodSecurityContext,
 		SecurityContext:    values.SecurityContext,
+		HTTP:               values.HTTP,
 	}, values.Global)
 	if err != nil {
 		return nil, err
@@ -1711,6 +1938,7 @@ func convertVMAgentSpec(values *VMAgentHelmValues) (*vmv1beta1.VMAgentSpec, erro
 
 	spec.ReplicaCount = cfg.ReplicaCount
 	spec.Image = cfg.Image
+	spec.Port = cfg.Port
 	spec.ExtraArgs = cfg.ExtraArgs
 	spec.ExtraEnvs = cfg.ExtraEnvs
 	spec.Volumes = cfg.Volumes
@@ -1749,7 +1977,7 @@ func convertVMClusterSpec(values *VMClusterHelmValues) (*vmv1beta1.VMClusterSpec
 		spec.VMSelect = &vmv1beta1.VMSelect{}
 		cfg, err := convertCommonConfig(values.VMSelect, values.Global)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("vmselect: %w", err)
 		}
 		spec.VMSelect.CommonAppsParams = cfg.CommonAppsParams
 		spec.VMSelect.PodMetadata = cfg.PodMetadata
@@ -1760,7 +1988,7 @@ func convertVMClusterSpec(values *VMClusterHelmValues) (*vmv1beta1.VMClusterSpec
 		spec.VMInsert = &vmv1beta1.VMInsert{}
 		cfg, err := convertCommonConfig(values.VMInsert, values.Global)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("vminsert: %w", err)
 		}
 		spec.VMInsert.CommonAppsParams = cfg.CommonAppsParams
 		spec.VMInsert.PodMetadata = cfg.PodMetadata
@@ -1771,7 +1999,7 @@ func convertVMClusterSpec(values *VMClusterHelmValues) (*vmv1beta1.VMClusterSpec
 		spec.VMStorage = &vmv1beta1.VMStorage{}
 		cfg, err := convertCommonConfig(values.VMStorage, values.Global)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("vmstorage: %w", err)
 		}
 		spec.VMStorage.CommonAppsParams = cfg.CommonAppsParams
 		spec.VMStorage.PodMetadata = cfg.PodMetadata
@@ -1795,7 +2023,7 @@ func convertVLAgentSpec(values *VLAgentHelmValues) (*vmv1.VLAgentSpec, error) {
 	cfg, err := convertCommonConfig(ServerValues{
 		Image:              values.Image,
 		ReplicaCount:       values.ReplicaCount,
-		ExtraArgs:          nil,
+		ExtraArgs:          values.ExtraArgs,
 		ExtraEnvs:          values.Env,
 		Resources:          values.Resources,
 		NodeSelector:       values.NodeSelector,
@@ -1806,6 +2034,7 @@ func convertVLAgentSpec(values *VLAgentHelmValues) (*vmv1.VLAgentSpec, error) {
 		PodSecurityContext: values.PodSecurityContext,
 		SecurityContext:    values.SecurityContext,
 		PersistentVolume:   values.PersistentVolume,
+		HTTP:               values.HTTP,
 	}, GlobalValues{})
 	if err != nil {
 		return nil, err
@@ -1813,7 +2042,8 @@ func convertVLAgentSpec(values *VLAgentHelmValues) (*vmv1.VLAgentSpec, error) {
 
 	spec.Image = cfg.Image
 	spec.ReplicaCount = cfg.ReplicaCount
-	spec.ExtraArgs = values.ExtraArgs
+	spec.Port = cfg.Port
+	spec.ExtraArgs = cfg.ExtraArgs
 	spec.ExtraEnvs = cfg.ExtraEnvs
 	spec.Resources = cfg.Resources
 	spec.NodeSelector = cfg.NodeSelector
@@ -1853,6 +2083,7 @@ func convertVTAgentSpec(values *VTAgentHelmValues) (*vmv1.VTAgentSpec, error) {
 	cfg, err := convertCommonConfig(ServerValues{
 		Image:              values.Image,
 		ReplicaCount:       values.ReplicaCount,
+		ExtraArgs:          values.ExtraArgs,
 		ExtraEnvs:          values.Env,
 		Resources:          values.Resources,
 		NodeSelector:       values.NodeSelector,
@@ -1863,6 +2094,7 @@ func convertVTAgentSpec(values *VTAgentHelmValues) (*vmv1.VTAgentSpec, error) {
 		PodSecurityContext: values.PodSecurityContext,
 		SecurityContext:    values.SecurityContext,
 		PersistentVolume:   values.PersistentVolume,
+		HTTP:               values.HTTP,
 	}, values.Global)
 	if err != nil {
 		return nil, err
@@ -1874,7 +2106,8 @@ func convertVTAgentSpec(values *VTAgentHelmValues) (*vmv1.VTAgentSpec, error) {
 
 	spec.Image = cfg.Image
 	spec.ReplicaCount = cfg.ReplicaCount
-	spec.ExtraArgs = values.ExtraArgs
+	spec.Port = cfg.Port
+	spec.ExtraArgs = cfg.ExtraArgs
 	spec.ExtraEnvs = cfg.ExtraEnvs
 	spec.Resources = cfg.Resources
 	spec.NodeSelector = cfg.NodeSelector
@@ -1957,7 +2190,7 @@ func convertVLClusterSpec(values *VLClusterHelmValues) (*vmv1.VLClusterSpec, err
 	if values.VLSelect.Enabled == nil || *values.VLSelect.Enabled {
 		cfg, err := convertCommonConfig(values.VLSelect, values.Global)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("vlselect: %w", err)
 		}
 		spec.VLSelect = &vmv1.VLSelect{}
 		spec.VLSelect.CommonAppsParams = cfg.CommonAppsParams
@@ -1968,7 +2201,7 @@ func convertVLClusterSpec(values *VLClusterHelmValues) (*vmv1.VLClusterSpec, err
 	if values.VLInsert.Enabled == nil || *values.VLInsert.Enabled {
 		cfg, err := convertCommonConfig(values.VLInsert, values.Global)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("vlinsert: %w", err)
 		}
 		spec.VLInsert = &vmv1.VLInsert{}
 		spec.VLInsert.CommonAppsParams = cfg.CommonAppsParams
@@ -1979,7 +2212,7 @@ func convertVLClusterSpec(values *VLClusterHelmValues) (*vmv1.VLClusterSpec, err
 	if values.VLStorage.Enabled == nil || *values.VLStorage.Enabled {
 		cfg, err := convertCommonConfig(values.VLStorage, values.Global)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("vlstorage: %w", err)
 		}
 		spec.VLStorage = &vmv1.VLStorage{}
 		spec.VLStorage.CommonAppsParams = cfg.CommonAppsParams
@@ -2121,7 +2354,7 @@ func convertVTClusterSpec(values *VTClusterHelmValues) (*vmv1.VTClusterSpec, err
 	if values.VTSelect.Enabled == nil || *values.VTSelect.Enabled {
 		cfg, err := convertCommonConfig(values.VTSelect, values.Global)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("vtselect: %w", err)
 		}
 		spec.Select = &vmv1.VTSelect{}
 		spec.Select.CommonAppsParams = cfg.CommonAppsParams
@@ -2132,7 +2365,7 @@ func convertVTClusterSpec(values *VTClusterHelmValues) (*vmv1.VTClusterSpec, err
 	if values.VTInsert.Enabled == nil || *values.VTInsert.Enabled {
 		cfg, err := convertCommonConfig(values.VTInsert, values.Global)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("vtinsert: %w", err)
 		}
 		spec.Insert = &vmv1.VTInsert{}
 		spec.Insert.CommonAppsParams = cfg.CommonAppsParams
@@ -2143,7 +2376,7 @@ func convertVTClusterSpec(values *VTClusterHelmValues) (*vmv1.VTClusterSpec, err
 	if values.VTStorage.Enabled == nil || *values.VTStorage.Enabled {
 		cfg, err := convertCommonConfig(values.VTStorage, values.Global)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("vtstorage: %w", err)
 		}
 		spec.Storage = &vmv1.VTStorage{}
 		spec.Storage.CommonAppsParams = cfg.CommonAppsParams

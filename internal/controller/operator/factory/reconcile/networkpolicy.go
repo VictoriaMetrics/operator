@@ -21,6 +21,7 @@ func NetworkPolicy(ctx context.Context, rclient client.Client, newObj, prevObj *
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
 	}
+	rclient.Scheme().Default(newObj)
 	removeFinalizer := true
 	return retryOnConflict(func() error {
 		var existingObj networkingv1.NetworkPolicy
@@ -34,12 +35,13 @@ func NetworkPolicy(ctx context.Context, rclient client.Client, newObj, prevObj *
 		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
+		rclient.Scheme().Default(&existingObj)
 		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
 		}
 		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
-		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec, "spec")
+		specDiff := diffDeep(newObj.Spec, existingObj.Spec, "spec")
 		needsUpdate := metaChanged || len(specDiff) > 0
 		if !needsUpdate {
 			return nil

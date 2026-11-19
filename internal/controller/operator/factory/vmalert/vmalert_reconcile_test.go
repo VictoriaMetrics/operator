@@ -6,7 +6,9 @@ import (
 	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -168,6 +170,62 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 			{Verb: "Get", Kind: "Deployment", Resource: vmalertName},
 			{Verb: "Get", Kind: "Deployment", Resource: vmalertName},
 		},
+	})
+}
+
+func TestCreateOrUpdate_RemovesObsoleteCredentials(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1beta1.VMAlert{
+		ObjectMeta: metav1.ObjectMeta{Name: "vmalert", Namespace: "default"},
+		Spec: vmv1beta1.VMAlertSpec{
+			Datasource: vmv1beta1.VMAlertDatasourceSpec{
+				URL: "http://datasource",
+				HTTPAuth: vmv1beta1.HTTPAuth{
+					BearerAuth: &vmv1beta1.BearerAuth{
+						TokenSecret: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "credentials"}, Key: "token",
+						},
+					},
+					TLSConfig: &vmv1beta1.TLSConfig{
+						CA: vmv1beta1.SecretOrConfigMap{
+							Secret: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "credentials"}, Key: "ca",
+							},
+						},
+					},
+				},
+			},
+			Notifier: &vmv1beta1.VMAlertNotifierSpec{URL: "http://notifier"},
+		},
+	}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "credentials", Namespace: "default"},
+			Data:       map[string][]byte{"token": []byte("old-token"), "ca": []byte("old-ca")},
+		},
+	})
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	synctest.Test(t, func(t *testing.T) {
+		require.NoError(t, CreateOrUpdate(ctx, cr, fclient, nil))
+
+		configName := types.NamespacedName{Namespace: cr.Namespace, Name: build.ResourceName(build.SecretConfigResourceKind, cr)}
+		tlsName := types.NamespacedName{Namespace: cr.Namespace, Name: build.ResourceName(build.TLSAssetsResourceKind, cr)}
+		var configSecret, tlsSecret corev1.Secret
+		require.NoError(t, fclient.Get(ctx, configName, &configSecret))
+		require.Equal(t, map[string][]byte{"default_credentials_token": []byte("old-token")}, configSecret.Data)
+		require.NoError(t, fclient.Get(ctx, tlsName, &tlsSecret))
+		require.NotEmpty(t, tlsSecret.Data)
+
+		cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+		cr.Spec.Datasource.HTTPAuth = vmv1beta1.HTTPAuth{}
+		require.NoError(t, CreateOrUpdate(ctx, cr, fclient, nil))
+
+		require.NoError(t, fclient.Get(ctx, configName, &configSecret))
+		assert.Empty(t, configSecret.Data)
+		require.NoError(t, fclient.Get(ctx, tlsName, &tlsSecret))
+		assert.Empty(t, tlsSecret.Data)
 	})
 }
 

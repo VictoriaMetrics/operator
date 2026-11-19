@@ -287,10 +287,6 @@ func RunManager(ctx context.Context) error {
 		return err
 	}
 
-	if err := registerChildConditionIndexers(ctx, mgr, effectiveDisabledControllerNames(baseConfig, disabledControllerNames)); err != nil {
-		return fmt.Errorf("cannot register status condition indexers: %w", err)
-	}
-
 	if err := mgr.AddReadyzCheck("ready", func(req *http.Request) error {
 		wasSynced := atomic.LoadUint32(&wasCacheSynced)
 		// fast path
@@ -336,6 +332,10 @@ func RunManager(ctx context.Context) error {
 
 	if err := initControllers(mgr, ctrl.Log, baseClient, baseConfig, disabledControllerNames); err != nil {
 		return err
+	}
+
+	if err := registerChildConditionIndexers(ctx, mgr, effectiveDisabledControllerNames(baseConfig, disabledControllerNames)); err != nil {
+		return fmt.Errorf("cannot register status condition indexers: %w", err)
 	}
 
 	build.SetSpaceTrim(*disableSecretKeySpaceTrim)

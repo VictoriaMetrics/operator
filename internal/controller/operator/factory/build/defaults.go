@@ -5,6 +5,7 @@ import (
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,6 +35,7 @@ func getCfg() *config.BaseOperatorConf {
 
 // AddDefaults adds defaulting functions to the runtimeScheme
 func AddDefaults(scheme *runtime.Scheme) {
+	scheme.AddTypeDefaultingFunc(&autoscalingv2.HorizontalPodAutoscaler{}, addHPADefaults)
 	scheme.AddTypeDefaultingFunc(&corev1.Service{}, addServiceDefaults)
 	scheme.AddTypeDefaultingFunc(&appsv1.Deployment{}, addDeploymentDefaults)
 	scheme.AddTypeDefaultingFunc(&appsv1.StatefulSet{}, addStatefulsetDefaults)
@@ -62,6 +64,59 @@ func AddDefaults(scheme *runtime.Scheme) {
 	scheme.AddTypeDefaultingFunc(&networkingv1.Ingress{}, addDefaultMetadata)
 	scheme.AddTypeDefaultingFunc(&gwapiv1.HTTPRoute{}, addDefaultMetadata)
 	scheme.AddTypeDefaultingFunc(&corev1.Secret{}, addDefaultMetadata)
+}
+
+// Defaults match Kubernetes pkg/apis/autoscaling/v2/defaults.go.
+func addHPADefaults(objI any) {
+	const (
+		periodSeconds int32 = 15
+		limitPercent  int32 = 100
+	)
+	hpa := objI.(*autoscalingv2.HorizontalPodAutoscaler)
+	if hpa.Spec.MinReplicas == nil {
+		hpa.Spec.MinReplicas = ptr.To[int32](1)
+	}
+	if len(hpa.Spec.Metrics) == 0 {
+		hpa.Spec.Metrics = []autoscalingv2.MetricSpec{{
+			Type: autoscalingv2.ResourceMetricSourceType,
+			Resource: &autoscalingv2.ResourceMetricSource{
+				Name: corev1.ResourceCPU,
+				Target: autoscalingv2.MetricTarget{
+					Type:               autoscalingv2.UtilizationMetricType,
+					AverageUtilization: ptr.To[int32](80),
+				},
+			},
+		}}
+	}
+	if hpa.Spec.Behavior == nil {
+		return
+	}
+	defaultRules := func(rules **autoscalingv2.HPAScalingRules, scaleUp bool) {
+		if *rules == nil {
+			*rules = &autoscalingv2.HPAScalingRules{}
+		}
+		r := *rules
+		if r.SelectPolicy == nil {
+			r.SelectPolicy = ptr.To(autoscalingv2.MaxChangePolicySelect)
+		}
+		if scaleUp && r.StabilizationWindowSeconds == nil {
+			r.StabilizationWindowSeconds = ptr.To[int32](0)
+		}
+		if r.Policies == nil {
+			if scaleUp {
+				r.Policies = []autoscalingv2.HPAScalingPolicy{
+					{Type: autoscalingv2.PodsScalingPolicy, Value: 4, PeriodSeconds: periodSeconds},
+					{Type: autoscalingv2.PercentScalingPolicy, Value: limitPercent, PeriodSeconds: periodSeconds},
+				}
+			} else {
+				r.Policies = []autoscalingv2.HPAScalingPolicy{
+					{Type: autoscalingv2.PercentScalingPolicy, Value: limitPercent, PeriodSeconds: periodSeconds},
+				}
+			}
+		}
+	}
+	defaultRules(&hpa.Spec.Behavior.ScaleUp, true)
+	defaultRules(&hpa.Spec.Behavior.ScaleDown, false)
 }
 
 func addVMDistributedDefaults(objI any) {

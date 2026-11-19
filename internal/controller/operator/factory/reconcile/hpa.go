@@ -23,6 +23,8 @@ func HPA(ctx context.Context, rclient client.Client, newObj, prevObj *v2.Horizon
 	if prevObj != nil {
 		prevMeta = &prevObj.ObjectMeta
 	}
+	newObj = newObj.DeepCopy()
+	rclient.Scheme().Default(newObj)
 	removeFinalizer := true
 	return retryOnConflict(func() error {
 		var existingObj v2.HorizontalPodAutoscaler
@@ -36,12 +38,13 @@ func HPA(ctx context.Context, rclient client.Client, newObj, prevObj *v2.Horizon
 		if err := collectGarbage(ctx, rclient, &existingObj, removeFinalizer); err != nil {
 			return err
 		}
+		rclient.Scheme().Default(&existingObj)
 		metaChanged, err := mergeMeta(&existingObj, newObj, prevMeta, owner, removeFinalizer)
 		if err != nil {
 			return err
 		}
 		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
-		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec, "spec")
+		specDiff := diffDeep(newObj.Spec, existingObj.Spec, "spec")
 		needsUpdate := metaChanged || len(specDiff) > 0
 		if !needsUpdate {
 			return nil

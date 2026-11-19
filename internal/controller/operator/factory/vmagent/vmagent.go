@@ -1277,6 +1277,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 
 	var objsToRemove []client.Object
 	objMeta := metav1.ObjectMeta{Name: cr.PrefixedName(), Namespace: cr.Namespace}
+	if !cr.HasAnyStreamAggrRule() {
+		objsToRemove = append(objsToRemove, &corev1.ConfigMap{ObjectMeta: build.ResourceMeta(build.StreamAggrConfigResourceKind, cr)})
+	}
 	if !cr.Spec.DaemonSetMode {
 		objsToRemove = append(objsToRemove, &appsv1.DaemonSet{ObjectMeta: objMeta})
 	}

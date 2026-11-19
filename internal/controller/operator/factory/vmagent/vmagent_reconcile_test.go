@@ -270,6 +270,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	},
 		want{
 			actions: []k8stools.ClientAction{
+				{Verb: "Get", Kind: "ConfigMap", Resource: types.NamespacedName{Namespace: "default", Name: "stream-aggr-vmagent-vmagent"}},
 				{Verb: "Get", Kind: "DaemonSet", Resource: vmagentName},
 				{Verb: "Get", Kind: "HorizontalPodAutoscaler", Resource: vmagentUnprefixedName},
 				{Verb: "Get", Kind: "HorizontalPodAutoscaler", Resource: vmagentName},

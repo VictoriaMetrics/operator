@@ -769,6 +769,13 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 			}
 		}
 	}
+	// scrape config and tls assets are created only outside of ingest-only mode
+	if ptr.Deref(cr.Spec.IngestOnlyMode, true) {
+		objsToRemove = append(objsToRemove,
+			&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: build.ResourceName(build.SecretConfigResourceKind, cr), Namespace: cr.Namespace}},
+			&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: build.ResourceName(build.TLSAssetsResourceKind, cr), Namespace: cr.Namespace}},
+		)
+	}
 	if err := finalize.SafeDeleteCrossNamespaceWithFinalizer(ctx, rclient, crossNamespaceObjsToRemove, cr); err != nil {
 		return fmt.Errorf("cannot remove rbac objects from watched namespaces: %w", err)
 	}

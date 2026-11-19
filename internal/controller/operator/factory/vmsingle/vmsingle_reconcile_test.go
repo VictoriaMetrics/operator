@@ -239,6 +239,9 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "Role", Resource: rbacName},
 				{Verb: "Get", Kind: "ClusterRoleBinding", Resource: types.NamespacedName{Name: rbacName.Name}},
 				{Verb: "Get", Kind: "ClusterRole", Resource: types.NamespacedName{Name: rbacName.Name}},
+				// and scrape config secrets
+				{Verb: "Get", Kind: "Secret", Resource: vmsingleName},
+				{Verb: "Get", Kind: "Secret", Resource: types.NamespacedName{Namespace: namespace, Name: "tls-assets-vmsingle-" + name}},
 				{Verb: "Get", Kind: "ServiceAccount", Resource: vmsingleName},
 				{Verb: "Get", Kind: "Service", Resource: vmsingleName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmsingleName},

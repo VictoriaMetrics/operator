@@ -741,9 +741,12 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	// so Kubernetes never garbage-collects them and they must be removed explicitly.
 	var crossNamespaceObjsToRemove []client.Object
 	if !cr.IsOwnsServiceAccount() {
+		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
+	}
+	// rbac is created only for owned service account outside of ingest-only mode
+	if !cr.IsOwnsServiceAccount() || ptr.Deref(cr.Spec.IngestOnlyMode, true) {
 		rbacName := cr.GetRBACName()
 		objsToRemove = append(objsToRemove,
-			&corev1.ServiceAccount{ObjectMeta: objMeta},
 			// a Role and RoleBinding at cr.Namespace exists in both modes,
 			// in cluster-wide mode it keeps the secrets access namespace-scoped
 			&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: cr.Namespace}},

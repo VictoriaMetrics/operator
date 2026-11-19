@@ -158,6 +158,7 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 	name := "example-single"
 	namespace := "default"
 	vmsingleName := types.NamespacedName{Namespace: namespace, Name: "vmsingle-" + name}
+	rbacName := types.NamespacedName{Namespace: namespace, Name: "monitoring:default:vmsingle-" + name}
 	objectMeta := metav1.ObjectMeta{Name: name, Namespace: namespace}
 
 	setupReadyVMSingle := func(ctx context.Context, c *k8stools.ClientWithActions, cr *vmv1beta1.VMSingle) {
@@ -233,6 +234,11 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 		want{
 			actions: []k8stools.ClientAction{
 				{Verb: "Get", Kind: "NetworkPolicy", Resource: vmsingleName},
+				// ingest-only mode removes rbac
+				{Verb: "Get", Kind: "RoleBinding", Resource: rbacName},
+				{Verb: "Get", Kind: "Role", Resource: rbacName},
+				{Verb: "Get", Kind: "ClusterRoleBinding", Resource: types.NamespacedName{Name: rbacName.Name}},
+				{Verb: "Get", Kind: "ClusterRole", Resource: types.NamespacedName{Name: rbacName.Name}},
 				{Verb: "Get", Kind: "ServiceAccount", Resource: vmsingleName},
 				{Verb: "Get", Kind: "Service", Resource: vmsingleName},
 				{Verb: "Get", Kind: "VMServiceScrape", Resource: vmsingleName},

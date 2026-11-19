@@ -493,7 +493,7 @@ func UpdateObjectStatus[T client.Object, ST StatusWithMetadata[STC], STC any](ct
 	// it reload state of the object from API server
 	// which is not desired behaviour
 	objectToUpdate := object.DeepCopy()
-	pr, err := buildStatusPatch(currentStatus)
+	pr, err := buildStatusPatch(currentStatus, object.GetResourceVersion())
 	if err != nil {
 		return err
 	}
@@ -506,7 +506,7 @@ func UpdateObjectStatus[T client.Object, ST StatusWithMetadata[STC], STC any](ct
 	return nil
 }
 
-func buildStatusPatch(currentStatus any) (client.Patch, error) {
+func buildStatusPatch(currentStatus any, resourceVersion string) (client.Patch, error) {
 	type patch struct {
 		OP    string `json:"op"`
 		Path  string `json:"path"`
@@ -518,6 +518,14 @@ func buildStatusPatch(currentStatus any) (client.Patch, error) {
 			Path:  "/status",
 			Value: currentStatus,
 		},
+	}
+	// optimistic lock: replacing whole status from a stale object would drop newer fields, e.g. lastAppliedSpec
+	if resourceVersion != "" {
+		ops = append(ops, patch{
+			OP:    "replace",
+			Path:  "/metadata/resourceVersion",
+			Value: resourceVersion,
+		})
 	}
 	data, err := json.Marshal(ops)
 	if err != nil {

@@ -38,6 +38,15 @@ func patchReplaceFinalizers(ctx context.Context, rclient client.Client, instance
 		},
 	}
 
+	// optimistic lock: replacing finalizers from a stale object would drop changes from other controllers
+	if rv := instance.GetResourceVersion(); rv != "" {
+		op = append(op, map[string]any{
+			"op":    "replace",
+			"path":  "/metadata/resourceVersion",
+			"value": rv,
+		})
+	}
+
 	patchData, err := json.Marshal(op)
 	if err != nil {
 		return fmt.Errorf("cannot marshal finalizers patch for=%q: %w", instance.GetName(), err)

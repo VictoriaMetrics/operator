@@ -787,13 +787,13 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VLAgent
 	}
 	if !cr.IsOwnsServiceAccount() {
 		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
-		if !cr.Spec.K8sCollector.Enabled && config.IsClusterWideAccessAllowed() {
-			rbacMeta := metav1.ObjectMeta{Name: cr.GetRBACName()}
-			objsToRemove = append(objsToRemove,
-				&rbacv1.ClusterRoleBinding{ObjectMeta: rbacMeta},
-				&rbacv1.ClusterRole{ObjectMeta: rbacMeta},
-			)
-		}
+	}
+	if (!cr.IsOwnsServiceAccount() || !cr.Spec.K8sCollector.Enabled) && config.IsClusterWideAccessAllowed() {
+		rbacMeta := metav1.ObjectMeta{Name: cr.GetRBACName()}
+		objsToRemove = append(objsToRemove,
+			&rbacv1.ClusterRoleBinding{ObjectMeta: rbacMeta},
+			&rbacv1.ClusterRole{ObjectMeta: rbacMeta},
+		)
 	}
 	if cr.Spec.K8sCollector.Enabled {
 		objsToRemove = append(objsToRemove, &appsv1.StatefulSet{ObjectMeta: objMeta})

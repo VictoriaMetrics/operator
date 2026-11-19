@@ -5,15 +5,51 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
+
+func TestDeleteOrphanedRBAC(t *testing.T) {
+	f := func(enabled bool, serviceAccount string) {
+		t.Helper()
+		ctx := context.Background()
+		cr := &vmv1.VLAgent{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "rbac-test"},
+			Spec: vmv1.VLAgentSpec{
+				K8sCollector: vmv1.VLAgentK8sCollector{Enabled: true},
+			},
+		}
+		fclient := k8stools.GetTestClientWithObjects(nil)
+		require.NoError(t, createK8sAPIAccess(ctx, fclient, cr, nil))
+
+		// RBAC must follow collector and service account ownership changes.
+		cr.Spec.K8sCollector.Enabled = enabled
+		cr.Spec.ServiceAccountName = serviceAccount
+		require.NoError(t, deleteOrphaned(ctx, fclient, cr))
+		for _, obj := range []client.Object{&rbacv1.ClusterRole{}, &rbacv1.ClusterRoleBinding{}} {
+			err := fclient.Get(ctx, types.NamespacedName{Name: cr.GetRBACName()}, obj)
+			if enabled && serviceAccount == "" {
+				require.NoError(t, err)
+				continue
+			}
+			require.True(t, k8serrors.IsNotFound(err), "%T must be removed, got %v", obj, err)
+		}
+	}
+
+	f(false, "")
+	f(false, "custom")
+	f(true, "")
+	f(true, "custom")
+}
 
 func TestCreateVLAgentClusterAccess(t *testing.T) {
 	f := func(cr *vmv1.VLAgent, predefinedObjects []runtime.Object) {

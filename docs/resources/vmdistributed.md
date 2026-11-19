@@ -159,33 +159,18 @@ spec:
   zoneCommon:
     vmagent:
       spec:
-          nodeSelector:
-            topology.kubernetes.io/zone: %ZONE%
         replicaCount: 1
+        nodeSelector:
+          topology.kubernetes.io/zone: "%ZONE"
     vmsingle:
       spec:
-          nodeSelector:
-            topology.kubernetes.io/zone: %ZONE%
+        replicaCount: 1
+        nodeSelector:
+          topology.kubernetes.io/zone: "%ZONE%"
         retentionPeriod: "30d"
   zones:
     - name: zone-a
-      vmagent:
-        spec:
-          nodeSelector: 
-            topology.kubernetes.io/zone: zone-a
-      vmsingle:
-        spec:
-          nodeSelector: 
-            topology.kubernetes.io/zone: zone-a
     - name: zone-b
-      vmagent:
-        spec:
-          nodeSelector: 
-            topology.kubernetes.io/zone: zone-b
-      vmsingle:
-        spec:
-          nodeSelector: 
-            topology.kubernetes.io/zone: zone-b
 ```
 
 

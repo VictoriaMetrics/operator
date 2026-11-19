@@ -182,7 +182,13 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 		return err
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, &owner, nil)
+	if err := reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, &owner, nil); err != nil {
+		return err
+	}
+	if err := finalize.RemoveOrphanedConfigMaps(ctx, rclient, cr, sets.New(cmNames...), true); err != nil {
+		return fmt.Errorf("cannot remove rule configmaps: %w", err)
+	}
+	return nil
 }
 
 // newDeploy returns a busybox pod with the same name/namespace as the cr

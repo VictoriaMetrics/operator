@@ -252,6 +252,52 @@ func TestReconcileAndTrackStatusLastAppliedSpec(t *testing.T) {
 	f(nil, newSpec)
 }
 
+func TestReconcileAndTrackStatusFailedRetry(t *testing.T) {
+	prevSpec := vmv1beta1.VMAlertSpec{SelectAllByDefault: true}
+	newSpec := vmv1beta1.VMAlertSpec{SelectAllByDefault: false}
+	nsn := types.NamespacedName{Name: "test-vmalert", Namespace: "default"}
+	cbErr := fmt.Errorf("some reconciliation error")
+
+	f := func(generation int64, wantInCb vmv1beta1.UpdateStatus) {
+		t.Helper()
+		object := &vmv1beta1.VMAlert{
+			ObjectMeta: metav1.ObjectMeta{Name: nsn.Name, Namespace: nsn.Namespace, Generation: generation},
+			Spec:       newSpec,
+			Status: vmv1beta1.VMAlertStatus{
+				StatusMetadata: vmv1beta1.StatusMetadata{
+					UpdateStatus:       vmv1beta1.UpdateStatusFailed,
+					ObservedGeneration: 1,
+					Reason:             cbErr.Error(),
+				},
+				LastAppliedSpec: prevSpec.DeepCopy(),
+			},
+		}
+		fclient := k8stools.GetTestClientWithObjects([]runtime.Object{object})
+		origRV := object.ResourceVersion
+		_, err := reconcileAndTrackStatus(context.Background(), fclient, object, "vmalert", func() (ctrl.Result, error) {
+			got := &vmv1beta1.VMAlert{}
+			assert.NoError(t, fclient.Get(context.Background(), nsn, got))
+			assert.Equal(t, wantInCb, got.Status.UpdateStatus)
+			return ctrl.Result{}, cbErr
+		})
+		assert.Error(t, err)
+
+		got := &vmv1beta1.VMAlert{}
+		assert.NoError(t, fclient.Get(context.Background(), nsn, got))
+		assert.Equal(t, vmv1beta1.UpdateStatusFailed, got.Status.UpdateStatus)
+		if wantInCb == vmv1beta1.UpdateStatusFailed {
+			// no status patch, no re-enqueue
+			assert.Equal(t, origRV, got.ResourceVersion)
+		}
+	}
+
+	// retry of failed generation stays failed
+	f(1, vmv1beta1.UpdateStatusFailed)
+
+	// new generation goes through expanding
+	f(2, vmv1beta1.UpdateStatusExpanding)
+}
+
 // TestVMClusterRemainsExpandingDuringPVCResize verifies that a VMCluster stays
 // in Expanding status when PVC resize is still in progress (waitForPVCReady
 // returns a retryable wait.Interrupted error).

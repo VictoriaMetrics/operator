@@ -266,6 +266,9 @@ func (pos *ParsedObjects) ValidateObjects(sp *vmv1beta1.CommonScrapeParams) {
 	pos.staticScrapes.ForEachCollectSkipInvalid(func(sc *vmv1beta1.VMStaticScrape) error {
 		if sp.ArbitraryFSAccessThroughSMs.Deny {
 			for _, ep := range sc.Spec.TargetEndpoints {
+				if ep == nil {
+					continue
+				}
 				if err := ep.ValidateArbitraryFSAccess(); err != nil {
 					return err
 				}

@@ -1488,7 +1488,7 @@ func convertHTTPListeners(listeners []map[string]any, extraArgs map[string]strin
 				f.hasValue = f.hasValue || extraArgValue(v) != ""
 			}
 			s := extraArgValue(v)
-			if strings.Contains(s, ",") {
+			if len(ordered) > 1 && strings.Contains(s, ",") {
 				return nil, fmt.Errorf("cannot convert `http` item %q: %s=%q contains a comma, which cannot be passed in a comma-separated list of the operator's extraArgs", name, k, s)
 			}
 			f.values[i] = s

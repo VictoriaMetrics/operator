@@ -1302,9 +1302,12 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	// so Kubernetes never garbage-collects them and they must be removed explicitly.
 	var crossNamespaceObjsToRemove []client.Object
 	if !cr.IsOwnsServiceAccount() {
+		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
+	}
+	// RBAC is created for an owned service account outside ingest-only mode, or in ingest-only mode when remote-write credentials require Secret access
+	if !cr.IsOwnsServiceAccount() || (ptr.Deref(cr.Spec.IngestOnlyMode, false) && !cr.HasRemoteWriteSecrets()) {
 		rbacName := cr.GetRBACName()
 		objsToRemove = append(objsToRemove,
-			&corev1.ServiceAccount{ObjectMeta: objMeta},
 			// a Role and RoleBinding at cr.Namespace exists in both modes,
 			// in cluster-wide mode it keeps the secrets access namespace-scoped
 			&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: cr.Namespace}},
@@ -1325,6 +1328,17 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 					&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: rbacName, Namespace: ns}},
 				)
 			}
+		}
+	}
+	if ptr.Deref(cr.Spec.IngestOnlyMode, false) {
+		if !cr.HasRemoteWriteSecrets() {
+			objsToRemove = append(objsToRemove,
+				&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: build.ResourceName(build.SecretConfigResourceKind, cr), Namespace: cr.Namespace}},
+				&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: build.ResourceName(build.TLSAssetsResourceKind, cr), Namespace: cr.Namespace}},
+			)
+		}
+		if err := vmscrapes.RemoveStaleExtraConfigSecrets(ctx, rclient, cr, 0); err != nil {
+			return fmt.Errorf("cannot remove extra scrape config secrets: %w", err)
 		}
 	}
 	if err := finalize.SafeDeleteCrossNamespaceWithFinalizer(ctx, rclient, crossNamespaceObjsToRemove, cr); err != nil {

@@ -9,6 +9,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,6 +24,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmscrapes"
 )
 
 func TestDeleteOrphaned_UsesReconcilerConfig(t *testing.T) {
@@ -107,6 +109,81 @@ func TestDeleteOrphaned_RemovesClusterWideRBAC(t *testing.T) {
 	for _, obj := range []client.Object{&rbacv1.ClusterRole{}, &rbacv1.ClusterRoleBinding{}} {
 		err := fclient.Get(ctx, types.NamespacedName{Name: rbacName}, obj)
 		assert.True(t, k8serrors.IsNotFound(err), "%T must be removed, got %v", obj, err)
+	}
+}
+
+func TestDeleteOrphaned_RemovesIngestOnlyRBACWithoutRemoteWriteSecrets(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "vmagent", Namespace: "agent-ns"},
+		Spec: vmv1beta1.VMAgentSpec{
+			CommonScrapeParams: vmv1beta1.CommonScrapeParams{IngestOnlyMode: ptr.To(true)},
+			RemoteWrite:        []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
+		},
+	}
+	assert.True(t, cr.IsOwnsServiceAccount())
+	assert.False(t, cr.HasRemoteWriteSecrets())
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{
+		cr,
+		build.ServiceAccount(cr),
+		buildRole(cr, cr.Namespace), buildRB(cr, cr.Namespace),
+		buildCR(cr), buildCRB(cr),
+	})
+	rbacName := cr.GetRBACName()
+	objects := []struct {
+		name types.NamespacedName
+		obj  client.Object
+	}{
+		{types.NamespacedName{Name: rbacName, Namespace: cr.Namespace}, &rbacv1.Role{}},
+		{types.NamespacedName{Name: rbacName, Namespace: cr.Namespace}, &rbacv1.RoleBinding{}},
+		{types.NamespacedName{Name: rbacName}, &rbacv1.ClusterRole{}},
+		{types.NamespacedName{Name: rbacName}, &rbacv1.ClusterRoleBinding{}},
+	}
+	for _, item := range objects {
+		assert.NoError(t, fclient.Get(ctx, item.name, item.obj), "%T must exist before cleanup", item.obj)
+	}
+
+	assert.NoError(t, deleteOrphaned(ctx, fclient, cr, &config.BaseOperatorConf{}))
+	for _, item := range objects {
+		err := fclient.Get(ctx, item.name, item.obj)
+		assert.True(t, k8serrors.IsNotFound(err), "%T must be removed, got %v", item.obj, err)
+	}
+	assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: cr.Namespace}, build.ServiceAccount(cr)))
+}
+
+func TestDeleteOrphaned_RemovesIngestOnlyExtraScrapeConfigSecrets(t *testing.T) {
+	for _, tt := range []struct {
+		name              string
+		remoteWriteSecret bool
+	}{
+		{name: "without remote write credentials"},
+		{name: "with remote write credentials", remoteWriteSecret: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			cr := &vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{Name: "vmagent", Namespace: "agent-ns"},
+				Spec: vmv1beta1.VMAgentSpec{
+					CommonScrapeParams: vmv1beta1.CommonScrapeParams{IngestOnlyMode: ptr.To(true)},
+					RemoteWrite:        []vmv1beta1.VMAgentRemoteWriteSpec{{URL: "http://remote-write"}},
+				},
+			}
+			if tt.remoteWriteSecret {
+				cr.Spec.RemoteWrite[0].BearerTokenSecret = &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "credentials"}, Key: "token",
+				}
+			}
+			fclient := k8stools.GetTestClientWithObjects([]runtime.Object{
+				cr,
+				vmscrapes.BuildExtraConfigSecret(cr, 1, []byte("extra scrape config")),
+			})
+			name := types.NamespacedName{Name: vmscrapes.ExtraConfigSecretName(cr, 1), Namespace: cr.Namespace}
+			assert.NoError(t, fclient.Get(ctx, name, &corev1.Secret{}))
+
+			assert.NoError(t, deleteOrphaned(ctx, fclient, cr, &config.BaseOperatorConf{}))
+			err := fclient.Get(ctx, name, &corev1.Secret{})
+			assert.True(t, k8serrors.IsNotFound(err), "overflow Secret must be removed, got %v", err)
+		})
 	}
 }
 

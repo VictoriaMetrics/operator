@@ -38,8 +38,8 @@ Every field except `readyTimeout` and `updatePause` is a default for each zone a
 
 *   `vmcluster`: Default `VMDistributedZoneCluster` for each zone. Must not be set when `spec.backendType: VMSingle`.
 *   `vmsingle`: Default `VMDistributedZoneSingle` for each zone. Must not be set when `spec.backendType: VMCluster`.
-*   `vmagent`: Default `VMDistributedZoneAgent` for each zone. Its `spec` supports a subset of `VMAgentSpec` fields. Remote write targets are managed by the operator; use `remoteWrite` below for their auth and TLS settings.
-*   `remoteWrite`: Default remote write settings that every zone's `vmagent` uses to write to the zone's backend: `basicAuth`, `bearerTokenSecret`, `oauth2`, `tlsConfig`, `sendTimeout` and `headers`. The URL is set by the operator.
+*   `vmagent`: Default `VMDistributedZoneAgent` for each zone. Its `spec` supports a subset of `VMAgentSpec` fields. Remote write targets are managed by the operator; use `remoteWrite` below for their settings.
+*   `remoteWrite`: Default remote write settings that every zone's `vmagent` uses to write to the zone's backend, for example `basicAuth`, `tlsConfig`, `sendTimeout` and `headers`. See [`VMDistributedZoneRemoteWriteSpec`](https://docs.victoriametrics.com/operator/api/#v1alpha1-vmdistributedzoneremotewritespec) for all fields. The URL is set by the operator.
 *   `readyTimeout`: The readiness timeout for each zone update. Default is `5m`.
 *   `updatePause`: Time the operator should wait between zone updates to ensure a smooth transition. Default is `1m`.
 

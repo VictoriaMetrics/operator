@@ -131,6 +131,10 @@ func disownObjects(ctx context.Context, rclient client.Client, objs []client.Obj
 				}
 				refs = append(refs, ref)
 			}
+			if len(refs) == len(ownerReferences) {
+				// not owned by this CR, nothing to change
+				return true, nil
+			}
 			objToDisown.SetOwnerReferences(refs)
 			if err := rclient.Update(ctx, objToDisown); err != nil {
 				if k8serrors.IsConflict(err) {

@@ -129,4 +129,51 @@ func TestOnVMDistributedDelete(t *testing.T) {
 			assert.Empty(t, auth.OwnerReferences)
 		},
 	})
+
+	// Retain with VMSingle backend: VMSingle must be disowned, otherwise it is garbage collected
+	crSingle := cr.DeepCopy()
+	crSingle.Spec.Retain = true
+	crSingle.Spec.BackendType = vmv1alpha1.VMDistributedBackendTypeVMSingle
+
+	f(opts{
+		cr: crSingle,
+		predefinedObjects: []runtime.Object{
+			crSingle,
+			&vmv1beta1.VMSingle{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      crSingle.Spec.Zones[0].VMSingleName(crSingle),
+					Namespace: crSingle.Namespace,
+					OwnerReferences: []metav1.OwnerReference{
+						crSingle.AsOwner(),
+					},
+				},
+			},
+			&vmv1beta1.VMAgent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      crSingle.Spec.Zones[0].VMAgentName(crSingle),
+					Namespace: crSingle.Namespace,
+					OwnerReferences: []metav1.OwnerReference{
+						crSingle.AsOwner(),
+					},
+				},
+			},
+		},
+		verify: func(cl client.Client) {
+			nsnCR := types.NamespacedName{Name: crSingle.Name, Namespace: crSingle.Namespace}
+			var vmd vmv1alpha1.VMDistributed
+			err := cl.Get(ctx, nsnCR, &vmd)
+			assert.NoError(t, err)
+			assert.Empty(t, vmd.Finalizers)
+
+			var single vmv1beta1.VMSingle
+			err = cl.Get(ctx, types.NamespacedName{Name: crSingle.Spec.Zones[0].VMSingleName(crSingle), Namespace: crSingle.Namespace}, &single)
+			assert.NoError(t, err)
+			assert.Empty(t, single.OwnerReferences)
+
+			var agent vmv1beta1.VMAgent
+			err = cl.Get(ctx, types.NamespacedName{Name: crSingle.Spec.Zones[0].VMAgentName(crSingle), Namespace: crSingle.Namespace}, &agent)
+			assert.NoError(t, err)
+			assert.Empty(t, agent.OwnerReferences)
+		},
+	})
 }

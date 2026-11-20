@@ -83,6 +83,15 @@ func TestAddEnterpriseTagToAppCommonDefaults(t *testing.T) {
 
 	// change default value
 	f(opts{
+		defaultVersion: "v1.156.0",
+		cp: &commonParams{
+			license: &vmv1beta1.License{
+				AcceptEULA: true,
+			},
+		},
+		wantVersion: "v1.156.0-enterprise",
+	})
+	f(opts{
 		defaultVersion: "v1.120.0",
 		cp: &commonParams{
 			license: &vmv1beta1.License{

@@ -28,6 +28,8 @@ spec:
   # Add fields here
   retentionPeriod: "4"
   replicationFactor: 2
+  license:
+    acceptEULA: true
   vmstorage:
     replicaCount: 2
     storageDataPath: "/vm-data"
@@ -42,7 +44,6 @@ spec:
         cpu: "0.5"
         memory: 500Mi
     vmBackup:
-      acceptEULA: true
       destination: "gcs://bucket/path/to/backup/dir"
       concurrency: 5
       credentialsSecret:

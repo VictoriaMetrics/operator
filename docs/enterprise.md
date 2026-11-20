@@ -49,32 +49,41 @@ please, check [this](https://docs.victoriametrics.com/victoriametrics/enterprise
 
 Enterprise features are enabled with the [`spec.license`](https://docs.victoriametrics.com/operator/api/#v1beta1-license) field
 of the custom resource and an enterprise version of the component.
-The operator passes `spec.license.key` to the component as the `-license` command-line flag,
-and mounts the secret from `spec.license.keyRef` and passes it as the `-licenseFile` flag.
 
 Starting from VictoriaMetrics [v1.156.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.156.0)
 and [LTS releases](https://docs.victoriametrics.com/victoriametrics/lts-releases/) [v1.148.9](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.148.9) and [v1.136.23](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.136.23),
-VictoriaMetrics Enterprise components are started with the `-eula` flag to accept the [ESA](https://victoriametrics.com/legal/esa/),
-and license keys are no longer verified. The `-license`, `-licenseFile`, `-licenseFile.reloadInterval` and `-license.forceOffline`
-flags are deprecated and treated as `-eula`, so existing `spec.license` settings keep working without changes.
+VictoriaLogs [v1.54.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.54.0)
+and vmanomaly v1.33.0, Enterprise components are started with the `-eula` flag to accept the [ESA](https://victoriametrics.com/legal/esa/),
+and license keys are no longer verified.
 See [Running VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/) for details.
-VictoriaLogs Enterprise components behave the same starting from VictoriaLogs [v1.54.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.54.0).
 
-This applies to `VMAgent`, `VMAlert`, `VMAuth`, `VMCluster`, `VMSingle` and the components they manage, such as `vmbackupmanager`,
-running VictoriaMetrics v1.156.0 or newer (or LTS v1.148.9+ and v1.136.23+), and to `VLAgent`, `VLCluster` and `VLSingle` running VictoriaLogs v1.54.0 or newer.
-For these resources:
+For these versions, set [`spec.license.acceptEULA`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-accepteula)
+to accept the ESA. The operator passes it to the components as the `-eula` flag:
 
-- `spec.license.key` or `spec.license.keyRef` is still required by the operator to enable enterprise features,
-  such as downsampling, retention filters, automatic vmstorage discovery and backup automation.
-  Since the key is no longer verified, any non-empty value in `spec.license.key` accepts the ESA.
-  The license is shared by all components of the resource, including `vmbackupmanager`:
+```yaml
+spec:
+  license:
+    acceptEULA: true
+```
 
-  ```yaml
-  spec:
-    license:
-      # any non-empty value works, it doesn't have to be a valid license key
-      key: accept-esa
-  ```
+`spec.license.acceptEULA` enables the same enterprise features as a license key,
+such as downsampling, retention filters, automatic vmstorage discovery and backup automation.
+The license is shared by all components of the resource, including `vmbackupmanager`.
+`VMDistributed` and `VLDistributed` pass it to the resources they manage.
 
-- `spec.license.forceOffline` and `spec.license.reloadInterval` have no effect.
-- `spec.license.keyRef` must point to an existing Secret, because the operator mounts it into the pods.
+Older versions still require a license key. The operator passes `spec.license.key` to the component as the `-license` command-line flag,
+and mounts the secret from `spec.license.keyRef` and passes it as the `-licenseFile` flag:
+
+```yaml
+spec:
+  license:
+    keyRef:
+      name: k8s-secret-that-contains-license
+      key: key-in-a-secret-that-contains-license
+```
+
+`spec.license.keyRef` must point to an existing Secret, because the operator mounts it into the pods.
+
+Existing `spec.license.key` and `spec.license.keyRef` settings keep working after upgrading to the versions above,
+since the `-license`, `-licenseFile`, `-licenseFile.reloadInterval` and `-license.forceOffline` flags are deprecated and treated as `-eula`.
+For these versions, `spec.license.forceOffline` and `spec.license.reloadInterval` have no effect.

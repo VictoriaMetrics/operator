@@ -474,7 +474,8 @@ func (ac *AssetsCache) LoadSecret(ns, name string) (*corev1.Secret, error) {
 		}
 	}
 	if s == nil {
-		return nil, newKeyNotFoundError(path.Join("secret", key), "")
+		// cached miss reports the same error as the first lookup
+		return nil, fmt.Errorf("unable to fetch secret=%q, ns=%q: %w", name, ns, k8serrors.NewNotFound(corev1.Resource("secrets"), name))
 	}
 	ac.secrets[key] = s
 	return s, nil
@@ -525,7 +526,8 @@ func (ac *AssetsCache) LoadKeyFromConfigMap(ns string, cs *corev1.ConfigMapKeySe
 		}
 	}
 	if cm == nil {
-		return "", newKeyNotFoundError(path.Join("configmap", key), cs.Key)
+		// cached miss reports the same error as the first lookup
+		return "", fmt.Errorf("unable to fetch configmap=%q, ns=%q: %w", cs.Name, ns, k8serrors.NewNotFound(corev1.Resource("configmaps"), cs.Name))
 	}
 	if v, ok := cm.Data[cs.Key]; !ok {
 		return "", newKeyNotFoundError(path.Join("configmap", key), cs.Key)
@@ -554,7 +556,8 @@ func (ac *AssetsCache) LoadKeyFromSecret(ns string, ss *corev1.SecretKeySelector
 		}
 	}
 	if s == nil {
-		return "", newKeyNotFoundError(path.Join("secret", key), ss.Key)
+		// cached miss reports the same error as the first lookup
+		return "", fmt.Errorf("unable to fetch secret=%q, ns=%q: %w", ss.Name, ns, k8serrors.NewNotFound(corev1.Resource("secrets"), ss.Name))
 	}
 	if v, ok := s.Data[ss.Key]; !ok {
 		return "", newKeyNotFoundError(path.Join("secret", key), ss.Key)

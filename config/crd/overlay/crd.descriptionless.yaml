@@ -401,6 +401,8 @@ spec:
                 type: object
               license:
                 properties:
+                  acceptEULA:
+                    type: boolean
                   forceOffline:
                     type: boolean
                   key:
@@ -1615,6 +1617,8 @@ spec:
                 type: array
               license:
                 properties:
+                  acceptEULA:
+                    type: boolean
                   forceOffline:
                     type: boolean
                   key:
@@ -4340,6 +4344,8 @@ spec:
                 type: string
               license:
                 properties:
+                  acceptEULA:
+                    type: boolean
                   forceOffline:
                     type: boolean
                   key:
@@ -5233,6 +5239,8 @@ spec:
                         type: string
                       license:
                         properties:
+                          acceptEULA:
+                            type: boolean
                           forceOffline:
                             type: boolean
                           key:
@@ -6573,6 +6581,8 @@ spec:
                             type: array
                           license:
                             properties:
+                              acceptEULA:
+                                type: boolean
                               forceOffline:
                                 type: boolean
                               key:
@@ -7552,6 +7562,8 @@ spec:
                               type: array
                             license:
                               properties:
+                                acceptEULA:
+                                  type: boolean
                                 forceOffline:
                                   type: boolean
                                 key:
@@ -8511,6 +8523,8 @@ spec:
                 type: array
               license:
                 properties:
+                  acceptEULA:
+                    type: boolean
                   forceOffline:
                     type: boolean
                   key:
@@ -10413,6 +10427,8 @@ spec:
                 type: object
               license:
                 properties:
+                  acceptEULA:
+                    type: boolean
                   forceOffline:
                     type: boolean
                   key:
@@ -17629,6 +17645,8 @@ spec:
                 type: array
               license:
                 properties:
+                  acceptEULA:
+                    type: boolean
                   forceOffline:
                     type: boolean
                   key:
@@ -19144,6 +19162,8 @@ spec:
                 type: array
               license:
                 properties:
+                  acceptEULA:
+                    type: boolean
                   forceOffline:
                     type: boolean
                   key:
@@ -21612,6 +21632,8 @@ spec:
                 type: string
               license:
                 properties:
+                  acceptEULA:
+                    type: boolean
                   forceOffline:
                     type: boolean
                   key:
@@ -22772,6 +22794,8 @@ spec:
                 type: array
               license:
                 properties:
+                  acceptEULA:
+                    type: boolean
                   forceOffline:
                     type: boolean
                   key:
@@ -25410,8 +25434,6 @@ spec:
                     type: boolean
                   vmBackup:
                     properties:
-                      acceptEULA:
-                        type: boolean
                       concurrency:
                         format: int32
                         type: integer
@@ -25931,6 +25953,8 @@ spec:
                 type: string
               license:
                 properties:
+                  acceptEULA:
+                    type: boolean
                   forceOffline:
                     type: boolean
                   key:
@@ -26824,6 +26848,8 @@ spec:
                         type: string
                       license:
                         properties:
+                          acceptEULA:
+                            type: boolean
                           forceOffline:
                             type: boolean
                           key:
@@ -28508,6 +28534,8 @@ spec:
                             type: array
                           license:
                             properties:
+                              acceptEULA:
+                                type: boolean
                               forceOffline:
                                 type: boolean
                               key:
@@ -29725,6 +29753,8 @@ spec:
                               type: array
                             license:
                               properties:
+                                acceptEULA:
+                                  type: boolean
                                 forceOffline:
                                   type: boolean
                                 key:
@@ -40621,6 +40651,8 @@ spec:
                 type: object
               license:
                 properties:
+                  acceptEULA:
+                    type: boolean
                   forceOffline:
                     type: boolean
                   key:
@@ -42156,8 +42188,6 @@ spec:
                 type: string
               vmBackup:
                 properties:
-                  acceptEULA:
-                    type: boolean
                   concurrency:
                     format: int32
                     type: integer

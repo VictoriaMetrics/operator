@@ -870,7 +870,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 						Image: vmv1beta1.Image{
 							Tag: "v1.136.0-enterprise",
 						},
-						AcceptEULA: true,
 					}
 					cr.Spec.License = &vmv1beta1.License{
 						KeyRef: &corev1.SecretKeySelector{
@@ -893,7 +892,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 						Image: vmv1beta1.Image{
 							Tag: "v1.136.0-enterprise",
 						},
-						AcceptEULA: true,
 					}
 					cr.Spec.License = &vmv1beta1.License{
 						KeyRef: &corev1.SecretKeySelector{
@@ -916,7 +914,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 						Image: vmv1beta1.Image{
 							Tag: "v1.136.0-enterprise",
 						},
-						AcceptEULA: true,
 					}
 					cr.Spec.License = &vmv1beta1.License{
 						KeyRef: &corev1.SecretKeySelector{
@@ -939,7 +936,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 						Image: vmv1beta1.Image{
 							Tag: "v1.136.0-enterprise",
 						},
-						AcceptEULA: true,
 					}
 					cr.Spec.License = &vmv1beta1.License{
 						KeyRef: &corev1.SecretKeySelector{
@@ -962,7 +958,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 						Image: vmv1beta1.Image{
 							Tag: "v1.136.0-enterprise",
 						},
-						AcceptEULA: true,
 					}
 					cr.Spec.License = &vmv1beta1.License{
 						KeyRef: &corev1.SecretKeySelector{
@@ -985,7 +980,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 						Image: vmv1beta1.Image{
 							Tag: "v1.136.0-enterprise",
 						},
-						AcceptEULA: true,
 					}
 					cr.Spec.License = &vmv1beta1.License{
 						KeyRef: &corev1.SecretKeySelector{
@@ -1008,7 +1002,6 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 						Image: vmv1beta1.Image{
 							Tag: "v1.136.0-enterprise",
 						},
-						AcceptEULA: true,
 					}
 					cr.Spec.License = &vmv1beta1.License{
 						KeyRef: &corev1.SecretKeySelector{

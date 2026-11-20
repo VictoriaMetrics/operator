@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 )
@@ -401,4 +402,30 @@ func TestImage_Reference(t *testing.T) {
 	// empty tag joins with ":"
 	f(Image{Repository: "victoriametrics/vmsingle", Tag: ""},
 		"victoriametrics/vmsingle:")
+}
+
+func TestLicenseIsProvidedAndValidate(t *testing.T) {
+	f := func(l *License, wantProvided, wantErr bool) {
+		t.Helper()
+		assert.Equal(t, wantProvided, l.IsProvided())
+		if wantErr {
+			assert.Error(t, l.validate())
+		} else {
+			assert.NoError(t, l.validate())
+		}
+	}
+
+	f(nil, false, false)
+	f(&License{}, false, false)
+	f(&License{AcceptEULA: true}, true, false)
+	f(&License{Key: ptr.To("key")}, true, false)
+	f(&License{AcceptEULA: true, Key: ptr.To("key")}, true, false)
+	f(&License{AcceptEULA: true, Key: ptr.To("key"), KeyRef: &corev1.SecretKeySelector{}}, true, true)
+}
+
+func TestEnterpriseFeaturesWithAcceptEULA(t *testing.T) {
+	l := &License{AcceptEULA: true}
+	assert.NoError(t, (&DownsamplingConfig{Rules: []DownsamplingRule{{Periods: []DownsamplingPeriod{{Offset: "30d", Interval: "10m"}}}}}).validate(l))
+	assert.NoError(t, (&VMBackup{}).validate(l))
+	assert.Error(t, (&VMBackup{}).validate(&License{}))
 }

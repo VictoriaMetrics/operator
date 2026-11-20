@@ -27,9 +27,9 @@ func VMBackupManager(
 	isCluster bool,
 	license *vmv1beta1.License,
 ) (*corev1.Container, error) {
-	if !cr.AcceptEULA && !license.IsProvided() {
-		logger.WithContext(ctx).Info("EULA or license wasn't defined, update your backup settings." +
-			" Follow https://docs.victoriametrics.com/victoriametrics/enterprise for further instructions.")
+	if !license.IsProvided() {
+		logger.WithContext(ctx).Info("license wasn't defined, update your backup settings." +
+			" Follow https://docs.victoriametrics.com/operator/enterprise/#license-and-esa for further instructions.")
 		return nil, nil
 	}
 	snapshotCreateURL := cr.SnapshotCreateURL
@@ -53,9 +53,6 @@ func VMBackupManager(
 		fmt.Sprintf("-dst=%s", backupDst),
 		fmt.Sprintf("-snapshot.createURL=%s", snapshotCreateURL),
 		fmt.Sprintf("-snapshot.deleteURL=%s", snapshotDeleteURL),
-	}
-	if cr.AcceptEULA {
-		args = append(args, "-eula")
 	}
 	if cr.LogLevel != nil {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", *cr.LogLevel))
@@ -177,9 +174,6 @@ func VMRestore(
 ) (*corev1.Container, error) {
 	args := []string{
 		fmt.Sprintf("-storageDataPath=%s", storagePath),
-	}
-	if cr.AcceptEULA {
-		args = append(args, "-eula")
 	}
 	if cr.LogLevel != nil {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", *cr.LogLevel))

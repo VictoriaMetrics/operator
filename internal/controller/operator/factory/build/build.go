@@ -70,6 +70,9 @@ func licenseArgsTo(args []string, l *vmv1beta1.License, secretMountDir string, d
 	if l == nil || !l.IsProvided() {
 		return args
 	}
+	if l.AcceptEULA {
+		args = append(args, fmt.Sprintf("%seula=true", dashes))
+	}
 	if l.Key != nil {
 		args = append(args, fmt.Sprintf("%slicense=%s", dashes, *l.Key))
 	}

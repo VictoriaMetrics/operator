@@ -25,7 +25,6 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
 // SetupVMClusterWebhookWithManager will setup the manager to manage the webhooks
@@ -41,7 +40,7 @@ type VMClusterCustomValidator struct{}
 var _ admission.Validator[*vmv1beta1.VMCluster] = &VMClusterCustomValidator{}
 
 // ValidateCreate implements admission.Validator so a webhook will be registered for the type
-func (*VMClusterCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1beta1.VMCluster) (warnings admission.Warnings, err error) {
+func (*VMClusterCustomValidator) ValidateCreate(_ context.Context, obj *vmv1beta1.VMCluster) (warnings admission.Warnings, err error) {
 	if obj.Status.ParsingSpecError != "" {
 		err = errors.New(obj.Status.ParsingSpecError)
 		return
@@ -49,26 +48,18 @@ func (*VMClusterCustomValidator) ValidateCreate(ctx context.Context, obj *vmv1be
 	if err = obj.Validate(); err != nil {
 		return
 	}
-	if obj.Spec.VMStorage != nil && obj.Spec.VMStorage.VMBackup != nil && obj.Spec.VMStorage.VMBackup.AcceptEULA {
-		warnings = append(warnings, "deprecated property is defined `spec.vmstorage.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
-		logger.WithContext(ctx).Info("deprecated property is defined `spec.vmstorage.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
-	}
 	warnings = append(warnings, build.WarnOpenShiftClusterSpec(&obj.Spec)...)
 	return
 }
 
 // ValidateUpdate implements admission.Validator so a webhook will be registered for the type
-func (*VMClusterCustomValidator) ValidateUpdate(ctx context.Context, _, newObj *vmv1beta1.VMCluster) (warnings admission.Warnings, err error) {
+func (*VMClusterCustomValidator) ValidateUpdate(_ context.Context, _, newObj *vmv1beta1.VMCluster) (warnings admission.Warnings, err error) {
 	if newObj.Status.ParsingSpecError != "" && !vmv1beta1.HasUnknownFields(newObj.Status.ParsingSpecError) {
 		err = errors.New(newObj.Status.ParsingSpecError)
 		return
 	}
 	if err = newObj.Validate(); err != nil {
 		return
-	}
-	if newObj.Spec.VMStorage != nil && newObj.Spec.VMStorage.VMBackup != nil && newObj.Spec.VMStorage.VMBackup.AcceptEULA {
-		warnings = append(warnings, "deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
-		logger.WithContext(ctx).Info("deprecated property is defined `spec.vmbackup.acceptEula`, use `spec.license.key` or `spec.license.keyRef` instead.")
 	}
 	warnings = append(warnings, build.WarnOpenShiftClusterSpec(&newObj.Spec)...)
 	return

@@ -96,7 +96,7 @@ type VMClusterSpec struct {
 	ManagedMetadata *ManagedObjectsMetadata `json:"managedMetadata,omitempty"`
 
 	// Discovery configures automatic vmstorage node discovery for vminsert and vmselect.
-	// This is an enterprise feature and requires a valid license key.
+	// This is an enterprise feature and requires spec.license to be set.
 	// See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#automatic-vmstorage-discovery
 	// +optional
 	Discovery *VMClusterDiscovery `json:"discovery,omitempty"`
@@ -107,7 +107,7 @@ type VMClusterSpec struct {
 // +k8s:openapi-gen=true
 type VMClusterDiscovery struct {
 	// Enabled turns on automatic vmstorage node discovery via DNS SRV records.
-	// This is an enterprise feature and requires a valid license key.
+	// This is an enterprise feature and requires spec.license to be set.
 	// See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#automatic-vmstorage-discovery
 	Enabled bool `json:"enabled"`
 	// Interval is the interval for refreshing the vmstorage node list resolved from DNS SRV records.
@@ -624,12 +624,6 @@ type VMStorage struct {
 }
 
 type VMBackup struct {
-	// AcceptEULA accepts enterprise feature usage, must be set to true.
-	// otherwise backupmanager cannot be added to single/cluster version.
-	// https://victoriametrics.com/legal/esa/
-	// +notes={deprecated_in: "v0.61.0", removed_in: "v0.69.0", replacements: {VMClusterSpec.license}}
-	// +optional
-	AcceptEULA bool `json:"acceptEULA"`
 	// SnapshotCreateURL overwrites url for snapshot create
 	// +optional
 	SnapshotCreateURL string `json:"snapshotCreateURL,omitempty"`
@@ -707,8 +701,8 @@ type VMBackup struct {
 }
 
 func (cr *VMBackup) validate(l *License) error {
-	if !l.IsProvided() && !cr.AcceptEULA {
-		return fmt.Errorf("it is required to provide license key. See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)")
+	if !l.IsProvided() {
+		return fmt.Errorf("license is required: set spec.license.acceptEULA, spec.license.key or spec.license.keyRef. See https://docs.victoriametrics.com/operator/enterprise/#license-and-esa")
 	}
 
 	if l.IsProvided() {
@@ -894,7 +888,7 @@ func (cr *VMCluster) Validate() error {
 	}
 	if vminsertDiscovery.enabled() || vmselectDiscovery.enabled() {
 		if !cr.Spec.License.IsProvided() {
-			return fmt.Errorf("discovery requires a valid license key, see https://docs.victoriametrics.com/victoriametrics/enterprise/")
+			return fmt.Errorf("discovery requires a license: set spec.license.acceptEULA, spec.license.key or spec.license.keyRef. See https://docs.victoriametrics.com/operator/enterprise/#license-and-esa")
 		}
 		if err := cr.Spec.License.validate(); err != nil {
 			return err

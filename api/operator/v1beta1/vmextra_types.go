@@ -792,7 +792,7 @@ func (dc *DownsamplingConfig) validate(l *License) error {
 		return nil
 	}
 	if !l.IsProvided() {
-		return fmt.Errorf("license key is required for downsampling. See https://docs.victoriametrics.com/victoriametrics/enterprise/")
+		return fmt.Errorf("license is required for downsampling: set spec.license.acceptEULA, spec.license.key or spec.license.keyRef. See https://docs.victoriametrics.com/operator/enterprise/#license-and-esa")
 	}
 	if err := l.validate(); err != nil {
 		return err
@@ -926,7 +926,7 @@ func (rfc *RetentionFiltersConfig) validate(l *License, retentionPeriod string) 
 		}
 	}
 	if !l.IsProvided() {
-		return fmt.Errorf("license key is required for retentionFilters. See https://docs.victoriametrics.com/victoriametrics/enterprise/")
+		return fmt.Errorf("license is required for retentionFilters: set spec.license.acceptEULA, spec.license.key or spec.license.keyRef. See https://docs.victoriametrics.com/operator/enterprise/#license-and-esa")
 	}
 	if err := l.validate(); err != nil {
 		return err
@@ -1090,14 +1090,23 @@ func (m *StringOrArray) MarshalJSON() ([]byte, error) {
 // See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
 // and [License and ESA](https://docs.victoriametrics.com/operator/enterprise/#license-and-esa) for details on how the operator handles the license.
 type License struct {
+	// AcceptEULA accepts the [ESA](https://victoriametrics.com/legal/esa/) and enables enterprise features without a license key.
+	// The operator passes it to the components as the `-eula` command-line flag.
+	// Requires VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23), VictoriaLogs v1.54.0 or vmanomaly v1.33.0 and newer.
+	// Use key or keyRef for older versions.
+	// +notes={available_from: "v0.76.0"}
+	// +optional
+	AcceptEULA bool `json:"acceptEULA,omitempty"`
 	// Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
 	// To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
 	// Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
 	// and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+	// Use acceptEULA instead for these versions.
 	Key *string `json:"key,omitempty"`
 	// KeyRef is reference to secret with license key for enterprise features.
 	// Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
 	// and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+	// Use acceptEULA instead for these versions.
 	KeyRef *corev1.SecretKeySelector `json:"keyRef,omitempty"`
 	// Enforce offline verification of the license key.
 	// It has no effect starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0.
@@ -1113,7 +1122,7 @@ func (l *License) IsProvided() bool {
 		return false
 	}
 
-	return l.Key != nil || l.KeyRef != nil
+	return l.AcceptEULA || l.Key != nil || l.KeyRef != nil
 }
 
 func (l *License) validate() error {

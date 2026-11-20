@@ -131,6 +131,47 @@ spec:
           retentionPeriod: "14d"
 ```
 
+**Example: Defining a `VMDistributed` resource with Kubernetes nodeSelectors:**
+
+This example pins each zone's `vmagent` and `vmsingle` to nodes with the matching
+[`topology.kubernetes.io/zone`](https://kubernetes.io/docs/reference/labels-annotations-taints/#topologykubernetesiozone) label.
+Any node label works the same way, see [Assign Pods to Nodes](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/).
+For each zone, the operator replaces `%ZONE%` with that zone's `name`.
+In this example, `zone-a` and `zone-b` pods are scheduled only on nodes labeled `topology.kubernetes.io/zone: zone-a` and `topology.kubernetes.io/zone: zone-b`.
+
+`vmauth` has no `nodeSelector`, so it can run on any node and keeps serving traffic if a zone goes down.
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1alpha1
+kind: VMDistributed
+metadata:
+  name: my-distributed-vmsingles
+spec:
+  backendType: VMSingle
+  vmauth:
+    name: my-distributed-vmauth
+    spec:
+      replicaCount: 2
+      unauthorizedUserAccessSpec:
+        targetRefs:
+          - name: read
+          - name: write
+  zoneCommon:
+    vmagent:
+      spec:
+        replicaCount: 1
+        nodeSelector:
+          topology.kubernetes.io/zone: "%ZONE%"
+    vmsingle:
+      spec:
+        nodeSelector:
+          topology.kubernetes.io/zone: "%ZONE%"
+        retentionPeriod: "30d"
+  zones:
+    - name: zone-a
+    - name: zone-b
+```
+
 ### VMDistributed and distributed chart
 
 VMDistributed can be used alongside the resources created by the distributed chart. The distributed chart provides a convenient way to create multiple `VMCluster` objects and surrounding resources.

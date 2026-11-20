@@ -7,6 +7,7 @@ import (
 	"time"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -108,7 +109,7 @@ func removeFinalizers(ctx context.Context, rclient client.Client, objs []client.
 }
 
 // disownObjects removes owner from the owner references of objs.
-// Objects that do not exist are skipped.
+// Objects that do not exist, or whose kind is not installed in the cluster, are skipped.
 func disownObjects(ctx context.Context, rclient client.Client, objs []client.Object, owner metav1.OwnerReference) error {
 	for _, objToDisown := range objs {
 		nsn := types.NamespacedName{
@@ -117,7 +118,7 @@ func disownObjects(ctx context.Context, rclient client.Client, objs []client.Obj
 		}
 		err := wait.PollUntilContextTimeout(ctx, time.Second, 5*time.Second, true, func(ctx context.Context) (done bool, err error) {
 			if err := rclient.Get(ctx, nsn, objToDisown); err != nil {
-				if k8serrors.IsNotFound(err) {
+				if k8serrors.IsNotFound(err) || meta.IsNoMatchError(err) {
 					return true, nil
 				}
 				return false, fmt.Errorf("error looking for object: %w", err)

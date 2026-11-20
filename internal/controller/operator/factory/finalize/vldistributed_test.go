@@ -8,25 +8,30 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func TestOnVLDistributedDelete(t *testing.T) {
 	type opts struct {
-		cr                *vmv1alpha1.VLDistributed
-		predefinedObjects []runtime.Object
-		verify            func(client client.Client)
+		cr                  *vmv1alpha1.VLDistributed
+		predefinedObjects   []runtime.Object
+		disabledControllers []string
+		verify              func(client client.Client)
 	}
 
 	ctx := context.TODO()
 
 	f := func(o opts) {
 		t.Helper()
+		build.SetDisabledControllers(sets.New(o.disabledControllers...))
+		defer build.SetDisabledControllers(nil)
 		cl := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 
 		err := OnVLDistributedDelete(ctx, cl, o.cr)
@@ -175,6 +180,33 @@ func TestOnVLDistributedDelete(t *testing.T) {
 			var single vmv1.VLSingle
 			err = cl.Get(ctx, types.NamespacedName{Name: crChanged.Spec.Zones[0].VLSingleName(crChanged), Namespace: crChanged.Namespace}, &single)
 			assert.NoError(t, err)
+			assert.Empty(t, single.OwnerReferences)
+		},
+	})
+
+	// Retain with disabled VLSingle controller: VLSingle must be disowned anyway,
+	// since it may be reconciled by another operator instance
+	crDisabled := crChanged.DeepCopy()
+	f(opts{
+		cr: crDisabled,
+		predefinedObjects: []runtime.Object{
+			crDisabled,
+			&vmv1.VLSingle{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            crDisabled.Spec.Zones[0].VLSingleName(crDisabled),
+					Namespace:       crDisabled.Namespace,
+					OwnerReferences: []metav1.OwnerReference{crDisabled.AsOwner()},
+				},
+			},
+		},
+		disabledControllers: []string{"VLSingle", "VMAuth"},
+		verify: func(cl client.Client) {
+			var vld vmv1alpha1.VLDistributed
+			assert.NoError(t, cl.Get(ctx, types.NamespacedName{Name: crDisabled.Name, Namespace: crDisabled.Namespace}, &vld))
+			assert.Empty(t, vld.Finalizers)
+
+			var single vmv1.VLSingle
+			assert.NoError(t, cl.Get(ctx, types.NamespacedName{Name: crDisabled.Spec.Zones[0].VLSingleName(crDisabled), Namespace: crDisabled.Namespace}, &single))
 			assert.Empty(t, single.OwnerReferences)
 		},
 	})

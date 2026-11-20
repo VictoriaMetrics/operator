@@ -1894,3 +1894,85 @@ func TestValidateStatefulSetOk(t *testing.T) {
 		},
 	})
 }
+
+func TestPerformRollingUpdateOnSts_RecreatedPod(t *testing.T) {
+	f := func(deletePods bool) {
+		t.Helper()
+		labels := map[string]string{"app": "vmselect"}
+		sts := &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{Name: "vmselect-sts", Namespace: "default", Labels: labels},
+			Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To(int32(1))},
+			Status:     appsv1.StatefulSetStatus{CurrentRevision: "rev1", UpdateRevision: "rev2"},
+		}
+		pod := func(uid types.UID, rev string) *corev1.Pod {
+			return &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "vmselect-sts-0",
+					Namespace:       "default",
+					UID:             uid,
+					Labels:          map[string]string{"app": "vmselect", podRevisionLabel: rev},
+					OwnerReferences: []metav1.OwnerReference{{Kind: "StatefulSet", Name: "vmselect-sts"}},
+				},
+				Status: corev1.PodStatus{
+					Phase:      corev1.PodRunning,
+					Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}},
+				},
+			}
+		}
+
+		// fake client ignores UID preconditions, check them as API server does
+		remove := func(ctx context.Context, cl client.WithWatch, obj client.Object, pre *metav1.Preconditions) error {
+			var cur corev1.Pod
+			if err := cl.Get(ctx, client.ObjectKeyFromObject(obj), &cur); err != nil {
+				return err
+			}
+			if pre != nil && pre.UID != nil && *pre.UID != cur.UID {
+				return k8serrors.NewConflict(schema.GroupResource{Resource: "pods"}, obj.GetName(), fmt.Errorf("uid mismatch"))
+			}
+			return cl.Delete(ctx, obj)
+		}
+		var recreated bool
+		fclient := k8stools.GetTestClientWithObjectsAndInterceptors([]runtime.Object{sts, pod("old", "rev1")}, interceptor.Funcs{
+			// pod is recreated at new revision right after listing, e.g. after a crash
+			List: func(ctx context.Context, cl client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
+				if err := cl.List(ctx, list, opts...); err != nil {
+					return err
+				}
+				if _, ok := list.(*corev1.PodList); !ok || recreated {
+					return nil
+				}
+				recreated = true
+				if err := cl.Delete(ctx, pod("old", "rev1")); err != nil {
+					return err
+				}
+				return cl.Create(ctx, pod("new", "rev2"))
+			},
+			Delete: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
+				o := client.DeleteOptions{}
+				o.ApplyOptions(opts)
+				return remove(ctx, cl, obj, o.Preconditions)
+			},
+			SubResourceCreate: func(ctx context.Context, cl client.Client, _ string, obj client.Object, sub client.Object, _ ...client.SubResourceCreateOption) error {
+				var pre *metav1.Preconditions
+				if ev, ok := sub.(*policyv1.Eviction); ok && ev.DeleteOptions != nil {
+					pre = ev.DeleteOptions.Preconditions
+				}
+				return remove(ctx, cl.(client.WithWatch), obj, pre)
+			},
+		})
+		synctest.Test(t, func(t *testing.T) {
+			ctx := context.Background()
+			opts := rollingUpdateOpts{selector: labels, maxUnavailable: 1, delete: deletePods}
+			assert.NoError(t, performRollingUpdateOnSts(ctx, fclient, sts, opts))
+			var got corev1.Pod
+			assert.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: "vmselect-sts-0"}, &got))
+			assert.Equal(t, types.UID("new"), got.UID)
+		})
+	}
+
+	// eviction
+	f(false)
+
+	// delete
+	f(true)
+}

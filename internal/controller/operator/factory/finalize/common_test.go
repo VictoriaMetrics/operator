@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -296,6 +297,34 @@ func TestSafeDeleteWithFinalizer(t *testing.T) {
 			assert.NoError(t, err)
 		},
 	})
+}
+
+func TestSafeDeleteWithFinalizerChecksOwnerUID(t *testing.T) {
+	type opts struct {
+		obj client.Object
+	}
+	ctx := context.Background()
+	cr := &vmv1beta1.VMAlertmanager{
+		TypeMeta:   metav1.TypeMeta{APIVersion: "operator.victoriametrics.com/v1beta1", Kind: "VMAlertmanager"},
+		ObjectMeta: metav1.ObjectMeta{Name: "alertmanager", Namespace: "default", UID: types.UID("current")},
+	}
+	f := func(o opts) {
+		t.Helper()
+		owner := cr.AsOwner()
+		owner.UID = types.UID("previous")
+		o.obj.SetName(cr.PrefixedName())
+		o.obj.SetNamespace(cr.Namespace)
+		o.obj.SetOwnerReferences([]metav1.OwnerReference{owner})
+		o.obj.SetFinalizers([]string{vmv1beta1.FinalizerName})
+		cl := k8stools.GetTestClientWithObjects([]runtime.Object{o.obj})
+		candidate := o.obj.DeepCopyObject().(client.Object)
+		assert.NoError(t, SafeDeleteWithFinalizer(ctx, cl, []client.Object{candidate}, cr))
+		assert.NoError(t, cl.Get(ctx, types.NamespacedName{Name: o.obj.GetName(), Namespace: cr.Namespace}, candidate))
+		assert.Equal(t, []string{vmv1beta1.FinalizerName}, candidate.GetFinalizers())
+	}
+
+	f(opts{obj: &rbacv1.Role{}})
+	f(opts{obj: &rbacv1.RoleBinding{}})
 }
 
 func TestRemoveFinalizers(t *testing.T) {

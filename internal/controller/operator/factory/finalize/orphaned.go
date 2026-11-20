@@ -170,6 +170,6 @@ func canBeRemoved(o client.Object, selector map[string]string, owner *metav1.Own
 	}
 	owners := o.GetOwnerReferences()
 	return slices.ContainsFunc(owners, func(r metav1.OwnerReference) bool {
-		return r.APIVersion == owner.APIVersion && r.Kind == owner.Kind && r.Name == owner.Name
+		return r.APIVersion == owner.APIVersion && r.Kind == owner.Kind && r.Name == owner.Name && r.UID == owner.UID
 	})
 }

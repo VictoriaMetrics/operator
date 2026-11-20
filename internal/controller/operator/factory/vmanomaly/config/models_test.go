@@ -171,3 +171,56 @@ recommended_max_channels: 20
 		})
 	}
 }
+
+func TestEnvelopeVersionRoundTrip(t *testing.T) {
+	for _, class := range []string{"temporal_envelope", "model.online.TemporalEnvelopeModel", "temporal_envelope_multivariate", "model.online.TemporalEnvelopeMultivariateModel"} {
+		for _, params := range []string{"", "model_version: v1\nseasonalities: [month_smooth]\n", "model_version: v2\nseasonalities: [hod_smooth, dow_smooth, calendar_month]\n"} {
+			t.Run(class+params, func(t *testing.T) {
+				input := []byte("class: " + class + "\n" + params)
+				var m model
+				require.NoError(t, yaml.UnmarshalStrict(input, &m))
+				require.NoError(t, m.validate())
+				output, err := yaml.Marshal(&m)
+				require.NoError(t, err)
+				var before, after map[string]any
+				require.NoError(t, yaml.Unmarshal(input, &before))
+				require.NoError(t, yaml.Unmarshal(output, &after))
+				assert.Equal(t, before, after)
+			})
+		}
+	}
+}
+
+func TestEnvelopeVersionValidation(t *testing.T) {
+	for _, class := range []string{"temporal_envelope", "temporal_envelope_multivariate"} {
+		for _, tc := range []struct{ params, wantErr string }{
+			{"model_version: v3", "model_version must be v1 or v2"},
+			{"model_version: ''", "model_version must be v1 or v2"},
+			{"seasonalities: [calendar_month]", "calendar_month requires model_version=v2"},
+			{"model_version: v1\nseasonalities: [calendar_month]", "calendar_month requires model_version=v2"},
+			{"model_version: v2\nseasonalities: [month_smooth]", "month_smooth requires model_version=v1"},
+			{"model_version: v2\nseasonalities: [month_plateau]", "month_plateau requires model_version=v1"},
+			{"model_version: v2\nseasonalities: [calendar_month, calendar_month]", "duplicate temporal_envelope seasonality"},
+			{"model_version: v2\nseasonalities: [unknown]", "unsupported temporal_envelope seasonality"},
+		} {
+			t.Run(class+tc.params, func(t *testing.T) {
+				var m model
+				assert.ErrorContains(t, m.Validate([]byte("class: "+class+"\n"+tc.params)), tc.wantErr)
+			})
+		}
+	}
+	for _, version := range []string{"v1", "v2"} {
+		t.Run("dependency_strength/"+version, func(t *testing.T) {
+			var m model
+			err := m.Validate([]byte("class: temporal_envelope_multivariate\nmodel_version: " + version + "\nprovide_series: [dependency_strength]\n"))
+			if version == "v1" {
+				require.ErrorContains(t, err, "dependency_strength requires model_version=v2")
+			} else {
+				require.NoError(t, err)
+				output, err := yaml.Marshal(&m)
+				require.NoError(t, err)
+				assert.Contains(t, string(output), "dependency_strength")
+			}
+		})
+	}
+}

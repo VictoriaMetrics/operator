@@ -133,11 +133,13 @@ spec:
 
 **Example: Defining a `VMDistributed` resource with Kubernetes nodeSelectors:**
 
-In this example, we are using Kubernetes zone tags. You can use any Kubernetes label here. 
-See the [Kubernetes docs on labels](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/)
+This example pins each zone's `vmagent` and `vmsingle` to nodes with the matching
+[`topology.kubernetes.io/zone`](https://kubernetes.io/docs/reference/labels-annotations-taints/#topologykubernetesiozone) label.
+Any node label works the same way, see [Assign Pods to Nodes](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/).
+For each zone, the operator replaces `%ZONE%` with that zone's `name`.
+In this example, `zone-a` and `zone-b` pods are scheduled only on nodes labeled `topology.kubernetes.io/zone: zone-a` and `topology.kubernetes.io/zone: zone-b`.
 
-In this example vmauth is allowed to float between any nodes within the Kubernetes cluster.
-vmsingle and vmagent pods are only allowed to be scheduled on nodes with their matching zone label.
+`vmauth` has no `nodeSelector`, so it can run on any node and keeps serving traffic if a zone goes down.
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1alpha1
@@ -146,8 +148,6 @@ metadata:
   name: my-distributed-vmsingles
 spec:
   backendType: VMSingle
-  # In most deployments, vmauth should not have a nodeSelector applied, as it can restrict Kubernetes' ability to distribute pods.
-  # This helps to ensure one node going down doesn't disrupt traffic.
   vmauth:
     name: my-distributed-vmauth
     spec:
@@ -161,10 +161,9 @@ spec:
       spec:
         replicaCount: 1
         nodeSelector:
-          topology.kubernetes.io/zone: "%ZONE"
+          topology.kubernetes.io/zone: "%ZONE%"
     vmsingle:
       spec:
-        replicaCount: 1
         nodeSelector:
           topology.kubernetes.io/zone: "%ZONE%"
         retentionPeriod: "30d"
@@ -172,7 +171,6 @@ spec:
     - name: zone-a
     - name: zone-b
 ```
-
 
 ### VMDistributed and distributed chart
 

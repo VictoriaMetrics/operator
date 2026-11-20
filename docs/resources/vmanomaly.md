@@ -380,6 +380,23 @@ Set `spec.image.tag: v1.32.0` or a newer version. In the model configuration, se
 
 V2 supports `calendar_month` seasonality; `month_smooth` and `month_plateau` require v1. The `dependency_strength` output is available for multivariate v2 only. These options belong in model configuration supplied through `spec.configRawYaml`, `spec.configSecret`, or a selected `VMAnomalyConfig`.
 
+## Holiday calendars
+
+Starting from vmanomaly [v1.33.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1330), `prophet` models accept a top-level `holidays` mapping with `countries`, `special_events` and `group` keys, and `prophet`, `temporal_envelope` and `temporal_envelope_multivariate` models can emit the `is_holiday` series when it is listed in `provide_series`:
+
+```yaml
+models:
+  prophet_with_holidays:
+    class: prophet
+    provide_series: [anomaly_score, is_holiday]
+    holidays:
+      countries: [US, CA]
+      special_events: ["12-24"]
+      group: true
+```
+
+The legacy Prophet `args.country_holidays` and `args.holidays` settings remain supported. vmanomaly rejects a model that combines top-level `holidays` with either legacy setting.
+
 ## High Availability and Sharding
 
 Anomaly Detection can be deployed in [HA mode](https://docs.victoriametrics.com/anomaly-detection/scaling-vmanomaly/#high-availability) and scaled horizontally. Horizontal scaling is achieved by [automatically splitting the configuration into shards](https://new.docs.victoriametrics.com/anomaly-detection/scaling-vmanomaly/#sub-configuration) using the `spec.shardCount` parameter. The `spec.replicaCount` parameter defines the number of replicas per shard. The Operator creates one StatefulSet per shard (equal to `spec.shardCount`), with each StatefulSet containing `spec.replicaCount` replicas.

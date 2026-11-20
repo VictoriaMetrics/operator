@@ -224,3 +224,23 @@ func TestEnvelopeVersionValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestProphetHolidayOutputRoundTrip(t *testing.T) {
+	for _, calendar := range []string{`holidays:
+  countries: [US, CA]
+  special_events: ["2026-11-19", "12-24"]
+  group: true
+`, `args:
+  country_holidays: US
+`, ""} {
+		input := []byte("class: prophet\nprovide_series: [anomaly_score, is_holiday]\n" + calendar)
+		var m model
+		require.NoError(t, m.Validate(input))
+		output, err := yaml.Marshal(&m)
+		require.NoError(t, err)
+		var before, after map[string]any
+		require.NoError(t, yaml.Unmarshal(input, &before))
+		require.NoError(t, yaml.Unmarshal(output, &after))
+		assert.Equal(t, before, after)
+	}
+}

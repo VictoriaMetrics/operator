@@ -368,6 +368,7 @@ func (m *onlineZScoreModel) validate() error {
 }
 
 type prophetModel struct {
+	Holidays              yaml.MapSlice `yaml:"holidays,omitempty"`
 	commonModelParams     `yaml:",inline"`
 	Seasonalities         []yaml.MapSlice `yaml:"seasonalities,omitempty"`
 	TZSeasonalities       []tzSeasonality `yaml:"tz_seasonalities,omitempty"`

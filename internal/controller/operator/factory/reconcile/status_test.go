@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -109,6 +110,28 @@ func TestStatusForChildObjects_KeepsOwnControllerFailure(t *testing.T) {
 	require.NoError(t, rclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "rule-a"}, &got))
 	assert.Equal(t, vmv1beta1.UpdateStatusOperational, got.Status.UpdateStatus)
 	assert.Empty(t, got.Status.Reason)
+}
+
+func TestUpdateObjectStatus_ConflictsOnStaleObject(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1beta1.VMAlert{ObjectMeta: metav1.ObjectMeta{Name: "a", Namespace: "ns"}}
+	rclient := k8stools.GetTestClientWithObjects([]runtime.Object{cr})
+	nn := types.NamespacedName{Namespace: "ns", Name: "a"}
+
+	var stale, fresh vmv1beta1.VMAlert
+	require.NoError(t, rclient.Get(ctx, nn, &stale))
+	require.NoError(t, rclient.Get(ctx, nn, &fresh))
+	fresh.Spec.SelectAllByDefault = true
+	fresh.LastSpecUpdated()
+	require.NoError(t, UpdateObjectStatus(ctx, rclient, &fresh, vmv1beta1.UpdateStatusOperational, nil))
+
+	// stale object must not drop lastAppliedSpec written meanwhile
+	err := UpdateObjectStatus(ctx, rclient, &stale, vmv1beta1.UpdateStatusPaused, nil)
+	assert.True(t, k8serrors.IsConflict(err), "got %v", err)
+
+	var got vmv1beta1.VMAlert
+	require.NoError(t, rclient.Get(ctx, nn, &got))
+	assert.NotNil(t, got.Status.LastAppliedSpec)
 }
 
 func TestSyncConfigObjectStatus_SkipsRecreatedObject(t *testing.T) {

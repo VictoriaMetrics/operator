@@ -5,7 +5,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -137,6 +139,55 @@ func TestRemoveFinalizer(t *testing.T) {
 		},
 		wantFinalizers: []string{"other-finalizer"},
 	})
+}
+
+func TestFinalizerPatchConflicts(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		finalizers []string
+		update     func(context.Context, client.Client, client.Object) error
+	}{
+		{name: "add", update: AddFinalizer},
+		{name: "remove", finalizers: []string{vmv1beta1.FinalizerName}, update: RemoveFinalizer},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			obj := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
+				Name: "test", Namespace: "default", Finalizers: tc.finalizers,
+			}}
+			cl := k8stools.GetTestClientWithObjects([]runtime.Object{obj})
+			key := client.ObjectKeyFromObject(obj)
+			var stale, fresh corev1.ConfigMap
+			require.NoError(t, cl.Get(ctx, key, &stale))
+			require.NoError(t, cl.Get(ctx, key, &fresh))
+
+			// Simulate another controller changing metadata after our cached read.
+			const otherFinalizer = "other.example/cleanup"
+			fresh.Finalizers = append(fresh.Finalizers, otherFinalizer)
+			fresh.OwnerReferences = []metav1.OwnerReference{{
+				APIVersion: "v1", Kind: "Secret", Name: "owner", UID: "owner-uid",
+			}}
+			require.NoError(t, cl.Update(ctx, &fresh))
+
+			err := tc.update(ctx, cl, &stale)
+			assert.True(t, k8serrors.IsConflict(err), "got %v", err)
+			var got corev1.ConfigMap
+			require.NoError(t, cl.Get(ctx, key, &got))
+			assert.Equal(t, fresh.Finalizers, got.Finalizers)
+			assert.Equal(t, fresh.OwnerReferences, got.OwnerReferences)
+
+			// Reload before retrying: the failed call mutated the stale object.
+			require.NoError(t, tc.update(ctx, cl, &got))
+			require.NoError(t, cl.Get(ctx, key, &got))
+			assert.Contains(t, got.Finalizers, otherFinalizer)
+			assert.Equal(t, fresh.OwnerReferences, got.OwnerReferences)
+			if tc.name == "add" {
+				assert.Contains(t, got.Finalizers, vmv1beta1.FinalizerName)
+			} else {
+				assert.NotContains(t, got.Finalizers, vmv1beta1.FinalizerName)
+			}
+		})
+	}
 }
 
 func TestSafeDeleteWithFinalizer(t *testing.T) {

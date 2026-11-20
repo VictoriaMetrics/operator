@@ -4,8 +4,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
@@ -13,6 +16,73 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 )
+
+func TestHPASchemeDefaults(t *testing.T) {
+	scheme := runtime.NewScheme()
+	AddDefaults(scheme)
+
+	f := func(spec, want autoscalingv2.HorizontalPodAutoscalerSpec) {
+		t.Helper()
+		obj := &autoscalingv2.HorizontalPodAutoscaler{Spec: spec}
+		scheme.Default(obj)
+		assert.Equal(t, want, obj.Spec)
+		scheme.Default(obj)
+		assert.Equal(t, want, obj.Spec)
+	}
+
+	defaultSpec := autoscalingv2.HorizontalPodAutoscalerSpec{
+		MinReplicas: ptr.To[int32](1),
+		Metrics: []autoscalingv2.MetricSpec{{
+			Type: autoscalingv2.ResourceMetricSourceType,
+			Resource: &autoscalingv2.ResourceMetricSource{
+				Name: corev1.ResourceCPU,
+				Target: autoscalingv2.MetricTarget{
+					Type:               autoscalingv2.UtilizationMetricType,
+					AverageUtilization: ptr.To[int32](80),
+				},
+			},
+		}},
+	}
+	f(autoscalingv2.HorizontalPodAutoscalerSpec{}, defaultSpec)
+
+	withBehavior := defaultSpec.DeepCopy()
+	withBehavior.Behavior = &autoscalingv2.HorizontalPodAutoscalerBehavior{
+		ScaleUp: &autoscalingv2.HPAScalingRules{
+			StabilizationWindowSeconds: ptr.To[int32](0),
+			SelectPolicy:               ptr.To(autoscalingv2.MaxChangePolicySelect),
+			Policies: []autoscalingv2.HPAScalingPolicy{
+				{Type: autoscalingv2.PodsScalingPolicy, Value: 4, PeriodSeconds: 15},
+				{Type: autoscalingv2.PercentScalingPolicy, Value: 100, PeriodSeconds: 15},
+			},
+		},
+		ScaleDown: &autoscalingv2.HPAScalingRules{
+			SelectPolicy: ptr.To(autoscalingv2.MaxChangePolicySelect),
+			Policies: []autoscalingv2.HPAScalingPolicy{
+				{Type: autoscalingv2.PercentScalingPolicy, Value: 100, PeriodSeconds: 15},
+			},
+		},
+	}
+	f(autoscalingv2.HorizontalPodAutoscalerSpec{Behavior: &autoscalingv2.HorizontalPodAutoscalerBehavior{}}, *withBehavior)
+
+	explicit := withBehavior.DeepCopy()
+	explicit.MinReplicas = ptr.To[int32](0)
+	explicit.MaxReplicas = 3
+	explicit.Metrics[0].Resource.Target.AverageUtilization = ptr.To[int32](60)
+	explicit.Behavior.ScaleUp.SelectPolicy = ptr.To(autoscalingv2.MinChangePolicySelect)
+	explicit.Behavior.ScaleUp.StabilizationWindowSeconds = ptr.To[int32](30)
+	explicit.Behavior.ScaleUp.Policies = []autoscalingv2.HPAScalingPolicy{}
+	explicit.Behavior.ScaleUp.Tolerance = ptr.To(resource.MustParse("0.05"))
+	explicit.Behavior.ScaleDown.StabilizationWindowSeconds = ptr.To[int32](120)
+	f(*explicit.DeepCopy(), *explicit)
+
+	partial := defaultSpec.DeepCopy()
+	partial.Behavior = &autoscalingv2.HorizontalPodAutoscalerBehavior{
+		ScaleDown: &autoscalingv2.HPAScalingRules{SelectPolicy: ptr.To(autoscalingv2.DisabledPolicySelect)},
+	}
+	want := withBehavior.DeepCopy()
+	want.Behavior.ScaleDown.SelectPolicy = ptr.To(autoscalingv2.DisabledPolicySelect)
+	f(*partial, *want)
+}
 
 func TestAddEnterpriseTagToAppCommonDefaults(t *testing.T) {
 	type opts struct {

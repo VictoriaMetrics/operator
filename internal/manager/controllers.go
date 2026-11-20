@@ -51,9 +51,8 @@ func initControllers(ctx context.Context, mgr ctrl.Manager, l logr.Logger, baseC
 				return fmt.Errorf("cannot get server resource for API=%s: %w", groupVersion, err)
 			}
 		} else {
-			gvs := groupVersion.String()
 			for _, r := range api.APIResources {
-				existGroupResourceByKind[r.Kind] = groupResource{group: gvs, name: r.Name}
+				existGroupResourceByKind[r.Kind] = groupResource{group: groupVersion.Group, name: r.Name}
 				if _, ok := controllersByName[r.Kind]; ok && kinds.Has(r.Kind) {
 					kinds.Delete(r.Kind)
 				}

@@ -2,6 +2,7 @@ package converter
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -222,6 +223,33 @@ func TestServiceMonitor(t *testing.T) {
 			},
 		},
 	})
+}
+
+func TestServiceMonitorSingleRegexMarshalsAsJSONScalar(t *testing.T) {
+	ctx := context.TODO()
+	got := ServiceMonitor(ctx, &promv1.ServiceMonitor{
+		Spec: promv1.ServiceMonitorSpec{
+			Endpoints: []promv1.Endpoint{{
+				MetricRelabelConfigs: []promv1.RelabelConfig{{
+					Action:       "drop",
+					Regex:        "^karpenter_cloudprovider_instance.*",
+					SourceLabels: []promv1.LabelName{"__name__"},
+				}},
+				RelabelConfigs: []promv1.RelabelConfig{{
+					Action: "replace",
+					Regex:  "^(.*)$",
+					SourceLabels: []promv1.LabelName{"__meta_kubernetes_pod_node_name"},
+					TargetLabel:  "nodename",
+				}},
+			}},
+		},
+	}, &config.BaseOperatorConf{})
+
+	data, err := json.Marshal(got)
+	assert.NoError(t, err)
+	assert.Contains(t, string(data), `"regex":"^karpenter_cloudprovider_instance.*"`)
+	assert.Contains(t, string(data), `"regex":"^(.*)$"`)
+	assert.NotContains(t, string(data), `"regex":["`)
 }
 
 func TestConvertPodEndpoints(t *testing.T) {

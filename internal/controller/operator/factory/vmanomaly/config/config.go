@@ -3,6 +3,8 @@ package config
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -291,37 +293,50 @@ func (c *config) build(cr *vmv1.VMAnomaly, pos *ParsedObjects, ac *build.AssetsC
 			return fmt.Errorf("failed to unmarshal config=%s/%s: %w", cfg.Namespace, cfg.Name, err)
 		}
 		prefix := fmt.Sprintf("%s-%s", cfg.Namespace, cfg.Name)
-		for k, v := range cv.Models {
+
+		// validate whole child before merging to avoid partial merge on error
+		for _, k := range slices.Sorted(maps.Keys(cv.Models)) {
+			v := cv.Models[k]
 			name := fmt.Sprintf("%s-%s", prefix, k)
-			if c.Models == nil {
-				c.Models = make(map[string]*model)
+			if v == nil || v.anomalyModel == nil {
+				return fmt.Errorf("failed to add config=%s/%s, model=%s is empty", cfg.Namespace, cfg.Name, name)
 			}
 			if _, ok := c.Models[name]; ok {
 				return fmt.Errorf("failed to add config=%s/%s, model=%s already exists", cfg.Namespace, cfg.Name, name)
 			}
-			v.addPrefix(prefix)
-			c.Models[name] = v
-
 		}
-		for k, v := range cv.Schedulers {
+		for _, k := range slices.Sorted(maps.Keys(cv.Schedulers)) {
 			name := fmt.Sprintf("%s-%s", prefix, k)
-			if c.Schedulers == nil {
-				c.Schedulers = make(map[string]*scheduler)
-			}
 			if _, ok := c.Schedulers[name]; ok {
 				return fmt.Errorf("failed to add config=%s/%s, scheduler=%s already exists", cfg.Namespace, cfg.Name, name)
 			}
-			c.Schedulers[name] = v
 		}
-		for k, v := range cv.Queries {
+		for _, k := range slices.Sorted(maps.Keys(cv.Queries)) {
 			name := fmt.Sprintf("%s-%s", prefix, k)
-			if c.Reader.Queries == nil {
-				c.Reader.Queries = make(map[string]*query)
-			}
 			if _, ok := c.Reader.Queries[name]; ok {
 				return fmt.Errorf("failed to add config=%s/%s, query=%s already exists", cfg.Namespace, cfg.Name, name)
 			}
-			c.Reader.Queries[name] = v
+		}
+
+		// merge validated child
+		for k, v := range cv.Models {
+			if c.Models == nil {
+				c.Models = make(map[string]*model)
+			}
+			v.addPrefix(prefix)
+			c.Models[fmt.Sprintf("%s-%s", prefix, k)] = v
+		}
+		for k, v := range cv.Schedulers {
+			if c.Schedulers == nil {
+				c.Schedulers = make(map[string]*scheduler)
+			}
+			c.Schedulers[fmt.Sprintf("%s-%s", prefix, k)] = v
+		}
+		for k, v := range cv.Queries {
+			if c.Reader.Queries == nil {
+				c.Reader.Queries = make(map[string]*query)
+			}
+			c.Reader.Queries[fmt.Sprintf("%s-%s", prefix, k)] = v
 		}
 		return nil
 	})
@@ -339,7 +354,17 @@ func (c *config) validate() error {
 	if c.Reader == nil {
 		return fmt.Errorf("reader is required")
 	}
-	for modelName, m := range c.Models {
+	for _, name := range slices.Sorted(maps.Keys(c.Schedulers)) {
+		s := c.Schedulers[name]
+		if s == nil || s.anomalyScheduler == nil {
+			return fmt.Errorf("scheduler=%q is empty", name)
+		}
+	}
+	for _, modelName := range slices.Sorted(maps.Keys(c.Models)) {
+		m := c.Models[modelName]
+		if m == nil || m.anomalyModel == nil {
+			return fmt.Errorf("model=%q is empty", modelName)
+		}
 		for _, q := range m.queries() {
 			if _, ok := c.Reader.Queries[q]; !ok {
 				return fmt.Errorf(`models.%s.queries contains %q, which is not listed in reader.queries`, modelName, q)
@@ -351,12 +376,14 @@ func (c *config) validate() error {
 			}
 		}
 	}
-	for name, s := range c.Schedulers {
+	for _, name := range slices.Sorted(maps.Keys(c.Schedulers)) {
+		s := c.Schedulers[name]
 		if err := s.validate(); err != nil {
 			return fmt.Errorf("failed to validate scheduler=%q: %w", name, err)
 		}
 	}
-	for name, m := range c.Models {
+	for _, name := range slices.Sorted(maps.Keys(c.Models)) {
+		m := c.Models[name]
 		if err := m.validate(); err != nil {
 			return fmt.Errorf("failed to validate model=%q: %w", name, err)
 		}

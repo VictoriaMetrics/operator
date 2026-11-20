@@ -535,6 +535,9 @@ func addMetricRelabelingsTo(cfg yaml.MapSlice, src []*vmv1beta1.RelabelConfig, s
 	}
 	var metricRelabelings []yaml.MapSlice
 	for _, c := range src {
+		if c == nil {
+			continue
+		}
 		if c.TargetLabel != "" && se.EnforcedNamespaceLabel != "" && c.TargetLabel == se.EnforcedNamespaceLabel {
 			continue
 		}

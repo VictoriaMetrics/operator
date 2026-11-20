@@ -240,6 +240,8 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 		err            error
 	}
 	rtCh := make(chan *returnValue)
+	shardCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	owner := cr.AsOwner()
 	updateShard := func(shardNum int32) {
 		var rv returnValue
@@ -254,7 +256,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 			if prevCR != nil && prevCR.Spec.PodDisruptionBudget != nil {
 				prevPDB = build.ShardPodDisruptionBudget(prevCR, prevCR.Spec.PodDisruptionBudget, shardNum)
 			}
-			if err := reconcile.PDB(ctx, rclient, pdb, prevPDB, &owner); err != nil {
+			if err := reconcile.PDB(shardCtx, rclient, pdb, prevPDB, &owner); err != nil {
 				rv.err = err
 				return
 			}
@@ -294,7 +296,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 				}
 			}
 			o := reconcile.DeploymentOpts{}
-			if err := reconcile.Deployment(ctx, rclient, newApp, prevApp, &owner, &o); err != nil {
+			if err := reconcile.Deployment(shardCtx, rclient, newApp, prevApp, &owner, &o); err != nil {
 				rv.err = fmt.Errorf("cannot reconcile deployment for vmagent(%d): %w", shardNum, err)
 				return
 			}
@@ -336,7 +338,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 				SelectorLabels: selectorLabels,
 				UpdateBehavior: cr.Spec.StatefulRollingUpdateStrategyBehavior,
 			}
-			if err := reconcile.StatefulSet(ctx, rclient, newApp, prevApp, &owner, &o); err != nil {
+			if err := reconcile.StatefulSet(shardCtx, rclient, newApp, prevApp, &owner, &o); err != nil {
 				rv.err = fmt.Errorf("cannot reconcile %T for vmagent(%d): %w", newApp, shardNum, err)
 				return
 			}
@@ -347,7 +349,7 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 			if prevAppTpl != nil {
 				prevApp, _ = prevAppTpl.(*appsv1.DaemonSet)
 			}
-			if err := reconcile.DaemonSet(ctx, rclient, newApp, prevApp, &owner); err != nil {
+			if err := reconcile.DaemonSet(shardCtx, rclient, newApp, prevApp, &owner); err != nil {
 				rv.err = fmt.Errorf("cannot reconcile daemonset for vmagent: %w", err)
 				return
 			}
@@ -366,9 +368,15 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 		close(rtCh)
 	}()
 
+	// cancel remaining shards on error and drain rtCh, otherwise shard goroutines block on send forever
+	var firstErr error
 	for rt := range rtCh {
 		if rt.err != nil {
-			return rt.err
+			if firstErr == nil {
+				firstErr = rt.err
+				cancel()
+			}
+			continue
 		}
 		if rt.deploymentName != "" {
 			deploymentToKeep.Insert(rt.deploymentName)
@@ -382,6 +390,9 @@ func createOrUpdateApp(ctx context.Context, rclient client.Client, cr, prevCR *v
 				pdbToKeep.Insert(rt.stsName)
 			}
 		}
+	}
+	if firstErr != nil {
+		return firstErr
 	}
 
 	if err := finalize.RemoveOrphanedPDBs(ctx, rclient, cr, pdbToKeep, true); err != nil {

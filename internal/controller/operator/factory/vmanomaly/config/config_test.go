@@ -1786,6 +1786,116 @@ server:
 `,
 	})
 
+	// invalid VMAnomalyConfig with null model is skipped without partial merge
+	f(opts{
+		cr: &vmv1.VMAnomaly{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-anomaly",
+				Namespace: "default",
+			},
+			Spec: vmv1.VMAnomalySpec{
+				License: &vmv1beta1.License{
+					Key: ptr.To("test"),
+				},
+				ConfigRawYaml: `
+settings:
+  restore_state: true
+`,
+				SelectAllByDefault: true,
+				Reader: &vmv1.VMAnomalyReadersSpec{
+					DatasourceURL:  "http://reader.test",
+					SamplingPeriod: "10s",
+				},
+				Writer: &vmv1.VMAnomalyWritersSpec{
+					DatasourceURL: "http://writer.test",
+				},
+			},
+		},
+		predefinedObjects: []runtime.Object{
+			&vmv1.VMAnomalyConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "anomaly",
+					Namespace: "default",
+				},
+				Spec: runtime.RawExtension{
+					Raw: []byte(`{
+  "models": {
+    "test": {
+      "class": "zscore",
+      "queries": ["test"],
+      "schedulers": ["test"],
+      "z_threshold": 2.5
+    }
+  },
+  "schedulers": {
+    "test": {
+      "class": "periodic",
+      "fit_every": "12m",
+      "fit_window": "13h",
+      "infer_every": "11m"
+    }
+  },
+  "queries": {
+    "test": {
+      "expr": "vm_metric"
+    }
+  }
+}`),
+				},
+			},
+			&vmv1.VMAnomalyConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "broken",
+					Namespace: "default",
+				},
+				Spec: runtime.RawExtension{
+					Raw: []byte(`{
+  "models": {
+    "a": {
+      "class": "zscore",
+      "z_threshold": 2.5
+    },
+    "b": null
+  }
+}`),
+				},
+			},
+		},
+		expected: `
+models:
+  default-anomaly-test:
+    class: zscore
+    queries:
+    - default-anomaly-test
+    schedulers:
+    - default-anomaly-test
+    z_threshold: 2.5
+schedulers:
+  default-anomaly-test:
+    class: periodic
+    fit_every: 12m
+    fit_window: 13h
+    infer_every: 11m
+reader:
+  class: vm
+  datasource_url: http://reader.test
+  sampling_period: 10s
+  queries:
+    default-anomaly-test:
+      expr: vm_metric
+writer:
+  class: vm
+  datasource_url: http://writer.test
+monitoring:
+  pull:
+    port: "8080"
+settings:
+  restore_state: true
+server:
+  port: "8490"
+`,
+	})
+
 	// settings-only base config without VMAnomalyConfig
 	f(opts{
 		cr: &vmv1.VMAnomaly{

@@ -131,6 +131,9 @@ var (
 )
 
 func init() {
+	// klog's logger is global and must be configured before concurrent log calls.
+	klog.SetLogger(logf.Log)
+
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(vmv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(vmv1beta1.AddToScheme(scheme))
@@ -195,7 +198,6 @@ func RunManager(ctx context.Context) error {
 	// implementing the logr.Logger interface. This logger will
 	// be propagated through the whole operator, generating
 	// uniform and structured logs.
-	klog.SetLogger(l)
 	ctrl.SetLogger(l)
 
 	metricServerTLSOpts, err := getMetricsServerMTLSOpts()

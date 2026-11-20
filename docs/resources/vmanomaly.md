@@ -174,8 +174,9 @@ spec:
         key: password-secret-key
     tlsConfig:
       cert:
-        name: k8s-tls-secret-name
-        key: tls-cert-key
+        secret:
+          name: k8s-tls-secret-name
+          key: tls-cert-key
       keySecret:
         name: k8s-tls-secret-name
         key: tls-key
@@ -208,6 +209,33 @@ spec:
           data_range: ['-inf', 'inf']
           tz: UTC
 ```
+
+### Serving the UI over HTTPS
+
+`spec.server.tlsConfig` serves the anomaly UI and API over HTTPS. The certificate and key are taken from `cert` and `keySecret` or from pre-mounted `certFile` and `keyFile`. Set `ca` or `caFile` to require client certificates signed by that CA (mTLS). `insecureSkipVerify` and `serverName` are not supported for the server. Requires [vmanomaly v1.32.0 or newer](https://docs.victoriametrics.com/anomaly-detection/components/server/#tls-and-mutual-tls).
+
+The following is a configuration fragment to merge into an existing `VMAnomaly` resource, keeping its license, reader, writer and model configuration. First create a Secret named `vmanomaly-tls` in the same namespace, containing `tls.crt` and `tls.key`; include `ca.crt` when enabling mTLS.
+
+```yaml
+spec:
+  server:
+    port: "8490"
+    tlsConfig:
+      cert:
+        secret:
+          name: vmanomaly-tls
+          key: tls.crt
+      keySecret:
+        name: vmanomaly-tls
+        key: tls.key
+      # optional: require client certificates (mTLS)
+      ca:
+        secret:
+          name: vmanomaly-tls
+          key: ca.crt
+```
+
+Only `spec.server.port` serves HTTPS. Probes and metrics scraping keep using plain HTTP on `spec.monitoring.pull.port`, so the two ports must differ. Clients of the server port, such as Ingress backends, must use HTTPS and, with mTLS, present a client certificate.
 
 ### Using secret
 

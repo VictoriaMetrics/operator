@@ -21,6 +21,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmscrapes"
 )
 
 func TestDeleteOrphaned_UsesReconcilerConfig(t *testing.T) {
@@ -249,6 +250,50 @@ func Test_CreateOrUpdate_Actions(t *testing.T) {
 				{Verb: "Get", Kind: "Deployment", Resource: vmsingleName},
 			},
 		})
+}
+
+func TestCreateOrUpdate_RemovesScrapeResourcesInIngestOnlyMode(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1beta1.VMSingle{
+		ObjectMeta: metav1.ObjectMeta{Name: "example-single", Namespace: "default"},
+		Spec: vmv1beta1.VMSingleSpec{
+			CommonScrapeParams: vmv1beta1.CommonScrapeParams{IngestOnlyMode: ptr.To(false)},
+		},
+	}
+	fclient := k8stools.GetTestClientWithObjects(nil)
+	build.AddDefaults(fclient.Scheme())
+	fclient.Scheme().Default(cr)
+
+	synctest.Test(t, func(t *testing.T) {
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+		assert.NoError(t, fclient.Create(ctx, vmscrapes.BuildExtraConfigSecret(cr, 1, []byte("extra scrape config"))))
+
+		rbacName := cr.GetRBACName()
+		objects := []struct {
+			name types.NamespacedName
+			obj  client.Object
+		}{
+			{types.NamespacedName{Name: rbacName, Namespace: cr.Namespace}, &rbacv1.Role{}},
+			{types.NamespacedName{Name: rbacName, Namespace: cr.Namespace}, &rbacv1.RoleBinding{}},
+			{types.NamespacedName{Name: rbacName}, &rbacv1.ClusterRole{}},
+			{types.NamespacedName{Name: rbacName}, &rbacv1.ClusterRoleBinding{}},
+			{types.NamespacedName{Name: build.ResourceName(build.SecretConfigResourceKind, cr), Namespace: cr.Namespace}, &corev1.Secret{}},
+			{types.NamespacedName{Name: build.ResourceName(build.TLSAssetsResourceKind, cr), Namespace: cr.Namespace}, &corev1.Secret{}},
+			{types.NamespacedName{Name: vmscrapes.ExtraConfigSecretName(cr, 1), Namespace: cr.Namespace}, &corev1.Secret{}},
+		}
+		for _, item := range objects {
+			assert.NoError(t, fclient.Get(ctx, item.name, item.obj), "%T %s must exist before switching modes", item.obj, item.name)
+		}
+
+		cr.Status.LastAppliedSpec = cr.Spec.DeepCopy()
+		cr.Spec.IngestOnlyMode = ptr.To(true)
+		assert.NoError(t, CreateOrUpdate(ctx, cr, fclient))
+
+		for _, item := range objects {
+			err := fclient.Get(ctx, item.name, item.obj)
+			assert.True(t, k8serrors.IsNotFound(err), "%T %s must be removed, got %v", item.obj, item.name, err)
+		}
+	})
 }
 
 func TestCreateOrUpdate_Paused(t *testing.T) {

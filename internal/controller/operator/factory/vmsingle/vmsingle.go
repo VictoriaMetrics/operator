@@ -775,6 +775,9 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 			&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: build.ResourceName(build.SecretConfigResourceKind, cr), Namespace: cr.Namespace}},
 			&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: build.ResourceName(build.TLSAssetsResourceKind, cr), Namespace: cr.Namespace}},
 		)
+		if err := vmscrapes.RemoveStaleExtraConfigSecrets(ctx, rclient, cr, 0); err != nil {
+			return fmt.Errorf("cannot remove extra scrape config secrets: %w", err)
+		}
 	}
 	if err := finalize.SafeDeleteCrossNamespaceWithFinalizer(ctx, rclient, crossNamespaceObjsToRemove, cr); err != nil {
 		return fmt.Errorf("cannot remove rbac objects from watched namespaces: %w", err)

@@ -15,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -709,7 +710,15 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 		objsToRemove = append(objsToRemove, &vpav1.VerticalPodAutoscaler{ObjectMeta: objMeta})
 	}
 	if !cr.IsOwnsServiceAccount() {
-		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
+		objsToRemove = append(objsToRemove,
+			&corev1.ServiceAccount{ObjectMeta: objMeta},
+			&rbacv1.Role{ObjectMeta: objMeta},
+			&rbacv1.RoleBinding{ObjectMeta: objMeta},
+		)
+	}
+	// External config no longer needs the generated secret unless it references it.
+	if (cr.Spec.SecretRef != nil && cr.Spec.SecretRef.Name != cr.ConfigSecretName()) || cr.Spec.LocalPath != "" {
+		objsToRemove = append(objsToRemove, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: cr.ConfigSecretName(), Namespace: cr.Namespace}})
 	}
 	return finalize.SafeDeleteWithFinalizer(ctx, rclient, objsToRemove, cr)
 }

@@ -114,3 +114,20 @@ func TestVMAnomaly_ServerTLS(t *testing.T) {
 	f(&VMAnomalyServerSpec{Port: "8080", TLSConfig: files()}, nil, true, "")
 	f(&VMAnomalyServerSpec{TLSConfig: files()}, &VMAnomalyMonitoringSpec{Pull: &VMAnomalyMonitoringPullSpec{Port: "8490"}}, true, "")
 }
+
+func TestVMAnomalyValidateLicense(t *testing.T) {
+	f := func(l *vmv1beta1.License, wantErr bool) {
+		t.Helper()
+		cr := &VMAnomaly{}
+		cr.Spec.License = l
+		if wantErr {
+			assert.Error(t, cr.Validate())
+		} else {
+			assert.NoError(t, cr.Validate())
+		}
+	}
+	f(nil, true)
+	f(&vmv1beta1.License{}, true)
+	f(&vmv1beta1.License{AcceptEULA: true}, false)
+	f(&vmv1beta1.License{Key: ptr.To("key")}, false)
+}

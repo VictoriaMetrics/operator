@@ -550,7 +550,7 @@ func (cr *VMAnomaly) Validate() error {
 		return nil
 	}
 	if !cr.Spec.License.IsProvided() {
-		return fmt.Errorf("no license is provided!. Either spec.license.key or spec.license.keyRef is required")
+		return fmt.Errorf("no license is provided. Either spec.license.acceptEULA, spec.license.key or spec.license.keyRef is required")
 	}
 	if cr.Spec.VPA != nil {
 		if err := cr.Spec.VPA.Validate(); err != nil {

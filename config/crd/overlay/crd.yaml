@@ -843,6 +843,13 @@ spec:
                   License allows to configure license key to be used for enterprise features.
                   See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/#victorialogs-enterprise-features)
                 properties:
+                  acceptEULA:
+                    description: |-
+                      AcceptEULA accepts the [ESA](https://victoriametrics.com/legal/esa/) and enables enterprise features without a license key.
+                      The operator passes it to the components as the `-eula` command-line flag.
+                      Requires VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23), VictoriaLogs v1.54.0 or vmanomaly v1.33.0 and newer.
+                      Use key or keyRef for older versions.
+                    type: boolean
                   forceOffline:
                     description: |-
                       Enforce offline verification of the license key.
@@ -854,12 +861,14 @@ spec:
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     type: string
                   keyRef:
                     description: |-
                       KeyRef is reference to secret with license key for enterprise features.
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -3260,6 +3269,13 @@ spec:
                   License allows to configure license key to be used for enterprise features.
                   See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/#victorialogs-enterprise-features)
                 properties:
+                  acceptEULA:
+                    description: |-
+                      AcceptEULA accepts the [ESA](https://victoriametrics.com/legal/esa/) and enables enterprise features without a license key.
+                      The operator passes it to the components as the `-eula` command-line flag.
+                      Requires VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23), VictoriaLogs v1.54.0 or vmanomaly v1.33.0 and newer.
+                      Use key or keyRef for older versions.
+                    type: boolean
                   forceOffline:
                     description: |-
                       Enforce offline verification of the license key.
@@ -3271,12 +3287,14 @@ spec:
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     type: string
                   keyRef:
                     description: |-
                       KeyRef is reference to secret with license key for enterprise features.
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -8607,6 +8625,13 @@ spec:
                 description: License configures license key for enterprise features.
                   If not nil, it will be passed to VLAgent and VLClusters.
                 properties:
+                  acceptEULA:
+                    description: |-
+                      AcceptEULA accepts the [ESA](https://victoriametrics.com/legal/esa/) and enables enterprise features without a license key.
+                      The operator passes it to the components as the `-eula` command-line flag.
+                      Requires VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23), VictoriaLogs v1.54.0 or vmanomaly v1.33.0 and newer.
+                      Use key or keyRef for older versions.
+                    type: boolean
                   forceOffline:
                     description: |-
                       Enforce offline verification of the license key.
@@ -8618,12 +8643,14 @@ spec:
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     type: string
                   keyRef:
                     description: |-
                       KeyRef is reference to secret with license key for enterprise features.
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -10441,6 +10468,13 @@ spec:
                           Using license key is supported starting from VictoriaMetrics v1.94.0.
                           See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                         properties:
+                          acceptEULA:
+                            description: |-
+                              AcceptEULA accepts the [ESA](https://victoriametrics.com/legal/esa/) and enables enterprise features without a license key.
+                              The operator passes it to the components as the `-eula` command-line flag.
+                              Requires VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23), VictoriaLogs v1.54.0 or vmanomaly v1.33.0 and newer.
+                              Use key or keyRef for older versions.
+                            type: boolean
                           forceOffline:
                             description: |-
                               Enforce offline verification of the license key.
@@ -10452,12 +10486,14 @@ spec:
                               To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
                               Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                               and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                              Use acceptEULA instead for these versions.
                             type: string
                           keyRef:
                             description: |-
                               KeyRef is reference to secret with license key for enterprise features.
                               Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                               and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                              Use acceptEULA instead for these versions.
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
@@ -13167,6 +13203,13 @@ spec:
                               License allows to configure license key to be used for enterprise features.
                               See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/#victorialogs-enterprise-features)
                             properties:
+                              acceptEULA:
+                                description: |-
+                                  AcceptEULA accepts the [ESA](https://victoriametrics.com/legal/esa/) and enables enterprise features without a license key.
+                                  The operator passes it to the components as the `-eula` command-line flag.
+                                  Requires VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23), VictoriaLogs v1.54.0 or vmanomaly v1.33.0 and newer.
+                                  Use key or keyRef for older versions.
+                                type: boolean
                               forceOffline:
                                 description: |-
                                   Enforce offline verification of the license key.
@@ -13178,12 +13221,14 @@ spec:
                                   To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
                                   Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                                   and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                                  Use acceptEULA instead for these versions.
                                 type: string
                               keyRef:
                                 description: |-
                                   KeyRef is reference to secret with license key for enterprise features.
                                   Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                                   and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                                  Use acceptEULA instead for these versions.
                                 properties:
                                   key:
                                     description: The key of the secret to select from.  Must
@@ -15313,6 +15358,13 @@ spec:
                                 License allows to configure license key to be used for enterprise features.
                                 See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/#victorialogs-enterprise-features)
                               properties:
+                                acceptEULA:
+                                  description: |-
+                                    AcceptEULA accepts the [ESA](https://victoriametrics.com/legal/esa/) and enables enterprise features without a license key.
+                                    The operator passes it to the components as the `-eula` command-line flag.
+                                    Requires VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23), VictoriaLogs v1.54.0 or vmanomaly v1.33.0 and newer.
+                                    Use key or keyRef for older versions.
+                                  type: boolean
                                 forceOffline:
                                   description: |-
                                     Enforce offline verification of the license key.
@@ -15324,12 +15376,14 @@ spec:
                                     To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
                                     Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                                     and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                                    Use acceptEULA instead for these versions.
                                   type: string
                                 keyRef:
                                   description: |-
                                     KeyRef is reference to secret with license key for enterprise features.
                                     Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                                     and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                                    Use acceptEULA instead for these versions.
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -17237,6 +17291,13 @@ spec:
                   License allows to configure license key to be used for enterprise features.
                   See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/#victorialogs-enterprise-features)
                 properties:
+                  acceptEULA:
+                    description: |-
+                      AcceptEULA accepts the [ESA](https://victoriametrics.com/legal/esa/) and enables enterprise features without a license key.
+                      The operator passes it to the components as the `-eula` command-line flag.
+                      Requires VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23), VictoriaLogs v1.54.0 or vmanomaly v1.33.0 and newer.
+                      Use key or keyRef for older versions.
+                    type: boolean
                   forceOffline:
                     description: |-
                       Enforce offline verification of the license key.
@@ -17248,12 +17309,14 @@ spec:
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     type: string
                   keyRef:
                     description: |-
                       KeyRef is reference to secret with license key for enterprise features.
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -21037,6 +21100,13 @@ spec:
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
                   See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                 properties:
+                  acceptEULA:
+                    description: |-
+                      AcceptEULA accepts the [ESA](https://victoriametrics.com/legal/esa/) and enables enterprise features without a license key.
+                      The operator passes it to the components as the `-eula` command-line flag.
+                      Requires VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23), VictoriaLogs v1.54.0 or vmanomaly v1.33.0 and newer.
+                      Use key or keyRef for older versions.
+                    type: boolean
                   forceOffline:
                     description: |-
                       Enforce offline verification of the license key.
@@ -21048,12 +21118,14 @@ spec:
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     type: string
                   keyRef:
                     description: |-
                       KeyRef is reference to secret with license key for enterprise features.
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -35068,6 +35140,13 @@ spec:
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
                   See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                 properties:
+                  acceptEULA:
+                    description: |-
+                      AcceptEULA accepts the [ESA](https://victoriametrics.com/legal/esa/) and enables enterprise features without a license key.
+                      The operator passes it to the components as the `-eula` command-line flag.
+                      Requires VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23), VictoriaLogs v1.54.0 or vmanomaly v1.33.0 and newer.
+                      Use key or keyRef for older versions.
+                    type: boolean
                   forceOffline:
                     description: |-
                       Enforce offline verification of the license key.
@@ -35079,12 +35158,14 @@ spec:
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     type: string
                   keyRef:
                     description: |-
                       KeyRef is reference to secret with license key for enterprise features.
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -38070,6 +38151,13 @@ spec:
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
                   See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                 properties:
+                  acceptEULA:
+                    description: |-
+                      AcceptEULA accepts the [ESA](https://victoriametrics.com/legal/esa/) and enables enterprise features without a license key.
+                      The operator passes it to the components as the `-eula` command-line flag.
+                      Requires VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23), VictoriaLogs v1.54.0 or vmanomaly v1.33.0 and newer.
+                      Use key or keyRef for older versions.
+                    type: boolean
                   forceOffline:
                     description: |-
                       Enforce offline verification of the license key.
@@ -38081,12 +38169,14 @@ spec:
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     type: string
                   keyRef:
                     description: |-
                       KeyRef is reference to secret with license key for enterprise features.
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -42924,6 +43014,13 @@ spec:
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
                   See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                 properties:
+                  acceptEULA:
+                    description: |-
+                      AcceptEULA accepts the [ESA](https://victoriametrics.com/legal/esa/) and enables enterprise features without a license key.
+                      The operator passes it to the components as the `-eula` command-line flag.
+                      Requires VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23), VictoriaLogs v1.54.0 or vmanomaly v1.33.0 and newer.
+                      Use key or keyRef for older versions.
+                    type: boolean
                   forceOffline:
                     description: |-
                       Enforce offline verification of the license key.
@@ -42935,12 +43032,14 @@ spec:
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     type: string
                   keyRef:
                     description: |-
                       KeyRef is reference to secret with license key for enterprise features.
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -45034,13 +45133,13 @@ spec:
               discovery:
                 description: |-
                   Discovery configures automatic vmstorage node discovery for vminsert and vmselect.
-                  This is an enterprise feature and requires a valid license key.
+                  This is an enterprise feature and requires spec.license to be set.
                   See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#automatic-vmstorage-discovery
                 properties:
                   enabled:
                     description: |-
                       Enabled turns on automatic vmstorage node discovery via DNS SRV records.
-                      This is an enterprise feature and requires a valid license key.
+                      This is an enterprise feature and requires spec.license to be set.
                       See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#automatic-vmstorage-discovery
                     type: boolean
                   filter:
@@ -45139,6 +45238,13 @@ spec:
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
                   See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                 properties:
+                  acceptEULA:
+                    description: |-
+                      AcceptEULA accepts the [ESA](https://victoriametrics.com/legal/esa/) and enables enterprise features without a license key.
+                      The operator passes it to the components as the `-eula` command-line flag.
+                      Requires VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23), VictoriaLogs v1.54.0 or vmanomaly v1.33.0 and newer.
+                      Use key or keyRef for older versions.
+                    type: boolean
                   forceOffline:
                     description: |-
                       Enforce offline verification of the license key.
@@ -45150,12 +45256,14 @@ spec:
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     type: string
                   keyRef:
                     description: |-
                       KeyRef is reference to secret with license key for enterprise features.
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -45321,7 +45429,7 @@ spec:
                       enabled:
                         description: |-
                           Enabled turns on automatic vmstorage node discovery via DNS SRV records.
-                          This is an enterprise feature and requires a valid license key.
+                          This is an enterprise feature and requires spec.license to be set.
                           See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#automatic-vmstorage-discovery
                         type: boolean
                       filter:
@@ -46772,7 +46880,7 @@ spec:
                       enabled:
                         description: |-
                           Enabled turns on automatic vmstorage node discovery via DNS SRV records.
-                          This is an enterprise feature and requires a valid license key.
+                          This is an enterprise feature and requires spec.license to be set.
                           See https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#automatic-vmstorage-discovery
                         type: boolean
                       filter:
@@ -50487,12 +50595,6 @@ spec:
                   vmBackup:
                     description: VMBackup configuration for backup
                     properties:
-                      acceptEULA:
-                        description: |-
-                          AcceptEULA accepts enterprise feature usage, must be set to true.
-                          otherwise backupmanager cannot be added to single/cluster version.
-                          https://victoriametrics.com/legal/esa/
-                        type: boolean
                       concurrency:
                         description: Defines number of concurrent workers. Higher
                           concurrency may reduce backup duration (default 10)
@@ -51453,6 +51555,13 @@ spec:
                 description: License configures license key for enterprise features.
                   If not nil, it will be passed to VMAgent, VMAuth and VMClusters.
                 properties:
+                  acceptEULA:
+                    description: |-
+                      AcceptEULA accepts the [ESA](https://victoriametrics.com/legal/esa/) and enables enterprise features without a license key.
+                      The operator passes it to the components as the `-eula` command-line flag.
+                      Requires VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23), VictoriaLogs v1.54.0 or vmanomaly v1.33.0 and newer.
+                      Use key or keyRef for older versions.
+                    type: boolean
                   forceOffline:
                     description: |-
                       Enforce offline verification of the license key.
@@ -51464,12 +51573,14 @@ spec:
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     type: string
                   keyRef:
                     description: |-
                       KeyRef is reference to secret with license key for enterprise features.
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -53287,6 +53398,13 @@ spec:
                           Using license key is supported starting from VictoriaMetrics v1.94.0.
                           See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                         properties:
+                          acceptEULA:
+                            description: |-
+                              AcceptEULA accepts the [ESA](https://victoriametrics.com/legal/esa/) and enables enterprise features without a license key.
+                              The operator passes it to the components as the `-eula` command-line flag.
+                              Requires VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23), VictoriaLogs v1.54.0 or vmanomaly v1.33.0 and newer.
+                              Use key or keyRef for older versions.
+                            type: boolean
                           forceOffline:
                             description: |-
                               Enforce offline verification of the license key.
@@ -53298,12 +53416,14 @@ spec:
                               To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
                               Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                               and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                              Use acceptEULA instead for these versions.
                             type: string
                           keyRef:
                             description: |-
                               KeyRef is reference to secret with license key for enterprise features.
                               Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                               and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                              Use acceptEULA instead for these versions.
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
@@ -56651,6 +56771,13 @@ spec:
                               Using license key is supported starting from VictoriaMetrics v1.94.0.
                               See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                             properties:
+                              acceptEULA:
+                                description: |-
+                                  AcceptEULA accepts the [ESA](https://victoriametrics.com/legal/esa/) and enables enterprise features without a license key.
+                                  The operator passes it to the components as the `-eula` command-line flag.
+                                  Requires VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23), VictoriaLogs v1.54.0 or vmanomaly v1.33.0 and newer.
+                                  Use key or keyRef for older versions.
+                                type: boolean
                               forceOffline:
                                 description: |-
                                   Enforce offline verification of the license key.
@@ -56662,12 +56789,14 @@ spec:
                                   To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
                                   Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                                   and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                                  Use acceptEULA instead for these versions.
                                 type: string
                               keyRef:
                                 description: |-
                                   KeyRef is reference to secret with license key for enterprise features.
                                   Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                                   and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                                  Use acceptEULA instead for these versions.
                                 properties:
                                   key:
                                     description: The key of the secret to select from.  Must
@@ -59274,6 +59403,13 @@ spec:
                                 Using license key is supported starting from VictoriaMetrics v1.94.0.
                                 See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                               properties:
+                                acceptEULA:
+                                  description: |-
+                                    AcceptEULA accepts the [ESA](https://victoriametrics.com/legal/esa/) and enables enterprise features without a license key.
+                                    The operator passes it to the components as the `-eula` command-line flag.
+                                    Requires VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23), VictoriaLogs v1.54.0 or vmanomaly v1.33.0 and newer.
+                                    Use key or keyRef for older versions.
+                                  type: boolean
                                 forceOffline:
                                   description: |-
                                     Enforce offline verification of the license key.
@@ -59285,12 +59421,14 @@ spec:
                                     To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
                                     Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                                     and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                                    Use acceptEULA instead for these versions.
                                   type: string
                                 keyRef:
                                   description: |-
                                     KeyRef is reference to secret with license key for enterprise features.
                                     Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                                     and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                                    Use acceptEULA instead for these versions.
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -79424,6 +79562,13 @@ spec:
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
                   See [here](https://docs.victoriametrics.com/victoriametrics/enterprise/)
                 properties:
+                  acceptEULA:
+                    description: |-
+                      AcceptEULA accepts the [ESA](https://victoriametrics.com/legal/esa/) and enables enterprise features without a license key.
+                      The operator passes it to the components as the `-eula` command-line flag.
+                      Requires VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23), VictoriaLogs v1.54.0 or vmanomaly v1.33.0 and newer.
+                      Use key or keyRef for older versions.
+                    type: boolean
                   forceOffline:
                     description: |-
                       Enforce offline verification of the license key.
@@ -79435,12 +79580,14 @@ spec:
                       To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial)
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-license` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     type: string
                   keyRef:
                     description: |-
                       KeyRef is reference to secret with license key for enterprise features.
                       Starting from VictoriaMetrics v1.156.0 (LTS v1.148.9 and v1.136.23) and VictoriaLogs v1.54.0, license keys are no longer verified
                       and the `-licenseFile` flag is treated as `-eula`, which accepts the [ESA](https://victoriametrics.com/legal/esa/).
+                      Use acceptEULA instead for these versions.
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -82573,12 +82720,6 @@ spec:
               vmBackup:
                 description: VMBackup configuration for backup
                 properties:
-                  acceptEULA:
-                    description: |-
-                      AcceptEULA accepts enterprise feature usage, must be set to true.
-                      otherwise backupmanager cannot be added to single/cluster version.
-                      https://victoriametrics.com/legal/esa/
-                    type: boolean
                   concurrency:
                     description: Defines number of concurrent workers. Higher concurrency
                       may reduce backup duration (default 10)

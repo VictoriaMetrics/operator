@@ -2,8 +2,10 @@ package build
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -30,6 +32,31 @@ func TestLicenseAddArgsTo(t *testing.T) {
 		slices.Sort(o.want)
 		assert.Equal(t, o.want, got)
 	}
+
+	// no license
+	f(opts{
+		args: []string{},
+		want: []string{},
+	})
+
+	// ESA accepted
+	f(opts{
+		license: vmv1beta1.License{
+			AcceptEULA: true,
+		},
+		args: []string{},
+		want: []string{"-eula=true"},
+	})
+
+	// ESA accepted with license key
+	f(opts{
+		license: vmv1beta1.License{
+			AcceptEULA: true,
+			Key:        ptr.To("test-key"),
+		},
+		args: []string{},
+		want: []string{"-eula=true", "-license=test-key"},
+	})
 
 	// license key provided
 	f(opts{
@@ -79,6 +106,47 @@ func TestLicenseAddArgsTo(t *testing.T) {
 		secretMountDir: "/etc/secrets",
 		want:           []string{"-licenseFile=/etc/secrets/license-secret/license-key", "-license.forceOffline=true"},
 	})
+}
+
+func TestLicenseDoubleDashArgsTo(t *testing.T) {
+	got := LicenseDoubleDashArgsTo(nil, &vmv1beta1.License{AcceptEULA: true}, "/etc/secrets")
+	assert.Equal(t, []string{"--eula=true"}, got)
+}
+
+func TestVMBackupManagerLicense(t *testing.T) {
+	f := func(license *vmv1beta1.License, wantLicenseArgs []string) {
+		t.Helper()
+		cr := &vmv1beta1.VMBackup{
+			Destination: "s3://bucket/path",
+			Port:        "8300",
+		}
+		c, err := VMBackupManager(context.Background(), cr, "8429", "/storage", nil, nil, false, license)
+		assert.NoError(t, err)
+		if wantLicenseArgs == nil {
+			assert.Nil(t, c)
+			return
+		}
+		if !assert.NotNil(t, c) {
+			return
+		}
+		var got []string
+		for _, arg := range c.Args {
+			if strings.HasPrefix(arg, "-eula") || strings.HasPrefix(arg, "-license") {
+				got = append(got, arg)
+			}
+		}
+		assert.Equal(t, wantLicenseArgs, got)
+	}
+
+	// no license, no container
+	f(nil, nil)
+	f(&vmv1beta1.License{}, nil)
+
+	// ESA accepted
+	f(&vmv1beta1.License{AcceptEULA: true}, []string{"-eula=true"})
+
+	// license key
+	f(&vmv1beta1.License{Key: ptr.To("key")}, []string{"-license=key"})
 }
 
 func TestOpenShiftServiceCAVolumeTo(t *testing.T) {

@@ -14,7 +14,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 )
 
-// +kubebuilder:rbac:groups=autoscaling,resources=horizontalpodautoscalers,verbs=*
+// +kubebuilder:rbac:groups=autoscaling,resources=horizontalpodautoscalers,verbs=get;list;watch;create;update;patch;delete
 
 // HPA creates or update horizontalPodAutoscaler object
 func HPA(ctx context.Context, rclient client.Client, newObj, prevObj *v2.HorizontalPodAutoscaler, owner *metav1.OwnerReference) error {

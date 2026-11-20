@@ -33,7 +33,7 @@ func createOrUpdateVTSelect(ctx context.Context, rclient client.Client, cr, prev
 		b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
 		pdb := build.PodDisruptionBudget(b, cr.Spec.Select.PodDisruptionBudget)
 		var prevPDB *policyv1.PodDisruptionBudget
-		if prevCR != nil && prevCR.Spec.Select.PodDisruptionBudget != nil {
+		if prevCR != nil && prevCR.Spec.Select != nil && prevCR.Spec.Select.PodDisruptionBudget != nil {
 			b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
 			prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.Select.PodDisruptionBudget)
 		}
@@ -83,7 +83,7 @@ func createOrUpdateVTSelectHPA(ctx context.Context, rclient client.Client, cr, p
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
 	defaultHPA := build.HPA(b, targetRef, cr.Spec.Select.HPA)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
-	if prevCR != nil && prevCR.Spec.Select.HPA != nil {
+	if prevCR != nil && prevCR.Spec.Select != nil && prevCR.Spec.Select.HPA != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.Select.HPA)
 	}

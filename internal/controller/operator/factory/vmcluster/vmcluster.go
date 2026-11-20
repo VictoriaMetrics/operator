@@ -781,7 +781,7 @@ func createOrUpdatePodDisruptionBudgetForVMSelect(ctx context.Context, rclient c
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.VMSelect.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
-	if prevCR != nil && prevCR.Spec.VMSelect.PodDisruptionBudget != nil {
+	if prevCR != nil && prevCR.Spec.VMSelect != nil && prevCR.Spec.VMSelect.PodDisruptionBudget != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
 		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VMSelect.PodDisruptionBudget)
 	}
@@ -1004,7 +1004,7 @@ func createOrUpdatePodDisruptionBudgetForVMInsert(ctx context.Context, rclient c
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentInsert)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.VMInsert.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
-	if prevCR != nil && prevCR.Spec.VMInsert.PodDisruptionBudget != nil {
+	if prevCR != nil && prevCR.Spec.VMInsert != nil && prevCR.Spec.VMInsert.PodDisruptionBudget != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
 		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VMInsert.PodDisruptionBudget)
 	}
@@ -1286,7 +1286,7 @@ func createOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, rclient 
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
 	pdb := build.PodDisruptionBudget(b, cr.Spec.VMStorage.PodDisruptionBudget)
 	var prevPDB *policyv1.PodDisruptionBudget
-	if prevCR != nil && prevCR.Spec.VMStorage.PodDisruptionBudget != nil {
+	if prevCR != nil && prevCR.Spec.VMStorage != nil && prevCR.Spec.VMStorage.PodDisruptionBudget != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
 		prevPDB = build.PodDisruptionBudget(b, prevCR.Spec.VMStorage.PodDisruptionBudget)
 	}
@@ -1318,7 +1318,7 @@ func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cr, p
 	}
 	newHPA := build.HPA(b, targetRef, cr.Spec.VMInsert.HPA)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
-	if prevCR != nil && prevCR.Spec.VMInsert.HPA != nil {
+	if prevCR != nil && prevCR.Spec.VMInsert != nil && prevCR.Spec.VMInsert.HPA != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentInsert)
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VMInsert.HPA)
 	}
@@ -1338,7 +1338,7 @@ func createOrUpdateVMSelectHPA(ctx context.Context, rclient client.Client, cr, p
 	}
 	defaultHPA := build.HPA(b, targetRef, cr.Spec.VMSelect.HPA)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
-	if prevCR != nil && prevCR.Spec.VMSelect.HPA != nil {
+	if prevCR != nil && prevCR.Spec.VMSelect != nil && prevCR.Spec.VMSelect.HPA != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentSelect)
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VMSelect.HPA)
 	}
@@ -1359,7 +1359,7 @@ func createOrUpdateVMStorageHPA(ctx context.Context, rclient client.Client, cr, 
 	}
 	defaultHPA := build.HPA(b, targetRef, hpa)
 	var prevHPA *autoscalingv2.HorizontalPodAutoscaler
-	if prevCR != nil && prevCR.Spec.VMStorage.HPA != nil {
+	if prevCR != nil && prevCR.Spec.VMStorage != nil && prevCR.Spec.VMStorage.HPA != nil {
 		b = build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentStorage)
 		prevHPA = build.HPA(b, targetRef, prevCR.Spec.VMStorage.HPA)
 	}

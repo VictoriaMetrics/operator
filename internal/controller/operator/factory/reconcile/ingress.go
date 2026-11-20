@@ -40,12 +40,17 @@ func Ingress(ctx context.Context, rclient client.Client, newObj, prevObj *networ
 			return err
 		}
 		logMessageMetadata := []string{fmt.Sprintf("name=%s, is_prev_nil=%t", nsn.String(), prevObj == nil)}
-		specDiff := diffDeepDerivative(newObj.Spec, existingObj.Spec, "spec")
+		spec := newObj.Spec
+		// Preserve admission-assigned class unless previously managed explicitly.
+		if spec.IngressClassName == nil && (prevObj == nil || prevObj.Spec.IngressClassName == nil) {
+			spec.IngressClassName = existingObj.Spec.IngressClassName
+		}
+		specDiff := diffDeep(spec, existingObj.Spec, "spec")
 		needsUpdate := metaChanged || len(specDiff) > 0
 		if !needsUpdate {
 			return nil
 		}
-		existingObj.Spec = newObj.Spec
+		existingObj.Spec = spec
 		logger.WithContext(ctx).Info(fmt.Sprintf("updating Ingress %s", strings.Join(logMessageMetadata, ", ")), "spec_diff", specDiff)
 		return rclient.Update(ctx, &existingObj)
 	})

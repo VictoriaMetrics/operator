@@ -32,14 +32,19 @@ metadata:
   name: example
 spec:
   remoteWrite:
-    - url: "http://victorialogs-1:9428/internal/insert"
-    - url: "http://victorialogs-2:9428/internal/insert"
+    - url: "http://victorialogs-1:9428/insert/native"
+    - url: "http://victorialogs-2:9428/insert/native"
 ```
 
 This will allow you to start VLAgent so it can receive logs from [all supported sources](https://docs.victoriametrics.com/victorialogs/data-ingestion/),
 similar to how vlinsert works, with the difference that vlagent replicates data and,
 in case one of the `remoteWrite` endpoints is unavailable, stores the data on disk for later delivery.
 This makes it resilient to cluster unavailability.
+
+The `/insert/native` endpoint stores all the logs into a single tenant, which is set via `AccountID` and `ProjectID` headers
+in `remoteWrite[].headers`. The `(AccountID=0, ProjectID=0)` tenant is used if these headers are missing.
+Use the `/insert/multitenant/native` endpoint instead if VLAgent accepts logs for multiple tenants.
+See [these docs](https://docs.victoriametrics.com/victorialogs/vlagent/#multitenancy).
 
 VLAgent allocates port 9429, so you can use this port to send requests.
 Below is an example of sending a log to the [`/jsonline`](https://docs.victoriametrics.com/victorialogs/data-ingestion/#json-stream-api)
@@ -265,7 +270,7 @@ spec:
   extraArgs:
     insert.maxLineSizeBytes: 1MiB
   remoteWrite:
-    - url: "http://VictoriaLogs:9428/internal/insert"
+    - url: "http://VictoriaLogs:9428/insert/native"
 ```
 
 To see all vlagent flags follow [this documentation](https://docs.victoriametrics.com/victorialogs/vlagent/#advanced-usage).
@@ -282,7 +287,7 @@ metadata:
   name: example
 spec:
   remoteWrite:
-    - url: "https://VictoriaLogs:9428/internal/insert"
+    - url: "https://VictoriaLogs:9428/insert/native"
       tlsConfig:
         caFile: /etc/tls/ca.crt
   volumes:

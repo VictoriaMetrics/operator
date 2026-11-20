@@ -174,8 +174,8 @@ To fix it, either:
   selected by `VMAgent`, so the `VMAgent` CRD must stay installed.
 
 The operator also needs RBAC permissions for the CRD of every enabled controller: at least `get`, `list` and `watch`
-for its cache, plus write access to the objects, their `status` and `finalizers` subresources for reconciling.
-The RBAC rules that ship with the operator release already include them.
+for its cache, plus write access to the objects and any `status` or `finalizers` subresources used by that controller.
+The RBAC rules that ship with the operator release include the permissions required by each controller.
 
 Prometheus Operator CRDs, such as `ServiceMonitor` or `PrometheusRule`, are an exception.
 If they are missing, the operator disables the respective [converter controllers](https://docs.victoriametrics.com/operator/integrations/prometheus/) automatically.

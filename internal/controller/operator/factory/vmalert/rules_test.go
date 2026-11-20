@@ -9,6 +9,7 @@ import (
 	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,7 +21,29 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
+
+func TestReleaseAppliedConditions(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1beta1.VMAlert{ObjectMeta: metav1.ObjectMeta{Name: "alert1", Namespace: "ns"}}
+	rule := &vmv1beta1.VMRule{ObjectMeta: metav1.ObjectMeta{Name: "rule1", Namespace: "ns"}}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{rule})
+
+	// simulate a prior reconcile that selected the rule and wrote the Applied condition
+	parent := "alert1.ns.vmalert"
+	require.NoError(t, reconcile.StatusForChildObjects(ctx, fclient, parent, []*vmv1beta1.VMRule{rule}))
+
+	var got vmv1beta1.VMRule
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "rule1"}, &got))
+	require.NotEmpty(t, got.Status.Conditions, "precondition: vmalert must have written its condition")
+
+	// cr is being deleted: it no longer selects anything
+	require.NoError(t, ReleaseAppliedConditions(ctx, fclient, cr))
+
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "rule1"}, &got))
+	assert.Empty(t, got.Status.Conditions, "condition must be released once the vmalert is deleted")
+}
 
 // groupNamesFromCM decompresses and unmarshals the rules.yaml BinaryData entry,
 // returning the contained group names for easy assertion.

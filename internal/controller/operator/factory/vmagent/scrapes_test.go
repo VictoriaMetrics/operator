@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -16,7 +17,29 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
+
+func TestReleaseAppliedConditions(t *testing.T) {
+	ctx := context.Background()
+	cr := &vmv1beta1.VMAgent{ObjectMeta: metav1.ObjectMeta{Name: "agent1", Namespace: "ns"}}
+	ss := &vmv1beta1.VMServiceScrape{ObjectMeta: metav1.ObjectMeta{Name: "ss1", Namespace: "ns"}}
+	fclient := k8stools.GetTestClientWithObjects([]runtime.Object{ss})
+
+	// simulate a prior reconcile that selected the service scrape and wrote the Applied condition
+	parent := "agent1.ns.vmagent"
+	require.NoError(t, reconcile.StatusForChildObjects(ctx, fclient, parent, []*vmv1beta1.VMServiceScrape{ss}))
+
+	var got vmv1beta1.VMServiceScrape
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "ss1"}, &got))
+	require.NotEmpty(t, got.Status.Conditions, "precondition: vmagent must have written its condition")
+
+	// cr is being deleted: it no longer selects anything
+	require.NoError(t, ReleaseAppliedConditions(ctx, fclient, cr))
+
+	require.NoError(t, fclient.Get(ctx, types.NamespacedName{Namespace: "ns", Name: "ss1"}, &got))
+	assert.Empty(t, got.Status.Conditions, "condition must be released once the vmagent is deleted")
+}
 
 func TestCreateOrUpdateScrapeConfig(t *testing.T) {
 	type opts struct {

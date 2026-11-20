@@ -578,6 +578,21 @@ func CreateOrUpdateConfig(ctx context.Context, rclient client.Client, cr *vmv1be
 	return nil
 }
 
+// ReleaseAppliedConditions releases the Applied condition this VMAlertmanager wrote to the
+// VMAlertmanagerConfigs it used to select. Call it when cr is being deleted: once it's gone,
+// no further reconcile notices it dropped out of their selection, so the condition would
+// otherwise be left stale forever.
+func ReleaseAppliedConditions(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager) error {
+	if build.IsControllerDisabled("VMAlertmanagerConfig") {
+		// VMAlertmanagerConfig controller is disabled (its CRD may not be installed): there
+		// is nothing to list or release, same as buildAlertmanagerConfigWithCRDs skipping
+		// selection above.
+		return nil
+	}
+	parent := fmt.Sprintf("%s.%s.vmalertmanager", cr.Name, cr.Namespace)
+	return reconcile.StatusForChildObjects(ctx, rclient, parent, []*vmv1beta1.VMAlertmanagerConfig{})
+}
+
 func buildConfigSecretMeta(cr *vmv1beta1.VMAlertmanager) *metav1.ObjectMeta {
 	return &metav1.ObjectMeta{
 		Name:            cr.ConfigSecretName(),

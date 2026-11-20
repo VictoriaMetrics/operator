@@ -166,7 +166,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.C
 	var prevDeploy *appsv1.Deployment
 	if prevCR != nil {
 		var err error
-		prevDeploy, err = newDeploy(prevCR, cmNames, ac)
+		prevDeploy, err = newDeploy(prevCR, cmNames, getAssetsCache(ctx, rclient, prevCR))
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
 		}

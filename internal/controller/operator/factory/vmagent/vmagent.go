@@ -1304,7 +1304,7 @@ func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1beta1.VM
 	if !cr.IsOwnsServiceAccount() {
 		objsToRemove = append(objsToRemove, &corev1.ServiceAccount{ObjectMeta: objMeta})
 	}
-	// rbac is created only for owned service account outside of ingest-only mode
+	// RBAC is created for an owned service account outside ingest-only mode, or in ingest-only mode when remote-write credentials require Secret access
 	if !cr.IsOwnsServiceAccount() || (ptr.Deref(cr.Spec.IngestOnlyMode, false) && !cr.HasRemoteWriteSecrets()) {
 		rbacName := cr.GetRBACName()
 		objsToRemove = append(objsToRemove,

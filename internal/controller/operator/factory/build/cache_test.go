@@ -2,6 +2,7 @@ package build
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -32,6 +33,8 @@ func Test_LoadKeyFromSecret(t *testing.T) {
 		}
 		cache := NewAssetsCache(context.TODO(), fclient, cfg)
 		got, err := cache.LoadKeyFromSecret(o.ns, o.ss)
+		_, nextErr := cache.LoadKeyFromSecret(o.ns, o.ss)
+		assert.Equal(t, fmt.Sprint(err), fmt.Sprint(nextErr))
 		if o.wantErr {
 			assert.Error(t, err)
 		} else {
@@ -102,6 +105,13 @@ func Test_LoadKeyFromSecret(t *testing.T) {
 				Data: map[string][]byte{"ca.crt": []byte(`ca-data`), "key.pem": []byte(`tls-key-data`)},
 			},
 		},
+	})
+
+	// fail extract from missing secret
+	f(opts{
+		ns:      "default",
+		ss:      &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "missing"}, Key: "key"},
+		wantErr: true,
 	})
 }
 

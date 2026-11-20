@@ -482,7 +482,8 @@ HPA configuration is available for:
 - `VMCluster` components through `spec.vmselect.hpa`, `spec.vminsert.hpa`, `spec.vmstorage.hpa` and request load balancer `spec.requestsLoadBalancer.spec.hpa`.
 - `VLCluster` components through `spec.vlselect.hpa`, `spec.vlinsert.hpa`, `spec.vlstorage.hpa` and request load balancer `spec.requestsLoadBalancer.spec.hpa`.
 - `VTCluster` components through `spec.select.hpa`, `spec.insert.hpa`, `spec.storage.hpa` and request load balancer `spec.requestsLoadBalancer.spec.hpa`.
-- `VMDistributed` components that expose `hpa` in their component spec.
+- `VMDistributed` through `spec.vmauth.spec.hpa`, `vmagent.spec.hpa` and the `VMCluster` component fields in `vmcluster.spec`, both in `spec.zoneCommon` and in `spec.zones[]`.
+- `VLDistributed` through `spec.vmauth.spec.hpa` and the `VLCluster` component fields in `vlcluster.spec`, both in `spec.zoneCommon` and in `spec.zones[]`.
 
 ### Configuration
 
@@ -575,11 +576,13 @@ If VPA support is disabled and a VictoriaMetrics custom resource contains `vpa`,
 
 VPA configuration is available for:
 
-- `VMAuth` through `spec.vpa`.
+- `VMAgent`, `VMAuth`, `VMSingle`, `VMAlert`, `VMAlertmanager` and `VMAnomaly` through `spec.vpa`.
+- `VLAgent`, `VLSingle`, `VTAgent` and `VTSingle` through `spec.vpa`.
 - `VMCluster` components through `spec.vmselect.vpa`, `spec.vminsert.vpa` and `spec.vmstorage.vpa`.
 - `VLCluster` components through `spec.vlselect.vpa`, `spec.vlinsert.vpa` and `spec.vlstorage.vpa`.
 - `VTCluster` components through `spec.select.vpa`, `spec.insert.vpa` and `spec.storage.vpa`.
-- `VMDistributed` components that expose `vpa` in their component spec.
+- `VMDistributed` through `spec.vmauth.spec.vpa`, `vmsingle.spec.vpa` and the `VMCluster` component fields in `vmcluster.spec`, both in `spec.zoneCommon` and in `spec.zones[]`.
+- `VLDistributed` through `spec.vmauth.spec.vpa`, `vlagent.spec.vpa`, `vlsingle.spec.vpa` and the `VLCluster` component fields in `vlcluster.spec`, both in `spec.zoneCommon` and in `spec.zones[]`.
 
 ### Configuration
 

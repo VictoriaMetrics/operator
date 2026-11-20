@@ -136,6 +136,13 @@ spec:
 
 `VLDistributed` creates or becomes an owner of existing `VMAuth`, `VLAgent`, `VLCluster`, and `VLSingle` resources and by default it removes all resources it owns on CR deletion. To remove `VLDistributed` but keep all owned resources set `spec.retain: true` before `VLDistributed` removal.
 
+### Multitenancy
+
+Zone `VLAgent`s send logs to the `/insert/multitenant/native` endpoint of `VLCluster` and `VLSingle` backends,
+so every log keeps the tenant it was ingested with via `AccountID` and `ProjectID` headers.
+Backends must run VictoriaLogs v1.49.0 or newer.
+See [these docs](https://docs.victoriametrics.com/victorialogs/vlagent/#multitenancy).
+
 ### Current shortcomings
 
 - Only one `VMAuth` can be managed per `VLDistributed`.

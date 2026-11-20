@@ -197,6 +197,7 @@ func TestGetZones(t *testing.T) {
 			assert.Equal(t, "dist-zone-b", singles[1].Name)
 			assert.Equal(t, "14d", singles[1].Spec.RetentionPeriod)
 			assert.Equal(t, singles[1].GetRemoteWriteURL(), zs.vlagents[0].Spec.RemoteWrite[1].URL)
+			assert.Equal(t, "http://vlsingle-dist-zone-b.ns.svc:9428/insert/multitenant/native", zs.vlagents[0].Spec.RemoteWrite[1].URL)
 		},
 	})
 }

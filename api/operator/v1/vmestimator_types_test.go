@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
@@ -28,29 +27,20 @@ func TestVMEstimatorStream_Validate(t *testing.T) {
 
 	// all fields set
 	f(VMEstimatorStream{
-		Interval:      "15m",
-		ChurnInterval: "15m",
-		Filter:        `{job=~"api|worker",env!~"dev|staging"}`,
-		GroupBy:       []string{"job", "__label__"},
-		GroupLimit:    100,
-		Buckets:       8,
-		HLLPrecision:  18,
-		HLLSparse:     ptr.To(false),
-		Labels:        map[string]string{"cluster": "prod"},
+		Interval:       "15m",
+		CalculateChurn: true,
+		Filter:         `{job=~"api|worker",env!~"dev|staging"}`,
+		GroupBy:        []string{"job", "__label__"},
+		GroupLimit:     100,
+		Buckets:        8,
+		HLLPrecision:   18,
+		HLLSparse:      new(false),
+		Labels:         map[string]string{"cluster": "prod"},
 	}, false)
 
 	// incorrect interval
 	f(VMEstimatorStream{Interval: "1d"}, true)
 	f(VMEstimatorStream{Interval: "0s"}, true)
-
-	// churn interval exceeds default interval
-	f(VMEstimatorStream{ChurnInterval: "10m"}, true)
-
-	// churn interval exceeds interval
-	f(VMEstimatorStream{Interval: "5m", ChurnInterval: "6m"}, true)
-
-	// incorrect churn interval
-	f(VMEstimatorStream{ChurnInterval: "-1m"}, true)
 
 	// filter with or
 	f(VMEstimatorStream{Filter: `{job="a" or job="b"}`}, true)
@@ -127,6 +117,15 @@ func TestVMEstimator_Validate(t *testing.T) {
 		Streams: []VMEstimatorStream{{Interval: "5m"}, {Interval: "foo"}},
 	}, true)
 
+	// streams and streams configmap are mutually exclusive
+	f(VMEstimatorSpec{
+		Streams: streams,
+		StreamsConfigMap: &corev1.ConfigMapKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{Name: "streams"},
+			Key:                  "streams.yaml",
+		},
+	}, true)
+
 	// incorrect streams configmap
 	f(VMEstimatorSpec{
 		StreamsConfigMap: &corev1.ConfigMapKeySelector{
@@ -134,14 +133,28 @@ func TestVMEstimator_Validate(t *testing.T) {
 		},
 	}, true)
 
+	// streams producing identical time series
 	f(VMEstimatorSpec{
-		Streams: streams,
-		Storage: &VMEstimatorStorage{
-			ServiceSpec: &vmv1beta1.AdditionalServiceSpec{
-				EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{Name: "vmestimator-storage-test"},
-			},
+		Streams: []VMEstimatorStream{{}, {Interval: "5m"}},
+	}, true)
+	f(VMEstimatorSpec{
+		Streams: []VMEstimatorStream{{Interval: "5m"}, {Interval: "300s"}},
+	}, true)
+	f(VMEstimatorSpec{
+		Streams: []VMEstimatorStream{{}, {Interval: "10m"}},
+	}, false)
+	f(VMEstimatorSpec{
+		Streams: []VMEstimatorStream{
+			{Interval: "5m", GroupBy: []string{"job"}},
+			{Interval: "5m", GroupBy: []string{"job"}, GroupLimit: 100},
 		},
 	}, true)
+	f(VMEstimatorSpec{
+		Streams: []VMEstimatorStream{
+			{Interval: "5m", GroupBy: []string{"job"}},
+			{Interval: "5m", GroupBy: []string{"job"}, Labels: map[string]string{"team": "sre"}},
+		},
+	}, false)
 
 	// storage service must stay headless for select nodes
 	f(VMEstimatorSpec{
@@ -165,14 +178,14 @@ func TestVMEstimator_Validate(t *testing.T) {
 		},
 	}, false)
 
-	// select requires storage nodes in cluster mode
+	// storage nodes are required, unless select uses external storage nodes
 	f(VMEstimatorSpec{
 		Streams: streams,
-		Storage: &VMEstimatorStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](0)}},
+		Storage: &VMEstimatorStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: new(int32(0))}},
 	}, true)
 	f(VMEstimatorSpec{
 		Streams: streams,
-		Storage: &VMEstimatorStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: ptr.To[int32](0)}},
+		Storage: &VMEstimatorStorage{CommonAppsParams: vmv1beta1.CommonAppsParams{ReplicaCount: new(int32(0))}},
 		Select: &VMEstimatorSelect{CommonAppsParams: vmv1beta1.CommonAppsParams{
 			ExtraArgs: map[string]string{"storageNode": "http://external-storage:8490"},
 		}},
@@ -182,7 +195,7 @@ func TestVMEstimator_Validate(t *testing.T) {
 	f(VMEstimatorSpec{
 		Streams: streams,
 		Select: &VMEstimatorSelect{
-			HPA: &vmv1beta1.EmbeddedHPA{MinReplicas: ptr.To(int32(5)), MaxReplicas: 2},
+			HPA: &vmv1beta1.EmbeddedHPA{MinReplicas: new(int32(5)), MaxReplicas: 2},
 		},
 	}, true)
 }
@@ -246,16 +259,13 @@ func TestVMEstimator_UnmarshalJSON(t *testing.T) {
 	}
 
 	// correct spec
-	f(`{"metadata":{"name":"test"},"spec":{"streams":[{"interval":"5m","groupBy":["job"]}],"storage":{"replicaCount":2},"select":{}}}`, false)
+	f(`{"metadata":{"name":"test"},"spec":{"streams":[{"interval":"5m","group_by":["job"],"calculate_churn":true}],"storage":{"replicaCount":2},"select":{}}}`, false)
 
-	// vmestimator config format instead of CRD format
-	f(`{"metadata":{"name":"test"},"spec":{"streams":[{"interval":"5m","group_by":["job"]}]}}`, true)
+	// unknown stream field
+	f(`{"metadata":{"name":"test"},"spec":{"streams":[{"interval":"5m","groupBy":["job"]}]}}`, true)
 
 	// unknown component field
 	f(`{"metadata":{"name":"test"},"spec":{"storage":{"unknownField":true}}}`, true)
-
-	// single component is replaced with mode
-	f(`{"metadata":{"name":"test"},"spec":{"single":{}}}`, true)
 }
 
 func TestVMEstimator_PodLabels(t *testing.T) {
@@ -274,16 +284,6 @@ func TestVMEstimator_PodLabels(t *testing.T) {
 		},
 	}
 	// selector labels cannot be overridden by pod metadata
-	assert.Equal(t, map[string]string{
-		"app.kubernetes.io/name":      "vmestimator-storage",
-		"app.kubernetes.io/instance":  "test",
-		"app.kubernetes.io/component": "monitoring",
-		"managed-by":                  "vm-operator",
-		"team":                        "observability",
-	}, cr.PodLabels(vmv1beta1.ClusterComponentStorage))
-	assert.Equal(t, map[string]string{"owner": "sre"}, cr.PodAnnotations(vmv1beta1.ClusterComponentStorage))
-
-	// the single-replica Deployment uses spec.storage pod metadata
 	assert.Equal(t, map[string]string{
 		"app.kubernetes.io/name":      "vmestimator-storage",
 		"app.kubernetes.io/instance":  "test",

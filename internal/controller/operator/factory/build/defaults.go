@@ -838,15 +838,14 @@ func addVMEstimatorDefaults(objI any) {
 	if cr.Spec.Storage == nil {
 		cr.Spec.Storage = &vmv1.VMEstimatorStorage{}
 	}
-	if cr.Spec.Select == nil {
-		cr.Spec.Select = &vmv1.VMEstimatorSelect{}
-	}
 	storageDefaults := config.ApplicationDefaults(c.VMEstimator.Storage)
 	addDefaultsToCommonParams(&cr.Spec.Storage.CommonAppsParams, &cp, &storageDefaults)
 	if cr.Spec.Select != nil {
 		cv := config.ApplicationDefaults(c.VMEstimator.Select)
 		addDefaultsToCommonParams(&cr.Spec.Select.CommonAppsParams, &cp, &cv)
 	}
+	addDefaultsToConfigReloader(&cr.Spec.Storage.CommonConfigReloaderParams, ptr.Deref(cr.Spec.Storage.UseDefaultResources, false))
+
 }
 
 // setTag sets the tag if componentVersion or clusterVersion is not empty.

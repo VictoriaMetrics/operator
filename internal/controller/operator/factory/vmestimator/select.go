@@ -3,25 +3,32 @@ package vmestimator
 import (
 	"context"
 	"fmt"
+	"path"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-// onst vmv1beta1.ClusterComponentSelect = vmv1beta1.ClusterComponentSelect
 func createOrUpdateSelect(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator) error {
 	if cr.Spec.Select == nil {
 		return nil
+	}
+	// select could be added to the existing object, there are no previous select objects in this case
+	if prevCR != nil && prevCR.Spec.Select == nil {
+		prevCR = nil
 	}
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
 	owner := cr.AsOwner()
@@ -159,26 +166,17 @@ func storageNodeURLs(cr *vmv1.VMEstimator) []string {
 }
 
 func buildSelectDeployment(cr *vmv1.VMEstimator) (*appsv1.Deployment, error) {
-	sel := cr.Spec.Select
-	var args []string
-	if nodes := storageNodeURLs(cr); len(nodes) > 0 {
-		args = append(args, fmt.Sprintf("-storageNode=%s", strings.Join(nodes, ",")))
+
+	s := cr.Spec.Select
+	strategyType := appsv1.RollingUpdateDeploymentStrategyType
+	if s.UpdateStrategy != nil {
+		strategyType = *s.UpdateStrategy
 	}
-	podSpec, err := buildPodTemplate(cr, &podOpts{
-		kind:      vmv1beta1.ClusterComponentSelect,
-		params:    &sel.CommonAppsParams,
-		probe:     sel,
-		logLevel:  sel.LogLevel,
-		logFormat: sel.LogFormat,
-		args:      args,
-	})
+	podSpec, err := makePodSpecForSelect(cr)
 	if err != nil {
 		return nil, err
 	}
-	strategyType := appsv1.RollingUpdateDeploymentStrategyType
-	if sel.UpdateStrategy != nil {
-		strategyType = *sel.UpdateStrategy
-	}
+
 	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(vmv1beta1.ClusterComponentSelect),
@@ -188,9 +186,12 @@ func buildSelectDeployment(cr *vmv1.VMEstimator) (*appsv1.Deployment, error) {
 			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
 		},
 		Spec: appsv1.DeploymentSpec{
+			Replicas:             s.ReplicaCount,
+			RevisionHistoryLimit: s.RevisionHistoryLimitCount,
+			MinReadySeconds:      s.MinReadySeconds,
 			Strategy: appsv1.DeploymentStrategy{
 				Type:          strategyType,
-				RollingUpdate: sel.RollingUpdate,
+				RollingUpdate: s.RollingUpdate,
 			},
 			Selector: &metav1.LabelSelector{
 				MatchLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentSelect),
@@ -198,6 +199,127 @@ func buildSelectDeployment(cr *vmv1.VMEstimator) (*appsv1.Deployment, error) {
 			Template: *podSpec,
 		},
 	}
-	build.DeploymentAddCommonParams(dep, &sel.CommonAppsParams)
+	build.DeploymentAddCommonParams(dep, &s.CommonAppsParams)
 	return dep, nil
+}
+
+func makePodSpecForSelect(cr *vmv1.VMEstimator) (*corev1.PodTemplateSpec, error) {
+	cfg := config.MustGetBaseConfig()
+	selectSpec := cr.Spec.Select
+	args := []string{
+		fmt.Sprintf("-httpListenAddr=:%s", selectSpec.Port),
+	}
+	if cfg.EnableTCP6 {
+		args = append(args, "-enableTCP6")
+	}
+	if selectSpec.LogLevel != "" {
+		args = append(args, fmt.Sprintf("-loggerLevel=%s", selectSpec.LogLevel))
+	}
+	if selectSpec.LogFormat != "" {
+		args = append(args, fmt.Sprintf("-loggerFormat=%s", selectSpec.LogFormat))
+	}
+	if nodes := storageNodeURLs(cr); len(nodes) > 0 {
+		args = append(args, fmt.Sprintf("-storageNode=%s", strings.Join(nodes, ",")))
+	}
+	if len(selectSpec.ExtraEnvs) > 0 || len(selectSpec.ExtraEnvsFrom) > 0 {
+		args = append(args, "-envflag.enable=true")
+	}
+
+	var envs []corev1.EnvVar
+	envs = append(envs, selectSpec.ExtraEnvs...)
+
+	ports := []corev1.ContainerPort{
+		{
+			Name:          "http",
+			Protocol:      "TCP",
+			ContainerPort: intstr.Parse(selectSpec.Port).IntVal,
+		},
+	}
+
+	volumes := make([]corev1.Volume, 0)
+	volumes = append(volumes, selectSpec.Volumes...)
+
+	vmMounts := make([]corev1.VolumeMount, 0)
+	vmMounts = append(vmMounts, selectSpec.VolumeMounts...)
+
+	for _, s := range selectSpec.Secrets {
+		volumes = append(volumes, corev1.Volume{
+			Name: k8stools.SanitizeVolumeName("secret-" + s),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: s,
+				},
+			},
+		})
+		vmMounts = append(vmMounts, corev1.VolumeMount{
+			Name:      k8stools.SanitizeVolumeName("secret-" + s),
+			ReadOnly:  true,
+			MountPath: path.Join(vmv1beta1.SecretsDir, s),
+		})
+	}
+
+	for _, c := range selectSpec.ConfigMaps {
+		volumes = append(volumes, corev1.Volume{
+			Name: k8stools.SanitizeVolumeName("configmap-" + c),
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: c,
+					},
+				},
+			},
+		})
+		vmMounts = append(vmMounts, corev1.VolumeMount{
+			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
+			ReadOnly:  true,
+			MountPath: path.Join(vmv1beta1.ConfigMapsDir, c),
+		})
+	}
+
+	args = build.AddExtraArgsOverrideDefaults(args, selectSpec.ExtraArgs, "-")
+	build.SortArgs(args)
+
+	selectContainer := corev1.Container{
+		Name:                     "select",
+		Image:                    selectSpec.Image.Reference(),
+		ImagePullPolicy:          selectSpec.Image.PullPolicy,
+		Ports:                    ports,
+		Args:                     args,
+		VolumeMounts:             vmMounts,
+		Resources:                selectSpec.Resources,
+		Env:                      envs,
+		EnvFrom:                  selectSpec.ExtraEnvsFrom,
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+	}
+
+	build.Probe(&selectContainer, selectSpec, &selectSpec.CommonAppsParams)
+	build.Lifecycle(&selectContainer, &selectSpec.CommonAppsParams)
+	operatorContainers := []corev1.Container{selectContainer}
+
+	build.AddStrictSecuritySettingsToContainers(operatorContainers, &selectSpec.CommonAppsParams)
+	containers, err := k8stools.MergePatchContainers(operatorContainers, selectSpec.Containers)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range selectSpec.TopologySpreadConstraints {
+		if selectSpec.TopologySpreadConstraints[i].LabelSelector == nil {
+			selectSpec.TopologySpreadConstraints[i].LabelSelector = &metav1.LabelSelector{
+				MatchLabels: cr.SelectorLabels(vmv1beta1.ClusterComponentSelect),
+			}
+		}
+	}
+
+	return &corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels:      cr.PodLabels(vmv1beta1.ClusterComponentSelect),
+			Annotations: cr.PodAnnotations(vmv1beta1.ClusterComponentSelect),
+		},
+		Spec: corev1.PodSpec{
+			Volumes:            volumes,
+			InitContainers:     selectSpec.InitContainers,
+			Containers:         containers,
+			ServiceAccountName: cr.GetServiceAccountName(),
+		},
+	}, nil
 }

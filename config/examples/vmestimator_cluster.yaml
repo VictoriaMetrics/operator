@@ -3,7 +3,6 @@ kind: VMEstimator
 metadata:
   name: example
 spec:
-  mode: cluster
   streamsConfigMap:
     name: vmestimator-streams
     key: streams.yaml
@@ -13,6 +12,12 @@ spec:
       maxUnavailable: 1
     extraArgs:
       deduplication.interval: 3m
+    # load-balances remote write requests among storage nodes,
+    # use http://vmestimator-insert-example:8490/cardinality/api/v1/write as remote write url
+    serviceSpec:
+      metadata:
+        name: vmestimator-insert-example
+      spec: {}
   select:
     replicaCount: 2
 ---
@@ -24,9 +29,8 @@ data:
   streams.yaml: |
     streams:
       - interval: '15m'
-        churn_interval: '15m'
+        calculate_churn: true
       - interval: '15m'
-        churn_interval: '15m'
         group_by: ['job']
       - interval: '15m'
         group_by: ['__name__']

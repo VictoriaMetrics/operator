@@ -22,6 +22,10 @@ func OnVMEstimatorDelete(ctx context.Context, rclient client.Client, cr *vmv1.VM
 		return fmt.Errorf("cannot remove storage component objects: %w", err)
 	}
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentCommon)
+	if err := RemoveOrphanedServices(ctx, rclient, b, nil, false); err != nil {
+		return fmt.Errorf("cannot remove orphaned services: %w", err)
+	}
+
 	ns := cr.GetNamespace()
 	objsToRemove := []client.Object{
 		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{
@@ -34,6 +38,8 @@ func OnVMEstimatorDelete(ctx context.Context, rclient client.Client, cr *vmv1.VM
 		}},
 		cr,
 	}
+
 	deleteOwnerReferences := make([]bool, len(objsToRemove))
+
 	return removeFinalizers(ctx, rclient, objsToRemove, deleteOwnerReferences, b)
 }

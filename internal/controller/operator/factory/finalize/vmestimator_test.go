@@ -1,7 +1,6 @@
 package finalize
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -33,34 +32,31 @@ func newTestVMEstimator() *vmv1.VMEstimator {
 	}
 }
 
-// vmEstimatorChildMeta returns metadata of object created by operator for the given component
-func vmEstimatorChildMeta(cr *vmv1.VMEstimator, name string, kind vmv1beta1.ClusterComponent) metav1.ObjectMeta {
-	return metav1.ObjectMeta{
-		Name:            name,
-		Namespace:       cr.Namespace,
-		Labels:          cr.FinalLabels(kind),
-		Finalizers:      []string{vmv1beta1.FinalizerName},
-		OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
-	}
-}
-
 func TestOnVMEstimatorDelete(t *testing.T) {
-	ctx := context.TODO()
 	cr := newTestVMEstimator()
 	storage := vmv1beta1.ClusterComponentStorage
 	sel := vmv1beta1.ClusterComponentSelect
 	root := vmv1beta1.ClusterComponentRoot
 
+	childMeta := func(cr *vmv1.VMEstimator, name string, kind vmv1beta1.ClusterComponent) metav1.ObjectMeta {
+		return metav1.ObjectMeta{
+			Name:            name,
+			Namespace:       cr.Namespace,
+			Labels:          cr.FinalLabels(kind),
+			Finalizers:      []string{vmv1beta1.FinalizerName},
+			OwnerReferences: []metav1.OwnerReference{cr.AsOwner()},
+		}
+	}
 	predefinedObjects := []runtime.Object{
 		cr,
-		&corev1.ServiceAccount{ObjectMeta: vmEstimatorChildMeta(cr, cr.GetServiceAccountName(), root)},
-		&corev1.ConfigMap{ObjectMeta: vmEstimatorChildMeta(cr, cr.PrefixedName(root), root)},
-		&appsv1.StatefulSet{ObjectMeta: vmEstimatorChildMeta(cr, cr.PrefixedName(storage), storage)},
-		&policyv1.PodDisruptionBudget{ObjectMeta: vmEstimatorChildMeta(cr, cr.PrefixedName(storage), storage)},
-		&vmv1beta1.VMServiceScrape{ObjectMeta: vmEstimatorChildMeta(cr, cr.PrefixedName(storage), storage)},
-		&corev1.Service{ObjectMeta: vmEstimatorChildMeta(cr, cr.PrefixedName(storage), storage)},
-		&appsv1.Deployment{ObjectMeta: vmEstimatorChildMeta(cr, cr.PrefixedName(sel), sel)},
-		&corev1.Service{ObjectMeta: vmEstimatorChildMeta(cr, cr.PrefixedName(sel), sel)},
+		&corev1.ServiceAccount{ObjectMeta: childMeta(cr, cr.GetServiceAccountName(), root)},
+		&corev1.ConfigMap{ObjectMeta: childMeta(cr, cr.PrefixedName(root), root)},
+		&appsv1.StatefulSet{ObjectMeta: childMeta(cr, cr.PrefixedName(storage), storage)},
+		&policyv1.PodDisruptionBudget{ObjectMeta: childMeta(cr, cr.PrefixedName(storage), storage)},
+		&vmv1beta1.VMServiceScrape{ObjectMeta: childMeta(cr, cr.PrefixedName(storage), storage)},
+		&corev1.Service{ObjectMeta: childMeta(cr, cr.PrefixedName(storage), storage)},
+		&appsv1.Deployment{ObjectMeta: childMeta(cr, cr.PrefixedName(sel), sel)},
+		&corev1.Service{ObjectMeta: childMeta(cr, cr.PrefixedName(sel), sel)},
 	}
 	// object of another application must not be changed
 	foreignSvc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{
@@ -70,10 +66,10 @@ func TestOnVMEstimatorDelete(t *testing.T) {
 		Finalizers: []string{vmv1beta1.FinalizerName},
 	}}
 	cl := k8stools.GetTestClientWithObjects(append(predefinedObjects, foreignSvc))
-	require.NoError(t, OnVMEstimatorDelete(ctx, cl, cr))
+	require.NoError(t, OnVMEstimatorDelete(t.Context(), cl, cr))
 
 	var gotForeignSvc corev1.Service
-	require.NoError(t, cl.Get(ctx, types.NamespacedName{Name: foreignSvc.Name, Namespace: foreignSvc.Namespace}, &gotForeignSvc))
+	require.NoError(t, cl.Get(t.Context(), types.NamespacedName{Name: foreignSvc.Name, Namespace: foreignSvc.Namespace}, &gotForeignSvc))
 	assert.Equal(t, []string{vmv1beta1.FinalizerName}, gotForeignSvc.Finalizers)
 
 	// finalizers must be removed from CR and all its child objects,
@@ -81,7 +77,7 @@ func TestOnVMEstimatorDelete(t *testing.T) {
 	for _, obj := range predefinedObjects {
 		o := obj.(client.Object)
 		got := o.DeepCopyObject().(client.Object)
-		require.NoError(t, cl.Get(ctx, types.NamespacedName{Name: o.GetName(), Namespace: o.GetNamespace()}, got))
+		require.NoError(t, cl.Get(t.Context(), types.NamespacedName{Name: o.GetName(), Namespace: o.GetNamespace()}, got))
 		assert.Empty(t, got.GetFinalizers(), "%T %s", got, got.GetName())
 	}
 }

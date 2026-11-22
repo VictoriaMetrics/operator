@@ -6,14 +6,14 @@ spec:
   streams:
     # global cardinality and churn ratio
     - interval: 15m
-      churnInterval: 15m
+      calculate_churn: true
     # cardinality and churn ratio per job
     - interval: 15m
-      churnInterval: 15m
-      groupBy: [job]
+      calculate_churn: true
+      group_by: [job]
     # cardinality per metric name
     - interval: 15m
-      groupBy: [__name__]
+      group_by: [__name__]
   storage:
     resources:
       requests:
@@ -31,7 +31,7 @@ spec:
   selectAllByDefault: true
   remoteWrite:
     - url: "http://vmsingle-example:8428/api/v1/write"
-    - url: "http://vmestimator-insert-example:8490/cardinality/api/v1/write"
+    - url: "http://vmestimator-storage-example:8490/cardinality/api/v1/write"
   extraArgs:
     # disables on-disk queue for vmestimator remote write url
     remoteWrite.disableOnDiskQueue: "false,true"

@@ -10,12 +10,16 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
@@ -56,7 +60,8 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VMEstim
 		}
 	}
 
-	if err := createOrUpdateConfig(ctx, rclient, cr, prevCR); err != nil {
+	configChanged, err := createOrUpdateConfig(ctx, rclient, cr, prevCR)
+	if err != nil {
 		return fmt.Errorf("cannot reconcile config: %w", err)
 	}
 	if err := createOrUpdateStorage(ctx, rclient, cr, prevCR); err != nil {
@@ -65,7 +70,67 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VMEstim
 	if err := createOrUpdateSelect(ctx, rclient, cr, prevCR); err != nil {
 		return fmt.Errorf("cannot reconcile select: %w", err)
 	}
+	if err := deleteOrphaned(ctx, rclient, cr); err != nil {
+		return fmt.Errorf("cannot remove orphaned objects: %w", err)
+	}
+	if configChanged {
+		logger.WithContext(ctx).Info("triggering pod config reload by changing annotation")
+		if err := k8stools.UpdatePodAnnotations(ctx, rclient, cr.PodLabels(vmv1beta1.ClusterComponentStorage), cr.Namespace); err != nil {
+			logger.WithContext(ctx).Error(err, "failed to update pod cm-sync annotation")
+		}
+	}
 	return nil
+}
+
+// deleteOrphaned removes objects, which were removed from spec
+func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMEstimator) error {
+	cc := finalize.NewChildCleaner()
+	if storage := cr.Spec.Storage; storage != nil {
+		commonName := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
+		if storage.PodDisruptionBudget != nil {
+			cc.KeepPDB(commonName)
+		}
+		if storage.NetworkPolicy != nil {
+			cc.KeepNetworkPolicy(commonName)
+		}
+		if storage.VPA != nil {
+			cc.KeepVPA(commonName)
+		}
+		if !ptr.Deref(storage.DisableSelfServiceScrape, false) {
+			cc.KeepScrape(commonName)
+		}
+		cc.KeepService(commonName)
+		if storage.ServiceSpec != nil && !storage.ServiceSpec.UseAsDefault {
+			cc.KeepService(storage.ServiceSpec.NameOrDefault(commonName))
+		}
+	}
+	if sel := cr.Spec.Select; sel == nil {
+		if err := finalize.OnSelectDelete(ctx, rclient, cr, true); err != nil {
+			return fmt.Errorf("cannot remove select objects: %w", err)
+		}
+	} else {
+		commonName := cr.PrefixedName(vmv1beta1.ClusterComponentSelect)
+		if sel.PodDisruptionBudget != nil {
+			cc.KeepPDB(commonName)
+		}
+		if sel.NetworkPolicy != nil {
+			cc.KeepNetworkPolicy(commonName)
+		}
+		if sel.HPA != nil {
+			cc.KeepHPA(commonName)
+		}
+		if sel.VPA != nil {
+			cc.KeepVPA(commonName)
+		}
+		if !ptr.Deref(sel.DisableSelfServiceScrape, false) {
+			cc.KeepScrape(commonName)
+		}
+		cc.KeepService(commonName)
+		if sel.ServiceSpec != nil && !sel.ServiceSpec.UseAsDefault {
+			cc.KeepService(sel.ServiceSpec.NameOrDefault(commonName))
+		}
+	}
+	return cc.RemoveOrphaned(ctx, rclient, cr)
 }
 
 // componentObjects defines optional objects, which could be created for vmestimator component

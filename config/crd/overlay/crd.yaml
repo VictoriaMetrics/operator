@@ -61945,6 +61945,108 @@ spec:
                     items:
                       type: string
                     type: array
+                  configReloadAuthKeySecret:
+                    description: |-
+                      ConfigReloadAuthKeySecret defines optional secret reference authKey for /-/reload API requests.
+                      Given secret reference will be added to the application and vm-config-reloader as volume
+                    properties:
+                      key:
+                        description: The key of the secret to select from.  Must be
+                          a valid secret key.
+                        type: string
+                      name:
+                        default: ""
+                        description: |-
+                          Name of the referent.
+                          This field is effectively required, but due to backwards compatibility is
+                          allowed to be empty. Instances of this type with an empty value here are
+                          almost certainly wrong.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                      optional:
+                        description: Specify whether the Secret or its key must be
+                          defined
+                        type: boolean
+                    required:
+                    - key
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  configReloaderExtraArgs:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container
+                      for example resync-interval: "30s"
+                    type: object
+                  configReloaderImage:
+                    description: ConfigReloaderImage defines image:tag for config-reloader
+                      container
+                    type: string
+                  configReloaderImageTag:
+                    description: ConfigReloaderImageTag defines image:tag for config-reloader
+                      container
+                    type: string
+                  configReloaderResources:
+                    description: |-
+                      ConfigReloaderResources config-reloader container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                      if not defined default resources from operator config will be used
+                    properties:
+                      claims:
+                        description: |-
+                          Claims lists the names of resources, defined in spec.resourceClaims,
+                          that are used by this container.
+
+                          This field depends on the
+                          DynamicResourceAllocation feature gate.
+
+                          This field is immutable. It can only be set for containers.
+                        items:
+                          description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                          properties:
+                            name:
+                              description: |-
+                                Name must match the name of one entry in pod.spec.resourceClaims of
+                                the Pod where this field is used. It makes that resource available
+                                inside a container.
+                              type: string
+                            request:
+                              description: |-
+                                Request is the name chosen for a request in the referenced claim.
+                                If empty, everything from the claim is made available, otherwise
+                                only the result of this request.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - name
+                        x-kubernetes-list-type: map
+                      limits:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Limits describes the maximum amount of compute resources allowed.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                      requests:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Requests describes the minimum amount of compute resources required.
+                          If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                          otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                    type: object
                   containers:
                     description: |-
                       Containers property allows to inject additions sidecars or to patch existing containers.
@@ -62957,6 +63059,12 @@ spec:
                       uses non-root user out of the box
                       drops not needed security permissions
                     type: boolean
+                  useVMConfigReloader:
+                    description: |-
+                      UseVMConfigReloader replaces prometheus-like config-reloader
+                      with vm one. It uses secrets watch instead of file watch
+                      which greatly increases speed of config updates
+                    type: boolean
                   volumeMounts:
                     description: |-
                       VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.
@@ -63292,7 +63400,7 @@ spec:
               streams:
                 description: |-
                   Streams defines cardinality estimation streams.
-                  Either streams or streamsConfigMap must be set.
+                  Either streams or streamsConfigMap must be set, they're mutually exclusive.
                   See https://docs.victoriametrics.com/victoriametrics/vmestimator/#configuration
                 items:
                   description: |-
@@ -63306,17 +63414,16 @@ spec:
                       format: int32
                       minimum: 1
                       type: integer
-                    churnInterval:
-                      description: |-
-                        ChurnInterval enables cardinality_churn_ratio metric, which measures how quickly the series set changes.
-                        It defines the look-back comparison window and must not exceed interval.
-                      type: string
+                    calculate_churn:
+                      description: CalculateChurn enables cardinality_churn_ratio
+                        metric, which measures how quickly the series set changes.
+                      type: boolean
                     filter:
                       description: |-
                         Filter defines MetricsQL series selector used to pre-filter time series before counting,
                         e.g. '{job="api",env!~"dev|staging"}'.
                       type: string
-                    groupBy:
+                    group_by:
                       description: |-
                         GroupBy defines label names used to split the cardinality estimate into per-combination groups.
                         The special pseudo-label "__label__" estimates the number of unique values per label name.
@@ -63325,7 +63432,7 @@ spec:
                         type: string
                       maxItems: 5
                       type: array
-                    groupLimit:
+                    group_limit:
                       description: |-
                         GroupLimit defines maximum number of distinct groups to track.
                         Excess groups are counted in a single shared "rejected" sketch.
@@ -63333,7 +63440,7 @@ spec:
                       format: int32
                       minimum: 1
                       type: integer
-                    hllPrecision:
+                    hll_precision:
                       description: |-
                         HLLPrecision defines HyperLogLog precision, which determines estimation error and memory usage.
                         Defaults to 14.
@@ -63341,7 +63448,7 @@ spec:
                       maximum: 18
                       minimum: 4
                       type: integer
-                    hllSparse:
+                    hll_sparse:
                       description: |-
                         HLLSparse defines whether to use the sparse HyperLogLog representation for low-cardinality groups.
                         Defaults to true.
@@ -63365,7 +63472,7 @@ spec:
                 description: |-
                   StreamsConfigMap defines a ConfigMap key with vmestimator configuration in YAML format,
                   which must contain a top-level streams list.
-                  Streams defined at this ConfigMap are appended to the streams defined at spec.streams.
+                  It cannot be used together with spec.streams.
                   See https://github.com/VictoriaMetrics/vmestimator/blob/main/streams.yaml
                 properties:
                   key:

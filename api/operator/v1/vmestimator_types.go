@@ -19,7 +19,7 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
-	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -29,7 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/utils/ptr"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -37,17 +36,13 @@ import (
 
 const (
 	vmEstimatorName              = "vmestimator"
-	vmEstimatorDefaultPort       = "8490"
 	vmEstimatorDefaultInterval   = 5 * time.Minute
 	vmEstimatorMaxGroupByLabels  = 5
 	vmEstimatorStaticLabelPrefix = "by_"
-	// pods of StatefulSet with longer name cannot be created,
-	// since the name with hash suffix is used as controller-revision-hash label value, which is limited to 63 chars
-	vmEstimatorMaxStatefulSetNameLen = 52
 )
 
 // vmEstimatorReservedLabels contains label names reserved by vmestimator for the output metrics
-var vmEstimatorReservedLabels = []string{"interval", "churn_interval", "filter", "group_by_keys", "group_by_values"}
+var vmEstimatorReservedLabels = []string{"interval", "filter", "group_by_keys", "group_by_values"}
 
 // VMEstimatorSpec defines the desired state of VMEstimator
 // +k8s:openapi-gen=true
@@ -85,13 +80,13 @@ type VMEstimatorSpec struct {
 	Paused bool `json:"paused,omitempty"`
 
 	// Streams defines cardinality estimation streams.
-	// Either streams or streamsConfigMap must be set.
+	// Either streams or streamsConfigMap must be set, they're mutually exclusive.
 	// See https://docs.victoriametrics.com/victoriametrics/vmestimator/#configuration
 	// +optional
 	Streams []VMEstimatorStream `json:"streams,omitempty"`
 	// StreamsConfigMap defines a ConfigMap key with vmestimator configuration in YAML format,
 	// which must contain a top-level streams list.
-	// Streams defined at this ConfigMap are appended to the streams defined at spec.streams.
+	// It cannot be used together with spec.streams.
 	// See https://github.com/VictoriaMetrics/vmestimator/blob/main/streams.yaml
 	// +optional
 	StreamsConfigMap *corev1.ConfigMapKeySelector `json:"streamsConfigMap,omitempty"`
@@ -112,10 +107,9 @@ type VMEstimatorStream struct {
 	// Defaults to 5m.
 	// +optional
 	Interval string `json:"interval,omitempty" yaml:"interval,omitempty"`
-	// ChurnInterval enables cardinality_churn_ratio metric, which measures how quickly the series set changes.
-	// It defines the look-back comparison window and must not exceed interval.
+	// CalculateChurn enables cardinality_churn_ratio metric, which measures how quickly the series set changes.
 	// +optional
-	ChurnInterval string `json:"churnInterval,omitempty" yaml:"churn_interval,omitempty"`
+	CalculateChurn bool `json:"calculate_churn,omitempty" yaml:"calculate_churn,omitempty"`
 	// Filter defines MetricsQL series selector used to pre-filter time series before counting,
 	// e.g. '{job="api",env!~"dev|staging"}'.
 	// +optional
@@ -125,13 +119,13 @@ type VMEstimatorStream struct {
 	// Omit it for a single global estimate across all series.
 	// +optional
 	// +kubebuilder:validation:MaxItems=5
-	GroupBy []string `json:"groupBy,omitempty" yaml:"group_by,omitempty"`
+	GroupBy []string `json:"group_by,omitempty" yaml:"group_by,omitempty"`
 	// GroupLimit defines maximum number of distinct groups to track.
 	// Excess groups are counted in a single shared "rejected" sketch.
 	// Defaults to 10000.
 	// +optional
 	// +kubebuilder:validation:Minimum=1
-	GroupLimit int32 `json:"groupLimit,omitempty" yaml:"group_limit,omitempty"`
+	GroupLimit int32 `json:"group_limit,omitempty" yaml:"group_limit,omitempty"`
 	// Buckets defines number of shards used to reduce lock contention during parallel ingestion.
 	// Defaults to min(64, 2*availableCPUs).
 	// +optional
@@ -142,19 +136,35 @@ type VMEstimatorStream struct {
 	// +optional
 	// +kubebuilder:validation:Minimum=4
 	// +kubebuilder:validation:Maximum=18
-	HLLPrecision int32 `json:"hllPrecision,omitempty" yaml:"hll_precision,omitempty"`
+	HLLPrecision int32 `json:"hll_precision,omitempty" yaml:"hll_precision,omitempty"`
 	// HLLSparse defines whether to use the sparse HyperLogLog representation for low-cardinality groups.
 	// Defaults to true.
 	// +optional
-	HLLSparse *bool `json:"hllSparse,omitempty" yaml:"hll_sparse,omitempty"`
+	HLLSparse *bool `json:"hll_sparse,omitempty" yaml:"hll_sparse,omitempty"`
 	// Labels defines static labels attached to every output metric produced by this stream.
 	// +optional
 	Labels map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 }
 
+// ValidateEstimatorStreamConfigs validates configuration of VMEstimator for given streams.
+func ValidateEstimatorStreamConfigs(streams []VMEstimatorStream) error {
+	streamIDs := make(map[string]int)
+	for idx := range streams {
+		stream := streams[idx]
+		if err := stream.Validate(); err != nil {
+			return fmt.Errorf("spec.streams[%d]: %w", idx, err)
+		}
+		id := estimatorStreamID(stream.Labels, stream.GroupBy, stream.Interval, stream.Filter)
+		if prevIdx, ok := streamIDs[id]; ok {
+			return fmt.Errorf("invalid stream config, stream idx=%d is the same as idx=%d, such streams produce identical time series. Remove it or use different configuration", idx, prevIdx)
+		}
+		streamIDs[id] = idx
+	}
+	return nil
+}
+
 // Validate checks if stream is correct
 func (s *VMEstimatorStream) Validate() error {
-	interval := vmEstimatorDefaultInterval
 	if s.Interval != "" {
 		d, err := time.ParseDuration(s.Interval)
 		if err != nil {
@@ -162,19 +172,6 @@ func (s *VMEstimatorStream) Validate() error {
 		}
 		if d <= 0 {
 			return fmt.Errorf("interval=%q must be positive", s.Interval)
-		}
-		interval = d
-	}
-	if s.ChurnInterval != "" {
-		d, err := time.ParseDuration(s.ChurnInterval)
-		if err != nil {
-			return fmt.Errorf("cannot parse churnInterval=%q: %w", s.ChurnInterval, err)
-		}
-		if d < 0 {
-			return fmt.Errorf("churnInterval=%q cannot be negative", s.ChurnInterval)
-		}
-		if d > interval {
-			return fmt.Errorf("churnInterval=%s must not exceed interval=%s", d, interval)
 		}
 	}
 	if s.Filter != "" {
@@ -191,23 +188,23 @@ func (s *VMEstimatorStream) Validate() error {
 		}
 	}
 	if len(s.GroupBy) > vmEstimatorMaxGroupByLabels {
-		return fmt.Errorf("groupBy must not contain more than %d labels, got %d", vmEstimatorMaxGroupByLabels, len(s.GroupBy))
+		return fmt.Errorf("group_by must not contain more than %d labels, got %d", vmEstimatorMaxGroupByLabels, len(s.GroupBy))
 	}
 	seen := make(map[string]struct{}, len(s.GroupBy))
 	for _, l := range s.GroupBy {
 		switch l {
 		case "":
-			return fmt.Errorf("groupBy cannot contain empty label name")
+			return fmt.Errorf("group_by cannot contain empty label name")
 		case "__global__", "__group__":
-			return fmt.Errorf("groupBy cannot contain reserved label name %q", l)
+			return fmt.Errorf("group_by cannot contain reserved label name %q", l)
 		}
 		if _, ok := seen[l]; ok {
-			return fmt.Errorf("groupBy cannot contain label name %q more than once", l)
+			return fmt.Errorf("group_by cannot contain label name %q more than once", l)
 		}
 		seen[l] = struct{}{}
 	}
 	if s.HLLPrecision != 0 && (s.HLLPrecision < 4 || s.HLLPrecision > 18) {
-		return fmt.Errorf("hllPrecision=%d must be in range [4, 18]", s.HLLPrecision)
+		return fmt.Errorf("hll_precision=%d must be in range [4, 18]", s.HLLPrecision)
 	}
 	for name := range s.Labels {
 		for _, reserved := range vmEstimatorReservedLabels {
@@ -267,6 +264,8 @@ type VMEstimatorStorage struct {
 	RollingUpdateStrategyBehavior *vmv1beta1.StatefulSetUpdateStrategyBehavior `json:"rollingUpdateStrategyBehavior,omitempty"`
 
 	vmv1beta1.CommonAppsParams `json:",inline"`
+
+	vmv1beta1.CommonConfigReloaderParams `json:",inline"`
 }
 
 // UseProxyProtocol implements build.probeCRD interface
@@ -621,12 +620,6 @@ func (cr *VMEstimator) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
 }
 
-// serviceNames returns names of the default services, which are deployed in the current mode
-func (cr *VMEstimator) serviceNames() []string {
-	services := []string{cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}
-	return services
-}
-
 // Validate performs semantic validation of VMEstimator
 func (cr *VMEstimator) Validate() error {
 	if vmv1beta1.MustSkipCRValidation(cr) {
@@ -635,27 +628,22 @@ func (cr *VMEstimator) Validate() error {
 	if len(cr.Spec.Streams) == 0 && cr.Spec.StreamsConfigMap == nil {
 		return fmt.Errorf("either spec.streams or spec.streamsConfigMap must be set")
 	}
-	for idx := range cr.Spec.Streams {
-		if err := cr.Spec.Streams[idx].Validate(); err != nil {
-			return fmt.Errorf("spec.streams[%d]: %w", idx, err)
-		}
+	if len(cr.Spec.Streams) > 0 && cr.Spec.StreamsConfigMap != nil {
+		return fmt.Errorf("spec.streams and spec.streamsConfigMap are mutually exclusive, only one of them must be set")
+	}
+	if err := ValidateEstimatorStreamConfigs(cr.Spec.Streams); err != nil {
+		return err
 	}
 	if cm := cr.Spec.StreamsConfigMap; cm != nil && (cm.Name == "" || cm.Key == "") {
 		return fmt.Errorf("spec.streamsConfigMap must have both name and key defined")
 	}
-	if err := cr.validateNames(); err != nil {
-		return err
-	}
 	if c := cr.Spec.Storage; c != nil {
-		if c.ServiceSpec != nil && slices.Contains(cr.serviceNames(), c.ServiceSpec.Name) {
-			return fmt.Errorf("spec.storage.serviceSpec.name cannot be one of %q", cr.serviceNames())
-		}
 		// select nodes reach storage nodes via DNS records of the headless service
 		if err := c.ServiceSpec.ValidateHeadlessDefaultService(); err != nil {
 			return fmt.Errorf("spec.storage: %w", err)
 		}
 		if c.ReplicaCount != nil && *c.ReplicaCount == 0 && (cr.Spec.Select == nil || cr.Spec.Select.ExtraArgs["storageNode"] == "") {
-			return fmt.Errorf("spec.storage.replicaCount must be positive in cluster mode, since select nodes require at least one storage node")
+			return fmt.Errorf("spec.storage.replicaCount must be positive, unless spec.select.extraArgs.storageNode points to external storage nodes")
 		}
 		if c.VPA != nil {
 			if err := c.VPA.Validate(); err != nil {
@@ -667,9 +655,6 @@ func (cr *VMEstimator) Validate() error {
 		}
 	}
 	if c := cr.Spec.Select; c != nil {
-		if c.ServiceSpec != nil && slices.Contains(cr.serviceNames(), c.ServiceSpec.Name) {
-			return fmt.Errorf("spec.select.serviceSpec.name cannot be one of %q", cr.serviceNames())
-		}
 		if c.HPA != nil {
 			if err := c.HPA.Validate(); err != nil {
 				return fmt.Errorf("spec.select.hpa: %w", err)
@@ -687,18 +672,19 @@ func (cr *VMEstimator) Validate() error {
 	return nil
 }
 
-// validateNames checks that names of objects, which are derived from VMEstimator name, are accepted by Kubernetes
-func (cr *VMEstimator) validateNames() error {
-	sts := cr.PrefixedName(vmv1beta1.ClusterComponentStorage)
-	if len(sts) > vmEstimatorMaxStatefulSetNameLen {
-		return fmt.Errorf("name=%q is too long: storage StatefulSet name %q must not exceed %d chars, otherwise its pods cannot be created", cr.Name, sts, vmEstimatorMaxStatefulSetNameLen)
-	}
-	for _, svc := range cr.serviceNames() {
-		if errs := validation.IsDNS1035Label(svc); len(errs) > 0 {
-			return fmt.Errorf("name=%q cannot be used: Service name %q is incorrect: %s", cr.Name, svc, strings.Join(errs, ", "))
-		}
-	}
-	return nil
+// GetReloaderParams implements reloadable interface
+func (cr *VMEstimatorStorage) GetReloaderParams() *vmv1beta1.CommonConfigReloaderParams {
+	return &cr.CommonConfigReloaderParams
+}
+
+// GetReloadURL implements reloadable interface
+func (cr *VMEstimatorStorage) GetReloadURL(host string) string {
+	return vmv1beta1.BuildLocalURL("reloadAuthKey", host, cr.Port, "/-/reload", cr.ExtraArgs)
+}
+
+// AutomountServiceAccountToken implements reloadable interface
+func (cr *VMEstimatorStorage) AutomountServiceAccountToken() bool {
+	return true
 }
 
 // LastSpecUpdated compares spec with last applied spec stored, replaces old spec and returns true if it's updated
@@ -711,4 +697,39 @@ func (cr *VMEstimator) LastSpecUpdated() bool {
 // Paused checks if resource reconcile should be paused
 func (cr *VMEstimator) Paused() bool {
 	return cr.Spec.Paused
+}
+
+// copied from https://github.com/VictoriaMetrics/vmestimator/blob/46bb7f1b359e98f541298ed6b41e895a98fa0089/app/vmestimator/estimator.go#L139
+func estimatorStreamID(labels map[string]string, groupBy []string, interval string, filter string) string {
+	groupByKey := `__global__`
+	if len(groupBy) > 0 {
+		groupByKey = strings.Join(groupBy, ",")
+	}
+
+	var labelsKey string
+	if len(labels) > 0 {
+		keys := make([]string, 0, len(labels))
+		for k := range labels {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		var b strings.Builder
+		for _, k := range keys {
+			b.WriteString(k)
+			b.WriteByte('=')
+			b.WriteString(labels[k])
+			b.WriteByte('\x00')
+		}
+		labelsKey = b.String()
+	}
+	// interval is optional, so empty value must be treated as the default one
+	d := vmEstimatorDefaultInterval
+	if interval != "" {
+		parsed, err := time.ParseDuration(interval)
+		if err != nil {
+			panic(fmt.Errorf("BUG: interval=%q must be already validated: %w", interval, err))
+		}
+		d = parsed
+	}
+	return fmt.Sprintf("\u0000labels=%s\u0000group_by=%s\u0000interval=%v\u0000filter=%v", labelsKey, groupByKey, d, filter)
 }

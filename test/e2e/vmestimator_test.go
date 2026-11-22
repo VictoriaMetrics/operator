@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/rest"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
@@ -32,6 +33,37 @@ import (
 // vmEstimatorTestArgs disables cardinality metrics caching in order to observe estimations right after ingestion
 var vmEstimatorTestArgs = map[string]string{
 	"cardinalityMetrics.cacheTTL": "0s",
+}
+
+// vmEstimatorServiceURL returns base URL of the given vmestimator component service.
+// Defaults aren't persisted at the object, so the default port is used if it isn't set.
+func vmEstimatorServiceURL(cr *vmv1.VMEstimator, kind vmv1beta1.ClusterComponent, port string) string {
+	if port == "" {
+		port = "8490"
+	}
+	return fmt.Sprintf("http://%s.%s.svc:%s", cr.PrefixedName(kind), cr.Namespace, port)
+}
+
+// vmEstimatorWriteURL returns remote write URL, which is served by storage nodes
+func vmEstimatorWriteURL(cr *vmv1.VMEstimator) string {
+	var port string
+	if cr.Spec.Storage != nil {
+		port = cr.Spec.Storage.Port
+	}
+	return vmEstimatorServiceURL(cr, vmv1beta1.ClusterComponentStorage, port) + "/cardinality/api/v1/write"
+}
+
+// vmEstimatorQueryURL returns URL of cardinality estimations.
+// They're merged and exposed by select nodes if select is enabled, otherwise by storage node.
+func vmEstimatorQueryURL(cr *vmv1.VMEstimator) string {
+	if sel := cr.Spec.Select; sel != nil && ptr.Deref(sel.ReplicaCount, 1) > 0 {
+		return vmEstimatorServiceURL(cr, vmv1beta1.ClusterComponentSelect, sel.Port) + "/metrics"
+	}
+	var port string
+	if cr.Spec.Storage != nil {
+		port = cr.Spec.Storage.Port
+	}
+	return vmEstimatorServiceURL(cr, vmv1beta1.ClusterComponentStorage, port) + "/metrics"
 }
 
 // sendVMEstimatorSeries sends the given number of unique series to vmestimator via Prometheus remote write API
@@ -58,10 +90,10 @@ func sendVMEstimatorSeries(ctx context.Context, writeURL string, seriesCount int
 	})
 }
 
-// expectGlobalCardinality waits until the global cardinality estimation exposed at metricsURL becomes close to want
-func expectGlobalCardinality(ctx context.Context, metricsURL string, want float64) {
+// expectGlobalCardinality waits until the global cardinality estimation exposed at queryURL becomes close to want
+func expectGlobalCardinality(ctx context.Context, queryURL string, want float64) {
 	GinkgoHelper()
-	proxyURL, err := buildServiceProxyURL(&k8sCfg, metricsURL)
+	proxyURL, err := buildServiceProxyURL(&k8sCfg, queryURL)
 	Expect(err).ToNot(HaveOccurred())
 	hc, err := rest.HTTPClientFor(&k8sCfg)
 	Expect(err).ToNot(HaveOccurred())
@@ -75,7 +107,7 @@ func expectGlobalCardinality(ctx context.Context, metricsURL string, want float6
 		}
 		v, ok := values["cardinality_estimate"]["__global__"]
 		if !ok {
-			return 0, fmt.Errorf("cannot find global cardinality estimation at %s", metricsURL)
+			return 0, fmt.Errorf("cannot find global cardinality estimation at %s", queryURL)
 		}
 		return v, nil
 	}, eventualDeploymentAppReadyTimeout).Should(BeNumerically("~", want, want*0.1))
@@ -88,6 +120,9 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 		namespace := fmt.Sprintf("default-%d", GinkgoParallelProcess())
 		nsn := types.NamespacedName{
 			Namespace: namespace,
+		}
+		componentNsn := func(cr *vmv1.VMEstimator, kind vmv1beta1.ClusterComponent) types.NamespacedName {
+			return types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(kind)}
 		}
 		BeforeEach(func() {
 			ctx = context.Background()
@@ -115,37 +150,41 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 				Expect(k8sClient.Get(ctx, nsn, &created)).ToNot(HaveOccurred())
 				verify(&created)
 			},
-			Entry("in single mode by default", "single-default",
+			Entry("with single storage node by default", "storage-default",
 				&vmv1.VMEstimator{
 					Spec: vmv1.VMEstimatorSpec{
 						Streams: []vmv1.VMEstimatorStream{{Interval: "5m"}},
+						Storage: &vmv1.VMEstimatorStorage{
+							CommonAppsParams: vmv1beta1.CommonAppsParams{
+								ExtraArgs: vmEstimatorTestArgs,
+							},
+						},
 					},
 				},
 				func(cr *vmv1.VMEstimator) {
-					singleNsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}
-					var dep appsv1.Deployment
-					Expect(k8sClient.Get(ctx, singleNsn, &dep)).ToNot(HaveOccurred())
-					Expect(dep.Status.ReadyReplicas).To(Equal(int32(1)))
-					Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(1))
-					Expect(dep.Spec.Template.Spec.Containers[0].Args).To(ContainElement("-config=/etc/vmestimator/config/streams.yaml"))
-					Expect(dep.Spec.Template.Spec.Containers[0].Args).ToNot(ContainElement("-cardinalityMetrics.exposeAt=/cardinality/metrics"))
+					var sts appsv1.StatefulSet
+					Expect(k8sClient.Get(ctx, componentNsn(cr, vmv1beta1.ClusterComponentStorage), &sts)).ToNot(HaveOccurred())
+					Expect(sts.Status.ReadyReplicas).To(Equal(int32(1)))
+					Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(2))
+					Expect(sts.Spec.Template.Spec.Containers[0].Args).To(ContainElement("-config=/etc/vmestimator/config/streams.yaml"))
+					Expect(sts.Spec.Template.Spec.Containers[0].Args).ToNot(ContainElement("-cardinalityMetrics.exposeAt=/cardinality/metrics"))
+					Expect(k8sClient.Get(ctx, componentNsn(cr, vmv1beta1.ClusterComponentSelect), &appsv1.Deployment{})).
+						To(MatchError(k8serrors.IsNotFound, "isNotFound"))
 
-					var cm corev1.ConfigMap
-					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetConfigMapName()}, &cm)).ToNot(HaveOccurred())
-					Expect(cm.Data).To(HaveKey("streams.yaml"))
+					sendVMEstimatorSeries(ctx, vmEstimatorWriteURL(cr), 100)
+					expectGlobalCardinality(ctx, vmEstimatorQueryURL(cr), 100)
 				}),
-			Entry("in cluster mode with estimations", "cluster-estimations",
+			Entry("with storage nodes and select", "storage-select",
 				&vmv1.VMEstimator{
 					Spec: vmv1.VMEstimatorSpec{
-						Streams: []vmv1.VMEstimatorStream{
-							{Interval: "5m"},
-						},
+						Streams: []vmv1.VMEstimatorStream{{Interval: "5m"}},
 						Storage: &vmv1.VMEstimatorStorage{
 							PodDisruptionBudget: &vmv1beta1.EmbeddedPodDisruptionBudgetSpec{
 								MaxUnavailable: ptr.To(intstr.FromInt32(1)),
 							},
 							CommonAppsParams: vmv1beta1.CommonAppsParams{
 								ReplicaCount: ptr.To[int32](2),
+								ExtraArgs:    vmEstimatorTestArgs,
 							},
 						},
 						Select: &vmv1.VMEstimatorSelect{
@@ -154,28 +193,31 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 								MaxReplicas: 2,
 							},
 							CommonAppsParams: vmv1beta1.CommonAppsParams{
-								ReplicaCount: ptr.To[int32](1),
-								ExtraArgs:    vmEstimatorTestArgs,
+								ExtraArgs: vmEstimatorTestArgs,
 							},
 						},
 					},
 				},
 				func(cr *vmv1.VMEstimator) {
 					var sts appsv1.StatefulSet
-					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}, &sts)).ToNot(HaveOccurred())
+					Expect(k8sClient.Get(ctx, componentNsn(cr, vmv1beta1.ClusterComponentStorage), &sts)).ToNot(HaveOccurred())
 					Expect(sts.Status.ReadyReplicas).To(Equal(int32(2)))
-					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentStorage)}, &policyv1.PodDisruptionBudget{})).ToNot(HaveOccurred())
-					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &autoscalingv2.HorizontalPodAutoscaler{})).ToNot(HaveOccurred())
+					Expect(sts.Spec.Template.Spec.Containers[0].Args).To(ContainElement("-cardinalityMetrics.exposeAt=/cardinality/metrics"))
+					var dep appsv1.Deployment
+					Expect(k8sClient.Get(ctx, componentNsn(cr, vmv1beta1.ClusterComponentSelect), &dep)).ToNot(HaveOccurred())
+					Expect(dep.Status.ReadyReplicas).To(Equal(int32(1)))
+					Expect(k8sClient.Get(ctx, componentNsn(cr, vmv1beta1.ClusterComponentStorage), &policyv1.PodDisruptionBudget{})).ToNot(HaveOccurred())
+					Expect(k8sClient.Get(ctx, componentNsn(cr, vmv1beta1.ClusterComponentSelect), &autoscalingv2.HorizontalPodAutoscaler{})).ToNot(HaveOccurred())
 
-					// send data via load-balanced insert service in several requests
-					// in order to spread it among storage nodes
-					// for range 4 {
-					// 	sendVMEstimatorSeries(ctx, cr.RemoteWriteURL(), 100)
-					// }
-					// // select nodes merge estimations from all storage nodes
-					// expectGlobalCardinality(ctx, cr.AsURL(vmv1beta1.ClusterComponentSelect)+"/metrics", 100)
+					// the same series are sent in several requests in order to spread them among storage nodes,
+					// select nodes merge estimations of all storage nodes, so duplicates aren't counted
+					for range 4 {
+						sendVMEstimatorSeries(ctx, vmEstimatorWriteURL(cr), 100)
+					}
+					expectGlobalCardinality(ctx, vmEstimatorQueryURL(cr), 100)
 				}),
 		)
+
 		It("should load streams from configmap", func() {
 			nsn.Name = "streams-configmap"
 			cm := &corev1.ConfigMap{
@@ -197,7 +239,6 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 					Namespace: namespace,
 				},
 				Spec: vmv1.VMEstimatorSpec{
-					Streams: []vmv1.VMEstimatorStream{{Interval: "5m"}},
 					StreamsConfigMap: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: cm.Name},
 						Key:                  "streams.yaml",
@@ -215,7 +256,6 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 			}
 			Expect(yaml.UnmarshalStrict([]byte(generated.Data["streams.yaml"]), &c)).ToNot(HaveOccurred())
 			Expect(c.Streams).To(Equal([]vmv1.VMEstimatorStream{
-				{Interval: "5m"},
 				{Interval: "10m", GroupBy: []string{"job"}},
 			}))
 		})
@@ -228,7 +268,8 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 					Namespace: namespace,
 				},
 				Spec: vmv1.VMEstimatorSpec{
-					Streams: []vmv1.VMEstimatorStream{{Interval: "5m", ChurnInterval: "10m"}},
+					// duplicated streams pass CRD schema validation, but are rejected by the operator
+					Streams: []vmv1.VMEstimatorStream{{Interval: "5m"}, {Interval: "5m"}},
 				},
 			}
 			expectStatusAfterAction(ctx, &vmv1.VMEstimatorList{}, nsn, eventualDeploymentAppReadyTimeout, func() {
@@ -237,12 +278,12 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 
 			var got vmv1.VMEstimator
 			Expect(k8sClient.Get(ctx, nsn, &got)).ToNot(HaveOccurred())
-			Expect(got.Status.Reason).To(ContainSubstring("churnInterval"))
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}, &appsv1.Deployment{})).
+			Expect(got.Status.Reason).To(ContainSubstring("produce identical time series"))
+			Expect(k8sClient.Get(ctx, componentNsn(cr, vmv1beta1.ClusterComponentStorage), &appsv1.StatefulSet{})).
 				To(MatchError(k8serrors.IsNotFound, "isNotFound"))
 		})
 
-		It("should restart pods on streams change", func() {
+		It("should reload config on streams change without pods restart", func() {
 			nsn.Name = "streams-change"
 			cr := &vmv1.VMEstimator{
 				ObjectMeta: metav1.ObjectMeta{
@@ -256,11 +297,10 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 			expectStatusAfterAction(ctx, &vmv1.VMEstimatorList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
 				Expect(k8sClient.Create(ctx, cr)).ToNot(HaveOccurred())
 			}, vmv1beta1.UpdateStatusOperational)
-			depNsn := types.NamespacedName{Namespace: namespace, Name: cr.PrefixedName(vmv1beta1.ClusterComponentSelect)}
-			var dep appsv1.Deployment
-			Expect(k8sClient.Get(ctx, depNsn, &dep)).ToNot(HaveOccurred())
-			prevHash := dep.Spec.Template.Annotations["operator.victoriametrics.com/config-hash"]
-			Expect(prevHash).ToNot(BeEmpty())
+			stsNsn := componentNsn(cr, vmv1beta1.ClusterComponentStorage)
+			var sts appsv1.StatefulSet
+			Expect(k8sClient.Get(ctx, stsNsn, &sts)).ToNot(HaveOccurred())
+			prevGeneration := sts.Generation
 
 			expectStatusAfterAction(ctx, &vmv1.VMEstimatorList{}, nsn, eventualStatefulsetAppReadyTimeout, func() {
 				Eventually(func() error {
@@ -272,10 +312,18 @@ var _ = Describe("test vmestimator Controller", Label("vm", "vmestimator"), func
 					return k8sClient.Update(ctx, &toUpdate)
 				}, eventualDeploymentAppReadyTimeout).ToNot(HaveOccurred())
 			}, vmv1beta1.UpdateStatusOperational)
-			Expect(k8sClient.Get(ctx, depNsn, &dep)).ToNot(HaveOccurred())
-			Expect(dep.Spec.Template.Annotations["operator.victoriametrics.com/config-hash"]).ToNot(Equal(prevHash))
-			Expect(dep.Status.ReadyReplicas).To(Equal(int32(1)))
-			Expect(dep.Status.UpdatedReplicas).To(Equal(int32(1)))
+
+			var generated corev1.ConfigMap
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: cr.GetConfigMapName()}, &generated)).ToNot(HaveOccurred())
+			Expect(generated.Data["streams.yaml"]).To(ContainSubstring("__name__"))
+
+			// configuration is reloaded by config-reloader, so statefulset isn't updated
+			Expect(k8sClient.Get(ctx, stsNsn, &sts)).ToNot(HaveOccurred())
+			Expect(sts.Generation).To(Equal(prevGeneration))
+			var pods corev1.PodList
+			Expect(k8sClient.List(ctx, &pods, client.InNamespace(namespace), client.MatchingLabels(cr.SelectorLabels(vmv1beta1.ClusterComponentStorage)))).ToNot(HaveOccurred())
+			Expect(pods.Items).To(HaveLen(1))
+			Expect(pods.Items[0].Annotations).To(HaveKey("configmap-sync-lastupdate-at"))
 		})
 	})
 })

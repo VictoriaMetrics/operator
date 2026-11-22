@@ -7,7 +7,6 @@ import (
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
@@ -26,7 +25,13 @@ type streamsConfig struct {
 
 // buildConfig returns vmestimator configuration file content
 func buildConfig(cr *vmv1.VMEstimator, ac *build.AssetsCache) ([]byte, error) {
-	streams := append([]vmv1.VMEstimatorStream{}, cr.Spec.Streams...)
+	// streams and streamsConfigMap are mutually exclusive
+	if len(cr.Spec.Streams) > 0 {
+		if err := vmv1.ValidateEstimatorStreamConfigs(cr.Spec.Streams); err != nil {
+			return nil, fmt.Errorf("incorrect vmestimator stream configuration: %w", err)
+		}
+		return yaml.Marshal(streamsConfig{Streams: cr.Spec.Streams})
+	}
 	if cm := cr.Spec.StreamsConfigMap; cm != nil {
 		data, err := ac.LoadKeyFromConfigMap(cr.Namespace, cm)
 		if err != nil {
@@ -40,14 +45,13 @@ func buildConfig(cr *vmv1.VMEstimator, ac *build.AssetsCache) ([]byte, error) {
 		if c.Streams == nil {
 			return nil, fmt.Errorf("streams list is missing at configmap=%q, key=%q", cm.Name, cm.Key)
 		}
-		for idx := range c.Streams {
-			if err := c.Streams[idx].Validate(); err != nil {
-				return nil, fmt.Errorf("incorrect stream at configmap=%q, key=%q, idx=%d: %w", cm.Name, cm.Key, idx, err)
-			}
+		if err := vmv1.ValidateEstimatorStreamConfigs(c.Streams); err != nil {
+			return nil, fmt.Errorf("incorrect estimator stream configuration at configmap=%q, key=%q: %w", cm.Name, cm.Key, err)
 		}
-		streams = append(streams, c.Streams...)
+		return yaml.Marshal(streamsConfig{Streams: c.Streams})
 	}
-	return yaml.Marshal(streamsConfig{Streams: streams})
+
+	return yaml.Marshal(streamsConfig{Streams: nil})
 }
 
 func buildConfigMap(cr *vmv1.VMEstimator, data []byte) *corev1.ConfigMap {
@@ -61,20 +65,21 @@ func buildConfigMap(cr *vmv1.VMEstimator, data []byte) *corev1.ConfigMap {
 }
 
 // createOrUpdateConfig reconciles vmestimator configuration and returns its hash
-func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator) error {
+func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator) (bool, error) {
 	ac := build.NewAssetsCache(ctx, rclient, map[build.ResourceKind]*build.ResourceCfg{})
 	data, err := buildConfig(cr, ac)
 	if err != nil {
-		return err
+		return false, err
 	}
 	var prevMeta *metav1.ObjectMeta
 	if prevCR != nil {
 		b := build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentRoot)
-		prevMeta = ptr.To(build.ResourceMeta(build.SecretConfigResourceKind, b))
+		prevMeta = new(build.ResourceMeta(build.SecretConfigResourceKind, b))
 	}
 	owner := cr.AsOwner()
-	if _, err := reconcile.ConfigMap(ctx, rclient, buildConfigMap(cr, data), prevMeta, &owner); err != nil {
-		return fmt.Errorf("cannot reconcile configmap: %w", err)
+	updateNeeded, err := reconcile.ConfigMap(ctx, rclient, buildConfigMap(cr, data), prevMeta, &owner)
+	if err != nil {
+		return false, fmt.Errorf("cannot reconcile configmap: %w", err)
 	}
-	return nil
+	return updateNeeded, nil
 }

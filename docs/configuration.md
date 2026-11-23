@@ -482,7 +482,13 @@ HPA configuration is available for:
 - `VMCluster` components through `spec.vmselect.hpa`, `spec.vminsert.hpa`, `spec.vmstorage.hpa` and request load balancer `spec.requestsLoadBalancer.spec.hpa`.
 - `VLCluster` components through `spec.vlselect.hpa`, `spec.vlinsert.hpa`, `spec.vlstorage.hpa` and request load balancer `spec.requestsLoadBalancer.spec.hpa`.
 - `VTCluster` components through `spec.select.hpa`, `spec.insert.hpa`, `spec.storage.hpa` and request load balancer `spec.requestsLoadBalancer.spec.hpa`.
-- `VMDistributed` components that expose `hpa` in their component spec.
+- `VMDistributed`:
+  - `VMAuth` through `spec.vmauth.spec.hpa`.
+  - zone `VMAgent` through `spec.zoneCommon.vmagent.spec.hpa` and `spec.zones[].vmagent.spec.hpa`.
+  - zone `VMCluster` components through `vmselect.hpa`, `vminsert.hpa`, `vmstorage.hpa` and `requestsLoadBalancer.spec.hpa` in `spec.zoneCommon.vmcluster.spec` and `spec.zones[].vmcluster.spec`.
+- `VLDistributed`:
+  - `VMAuth` through `spec.vmauth.spec.hpa`.
+  - zone `VLCluster` components through `vlselect.hpa`, `vlinsert.hpa`, `vlstorage.hpa` and `requestsLoadBalancer.spec.hpa` in `spec.zoneCommon.vlcluster.spec` and `spec.zones[].vlcluster.spec`.
 
 ### Configuration
 
@@ -575,11 +581,20 @@ If VPA support is disabled and a VictoriaMetrics custom resource contains `vpa`,
 
 VPA configuration is available for:
 
-- `VMAuth` through `spec.vpa`.
+- `VMAgent`, `VMAuth`, `VMSingle`, `VMAlert`, `VMAlertmanager` and `VMAnomaly` through `spec.vpa`.
+- `VLAgent`, `VLSingle`, `VTAgent` and `VTSingle` through `spec.vpa`.
 - `VMCluster` components through `spec.vmselect.vpa`, `spec.vminsert.vpa` and `spec.vmstorage.vpa`.
 - `VLCluster` components through `spec.vlselect.vpa`, `spec.vlinsert.vpa` and `spec.vlstorage.vpa`.
 - `VTCluster` components through `spec.select.vpa`, `spec.insert.vpa` and `spec.storage.vpa`.
-- `VMDistributed` components that expose `vpa` in their component spec.
+- `VMDistributed`:
+  - `VMAuth` through `spec.vmauth.spec.vpa`.
+  - zone `VMSingle` through `spec.zoneCommon.vmsingle.spec.vpa` and `spec.zones[].vmsingle.spec.vpa`.
+  - zone `VMCluster` components through `vmselect.vpa`, `vminsert.vpa` and `vmstorage.vpa` in `spec.zoneCommon.vmcluster.spec` and `spec.zones[].vmcluster.spec`.
+- `VLDistributed`:
+  - `VMAuth` through `spec.vmauth.spec.vpa`.
+  - zone `VLAgent` through `spec.zoneCommon.vlagent.spec.vpa` and `spec.zones[].vlagent.spec.vpa`.
+  - zone `VLSingle` through `spec.zoneCommon.vlsingle.spec.vpa` and `spec.zones[].vlsingle.spec.vpa`.
+  - zone `VLCluster` components through `vlselect.vpa`, `vlinsert.vpa` and `vlstorage.vpa` in `spec.zoneCommon.vlcluster.spec` and `spec.zones[].vlcluster.spec`.
 
 ### Configuration
 

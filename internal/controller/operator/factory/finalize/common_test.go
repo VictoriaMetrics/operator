@@ -2,6 +2,7 @@ package finalize
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -497,4 +498,70 @@ func TestSafeDelete(t *testing.T) {
 	// delete again, shouldn't error
 	err = SafeDelete(ctx, cl, obj)
 	assert.NoError(t, err)
+}
+
+func TestDisownObjects(t *testing.T) {
+	type opts struct {
+		obj               client.Object
+		predefinedObjects []runtime.Object
+		patchErr          error
+		wantOwners        []string
+		wantPatches       int
+	}
+	owner := metav1.OwnerReference{APIVersion: "operator.victoriametrics.com/v1alpha1", Kind: "VMDistributed", Name: "dist"}
+	other := metav1.OwnerReference{APIVersion: "v1", Kind: "Pod", Name: "other"}
+	nsn := types.NamespacedName{Name: "single", Namespace: "default"}
+	single := func(refs ...metav1.OwnerReference) *vmv1beta1.VMSingle {
+		return &vmv1beta1.VMSingle{ObjectMeta: metav1.ObjectMeta{Name: nsn.Name, Namespace: nsn.Namespace, OwnerReferences: refs}}
+	}
+
+	f := func(o opts) {
+		t.Helper()
+		ctx := context.TODO()
+		var patches int
+		fns := k8stools.GetInterceptorsWithObjects(nil)
+		fns.Patch = func(ctx context.Context, cl client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+			patches++
+			if o.patchErr != nil {
+				return o.patchErr
+			}
+			return cl.Patch(ctx, obj, patch, opts...)
+		}
+		cl := k8stools.GetTestClientWithObjectsAndInterceptors(o.predefinedObjects, fns)
+		assert.NoError(t, disownObjects(ctx, cl, []client.Object{o.obj}, owner))
+		assert.Equal(t, o.wantPatches, patches)
+
+		var got vmv1beta1.VMSingle
+		if err := cl.Get(ctx, nsn, &got); err == nil {
+			var names []string
+			for _, ref := range got.OwnerReferences {
+				names = append(names, ref.Name)
+			}
+			assert.Equal(t, o.wantOwners, names)
+		}
+	}
+
+	// owned object: only the given owner is removed
+	f(opts{
+		obj:               single(),
+		predefinedObjects: []runtime.Object{single(owner, other)},
+		wantOwners:        []string{"other"},
+		wantPatches:       1,
+	})
+
+	// object without the given owner, e.g. a name collision: no patch,
+	// so a patch error, e.g. from a webhook, cannot block the deletion
+	f(opts{
+		obj:               single(),
+		predefinedObjects: []runtime.Object{single(other)},
+		patchErr:          errors.New("patch is rejected"),
+		wantOwners:        []string{"other"},
+		wantPatches:       0,
+	})
+
+	// missing object: skipped
+	f(opts{
+		obj:         single(),
+		wantPatches: 0,
+	})
 }

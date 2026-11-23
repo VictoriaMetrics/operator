@@ -81,7 +81,6 @@ func buildSelectScrape(cr *vmv1.VMEstimator, svc *corev1.Service) *vmv1beta1.VMS
 	return build.VMServiceScrape(svc, cr.Spec.Select)
 }
 
-// buildSelectService builds the query service, which exposes merged cardinality estimations of select nodes
 func buildSelectService(cr *vmv1.VMEstimator) *corev1.Service {
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentSelect)
 	return build.Service(b, cr.Spec.Select.Port, nil)

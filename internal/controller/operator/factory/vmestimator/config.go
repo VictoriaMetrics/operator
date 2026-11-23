@@ -23,9 +23,8 @@ type streamsConfig struct {
 	Streams []vmv1.VMEstimatorStream `yaml:"streams"`
 }
 
-// buildConfig returns vmestimator configuration file content
 func buildConfig(cr *vmv1.VMEstimator, ac *build.AssetsCache) ([]byte, error) {
-	// streams and streamsConfigMap are mutually exclusive
+	// streams and streamsConfigMap are mutually exclusive.
 	if len(cr.Spec.Streams) > 0 {
 		if err := vmv1.ValidateEstimatorStreamConfigs(cr.Spec.Streams); err != nil {
 			return nil, fmt.Errorf("incorrect vmestimator stream configuration: %w", err)
@@ -64,7 +63,6 @@ func buildConfigMap(cr *vmv1.VMEstimator, data []byte) *corev1.ConfigMap {
 	}
 }
 
-// createOrUpdateConfig reconciles vmestimator configuration and returns its hash
 func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator) (bool, error) {
 	ac := build.NewAssetsCache(ctx, rclient, map[build.ResourceKind]*build.ResourceCfg{})
 	data, err := buildConfig(cr, ac)

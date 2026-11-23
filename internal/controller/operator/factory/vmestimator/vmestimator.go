@@ -23,7 +23,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
-// CreateOrUpdate syncs VMEstimator object to the desired state
+// CreateOrUpdate syncs VMEstimator object to the desired state.
 func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VMEstimator) error {
 	if cr.Paused() {
 		return nil
@@ -82,7 +82,6 @@ func CreateOrUpdate(ctx context.Context, rclient client.Client, cr *vmv1.VMEstim
 	return nil
 }
 
-// deleteOrphaned removes objects, which were removed from spec
 func deleteOrphaned(ctx context.Context, rclient client.Client, cr *vmv1.VMEstimator) error {
 	cc := finalize.NewChildCleaner()
 	if storage := cr.Spec.Storage; storage != nil {

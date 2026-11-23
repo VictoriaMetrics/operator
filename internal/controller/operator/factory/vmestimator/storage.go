@@ -26,7 +26,6 @@ const (
 	configVolumeName = "config"
 )
 
-// createOrUpdateStorage reconciles storage nodes
 func createOrUpdateStorage(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator) error {
 	if cr.Spec.Storage == nil {
 		return nil
@@ -58,7 +57,6 @@ func buildStorageScrape(cr *vmv1.VMEstimator, svc *corev1.Service) *vmv1beta1.VM
 	return build.VMServiceScrape(svc, cr.Spec.Storage)
 }
 
-// buildStorageService builds headless service, which provides stable network identities for storage pods
 func buildStorageService(cr *vmv1.VMEstimator) *corev1.Service {
 	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentStorage)
 	return build.Service(b, cr.Spec.Storage.Port, func(svc *corev1.Service) {

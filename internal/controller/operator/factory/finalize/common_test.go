@@ -504,9 +504,9 @@ func TestDisownObjects(t *testing.T) {
 	type opts struct {
 		obj               client.Object
 		predefinedObjects []runtime.Object
-		updateErr         error
+		patchErr          error
 		wantOwners        []string
-		wantUpdates       int
+		wantPatches       int
 	}
 	owner := metav1.OwnerReference{APIVersion: "operator.victoriametrics.com/v1alpha1", Kind: "VMDistributed", Name: "dist"}
 	other := metav1.OwnerReference{APIVersion: "v1", Kind: "Pod", Name: "other"}
@@ -518,18 +518,18 @@ func TestDisownObjects(t *testing.T) {
 	f := func(o opts) {
 		t.Helper()
 		ctx := context.TODO()
-		var updates int
+		var patches int
 		fns := k8stools.GetInterceptorsWithObjects(nil)
-		fns.Update = func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
-			updates++
-			if o.updateErr != nil {
-				return o.updateErr
+		fns.Patch = func(ctx context.Context, cl client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+			patches++
+			if o.patchErr != nil {
+				return o.patchErr
 			}
-			return cl.Update(ctx, obj, opts...)
+			return cl.Patch(ctx, obj, patch, opts...)
 		}
 		cl := k8stools.GetTestClientWithObjectsAndInterceptors(o.predefinedObjects, fns)
 		assert.NoError(t, disownObjects(ctx, cl, []client.Object{o.obj}, owner))
-		assert.Equal(t, o.wantUpdates, updates)
+		assert.Equal(t, o.wantPatches, patches)
 
 		var got vmv1beta1.VMSingle
 		if err := cl.Get(ctx, nsn, &got); err == nil {
@@ -546,22 +546,22 @@ func TestDisownObjects(t *testing.T) {
 		obj:               single(),
 		predefinedObjects: []runtime.Object{single(owner, other)},
 		wantOwners:        []string{"other"},
-		wantUpdates:       1,
+		wantPatches:       1,
 	})
 
-	// object without the given owner, e.g. a name collision: no update,
-	// so an update error, e.g. from a webhook, cannot block the deletion
+	// object without the given owner, e.g. a name collision: no patch,
+	// so a patch error, e.g. from a webhook, cannot block the deletion
 	f(opts{
 		obj:               single(),
 		predefinedObjects: []runtime.Object{single(other)},
-		updateErr:         errors.New("update is rejected"),
+		patchErr:          errors.New("patch is rejected"),
 		wantOwners:        []string{"other"},
-		wantUpdates:       0,
+		wantPatches:       0,
 	})
 
 	// missing object: skipped
 	f(opts{
 		obj:         single(),
-		wantUpdates: 0,
+		wantPatches: 0,
 	})
 }

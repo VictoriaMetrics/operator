@@ -124,7 +124,7 @@ func disownObjects(ctx context.Context, rclient client.Client, objs []client.Obj
 				return false, fmt.Errorf("error looking for object: %w", err)
 			}
 			ownerReferences := objToDisown.GetOwnerReferences()
-			refs := ownerReferences[:0]
+			refs := make([]metav1.OwnerReference, 0, len(ownerReferences))
 			for _, ref := range ownerReferences {
 				if ref.APIVersion == owner.APIVersion && ref.Name == owner.Name && ref.Kind == owner.Kind {
 					continue
@@ -135,12 +135,17 @@ func disownObjects(ctx context.Context, rclient client.Client, objs []client.Obj
 				// not owned by this CR, nothing to change
 				return true, nil
 			}
+			orig := objToDisown.DeepCopyObject().(client.Object)
 			objToDisown.SetOwnerReferences(refs)
-			if err := rclient.Update(ctx, objToDisown); err != nil {
+			patch := client.MergeFromWithOptions(orig, client.MergeFromWithOptimisticLock{})
+			if err := rclient.Patch(ctx, objToDisown, patch); err != nil {
 				if k8serrors.IsConflict(err) {
 					return false, nil
 				}
-				return false, fmt.Errorf("error on update: %w", err)
+				if k8serrors.IsNotFound(err) {
+					return true, nil
+				}
+				return false, fmt.Errorf("error on patch: %w", err)
 			}
 			return true, nil
 		})

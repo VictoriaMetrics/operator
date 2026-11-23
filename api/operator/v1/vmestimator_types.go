@@ -144,6 +144,9 @@ type VMEstimatorStream struct {
 	// Labels defines static labels attached to every output metric produced by this stream.
 	// +optional
 	Labels map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
+	// MinCardinality suppresses group-by cardinality estimates below defined value.
+	// +optional
+	MinCardinality int64 `json:"min_cardinality,omitempty" yaml:"min_cardinality,omitempty"`
 }
 
 // ValidateEstimatorStreamConfigs validates configuration of VMEstimator for given streams.

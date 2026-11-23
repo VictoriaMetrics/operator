@@ -31856,6 +31856,9 @@ spec:
                       additionalProperties:
                         type: string
                       type: object
+                    min_cardinality:
+                      format: int64
+                      type: integer
                   type: object
                 type: array
               streamsConfigMap:

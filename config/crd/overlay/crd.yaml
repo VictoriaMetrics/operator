@@ -63628,6 +63628,11 @@ spec:
                       description: Labels defines static labels attached to every
                         output metric produced by this stream.
                       type: object
+                    min_cardinality:
+                      description: MinCardinality suppresses group-by cardinality
+                        estimates below defined value.
+                      format: int64
+                      type: integer
                   type: object
                 type: array
               streamsConfigMap:

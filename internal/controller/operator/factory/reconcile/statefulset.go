@@ -410,8 +410,9 @@ func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *
 				// so retry pod eviction
 				evictErr := wait.PollUntilContextTimeout(ctx, podWaitReadyInterval, podWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
 					if o.delete {
-						if err := rclient.Delete(ctx, &pod); err != nil {
-							if k8serrors.IsNotFound(err) {
+						// Set UID precondition to avoid deleting a pod that was already recreated since listing
+						if err := rclient.Delete(ctx, &pod, client.Preconditions{UID: &pod.UID}); err != nil {
+							if k8serrors.IsNotFound(err) || k8serrors.IsConflict(err) {
 								return true, nil
 							}
 							return false, fmt.Errorf("failed to delete pod %s: %w", pod.Name, err)
@@ -420,8 +421,22 @@ func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *
 					}
 
 					// evict pod to trigger re-creation
-					podEviction := policyv1.Eviction{ObjectMeta: pod.ObjectMeta}
+					podEviction := policyv1.Eviction{
+						ObjectMeta:    pod.ObjectMeta,
+						DeleteOptions: &metav1.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &pod.UID}},
+					}
 					if err := rclient.SubResource("eviction").Create(ctx, &pod, &podEviction); err != nil {
+						if k8serrors.IsConflict(err) {
+							var current corev1.Pod
+							if getErr := rclient.Get(ctx, types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}, &current); getErr != nil {
+								if k8serrors.IsNotFound(getErr) {
+									return false, nil
+								}
+								return false, fmt.Errorf("cannot get pod %s after eviction conflict: %w", pod.Name, getErr)
+							}
+							// ignore the conflict if the pod has been re-created
+							return current.UID != pod.UID, nil
+						}
 						// retry disruption interrupt error:
 						// https://github.com/kubernetes/kubernetes/blob/9a50e306361ea936e57fb6eb8c635f971e7bb707/pkg/registry/core/pod/storage/eviction.go#L418
 						if strings.Contains(err.Error(), "Cannot evict pod as it would violate the pod's disruption budget") {

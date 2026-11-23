@@ -159,6 +159,27 @@ oc get pods -n vm
 
 OLM bundles for published releases are produced by the release workflow.
 
+## Custom resource definitions
+
+The operator checks at startup that the CRD of every enabled controller is installed in the cluster.
+If a CRD is missing, the operator exits with an error that names the missing CRD.
+
+To fix it, either:
+
+- install the CRDs that ship with the same operator release. Upgrade CRDs together with the operator,
+  since new releases may add new CRDs;
+- or disable the controllers you do not use with the `-controller.disableReconcileFor` flag.
+  For example, `-controller.disableReconcileFor=VTAgent`.
+  Child controllers still require the CRDs of their parent objects. For example, `VMServiceScrape` objects are
+  selected by `VMAgent`, so the `VMAgent` CRD must stay installed.
+
+The operator also needs RBAC permissions for the CRD of every enabled controller: at least `get`, `list` and `watch`
+for its cache, plus write access to the objects and any `status` or `finalizers` subresources used by that controller.
+The RBAC rules that ship with the operator release include the permissions required by each controller.
+
+Prometheus Operator CRDs, such as `ServiceMonitor` or `PrometheusRule`, are an exception.
+If they are missing, the operator disables the respective [converter controllers](https://docs.victoriametrics.com/operator/integrations/prometheus/) automatically.
+
 ## CPU architectures
 
 Both operator and VictoriaMetrics have full support for the following architectures:

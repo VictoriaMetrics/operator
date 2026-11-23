@@ -287,10 +287,6 @@ func RunManager(ctx context.Context) error {
 		return err
 	}
 
-	if err := registerChildConditionIndexers(ctx, mgr, effectiveDisabledControllerNames(baseConfig, disabledControllerNames)); err != nil {
-		return fmt.Errorf("cannot register status condition indexers: %w", err)
-	}
-
 	if err := mgr.AddReadyzCheck("ready", func(req *http.Request) error {
 		wasSynced := atomic.LoadUint32(&wasCacheSynced)
 		// fast path
@@ -336,6 +332,10 @@ func RunManager(ctx context.Context) error {
 
 	if err := initControllers(mgr, ctrl.Log, baseClient, baseConfig, disabledControllerNames); err != nil {
 		return err
+	}
+
+	if err := registerChildConditionIndexers(ctx, mgr, effectiveDisabledControllerNames(baseConfig, disabledControllerNames)); err != nil {
+		return fmt.Errorf("cannot register status condition indexers: %w", err)
 	}
 
 	build.SetSpaceTrim(*disableSecretKeySpaceTrim)
@@ -591,6 +591,7 @@ var promCRDControllers = map[string]sets.Set[string]{
 }
 
 func initControllers(mgr ctrl.Manager, l logr.Logger, baseClient *kubernetes.Clientset, bs *config.BaseOperatorConf, disabledControllerNames sets.Set[string]) error {
+	existKinds := make(map[string]struct{})
 	for groupVersion, kinds := range promCRDControllers {
 		api, err := baseClient.ServerResourcesForGroupVersion(groupVersion)
 		if err != nil {
@@ -599,12 +600,25 @@ func initControllers(mgr ctrl.Manager, l logr.Logger, baseClient *kubernetes.Cli
 			}
 		} else {
 			for _, r := range api.APIResources {
+				existKinds[r.Kind] = struct{}{}
 				if _, ok := controllersByName[r.Kind]; ok && kinds.Has(r.Kind) {
 					kinds.Delete(r.Kind)
 				}
 			}
 		}
 		disabledControllerNames.Insert(kinds.UnsortedList()...)
+	}
+	for _, gv := range []string{vmv1.SchemeGroupVersion.String(), vmv1beta1.SchemeGroupVersion.String(), vmv1alpha1.SchemeGroupVersion.String()} {
+		api, err := baseClient.ServerResourcesForGroupVersion(gv)
+		if err != nil {
+			if !k8serrors.IsNotFound(err) {
+				return fmt.Errorf("cannot get server resource for API=%s: %w", gv, err)
+			}
+			continue
+		}
+		for _, ar := range api.APIResources {
+			existKinds[ar.Kind] = struct{}{}
+		}
 	}
 	for name, ct := range controllersByName {
 		if ct.IsDisabled(bs, disabledControllerNames) {
@@ -613,6 +627,9 @@ func initControllers(mgr ctrl.Manager, l logr.Logger, baseClient *kubernetes.Cli
 		if disabledControllerNames.Has(name) {
 			l.Info("controller disabled either by provided flag or respective CRD is not found", "name", name, "controller.disableReconcileFor", *disableControllerForCRD)
 			continue
+		}
+		if _, ok := existKinds[name]; !ok {
+			return fmt.Errorf("controller name: %s is missing at Kubernetes CRDs, make sure that it's installed or disable controller with -controller.disableReconcileFor= flag", name)
 		}
 		ct.Init(name, mgr.GetClient(), l, mgr.GetScheme(), bs)
 		if err := ct.SetupWithManager(mgr); err != nil {

@@ -375,7 +375,7 @@ func (cr *VLSingle) GetAdditionalService() *vmv1beta1.AdditionalServiceSpec {
 	return cr.Spec.ServiceSpec
 }
 
-// GetRemoteWriteURL returns the native insert URL for VLSingle (used by VLDistributed)
+// GetRemoteWriteURL returns the multitenant native insert URL for VLSingle (used by VLDistributed)
 func (cr *VLSingle) GetRemoteWriteURL() string {
-	return cr.AsURL(false) + "/insert/native"
+	return cr.AsURL(false) + "/insert/multitenant/native"
 }

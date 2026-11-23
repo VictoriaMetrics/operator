@@ -85,6 +85,62 @@ spec:
 
 The tool maps the majority of critical parameters, including Replicas, Images, Resource Requests/Limits, Affinity, NodeSelectors, Tolerations, ExtraArgs/ExtraEnvs, PersistentVolumes, and specific behavioral flags. Chart-specific behavior is described below.
 
+### HTTP listeners
+
+The charts' `http` list is converted into the fields the operator uses for the HTTP port:
+
+- The `primary` listener's port becomes `spec.port`, which the operator uses for the Service, probes and self-scraping.
+- When there are several listeners, or the primary one binds a specific host, `extraArgs.httpListenAddr` gets all the addresses, comma-separated, with the primary listener first. The operator uses the first `tls` value to choose between HTTP and HTTPS probes, so the primary listener must come first.
+- Other keys of the listeners, such as `tls`, `tlsCertFile` or `mtls`, become comma-separated `extraArgs` aligned with `httpListenAddr`, and they override the same `extraArgs`, as in the charts.
+- Each non-primary listener becomes a port of `spec.serviceSpec`, named after the listener.
+
+For example, the listeners:
+
+```yaml
+vlselect:
+  http:
+    - name: http
+      primary: true
+      value: ":9471"
+    - name: mtls
+      value: ":9409"
+      tls: true
+      tlsCertFile: /etc/tls/vlselect/tls.crt
+      tlsKeyFile: /etc/tls/vlselect/tls.key
+      mtls: true
+      mtlsCAFile: /etc/tls/vlselect/ca.crt
+```
+
+become:
+
+```yaml
+vlselect:
+  port: "9471"
+  extraArgs:
+    httpListenAddr: ":9471,:9409"
+    tls: "false,true"
+    tlsCertFile: ",/etc/tls/vlselect/tls.crt"
+    tlsKeyFile: ",/etc/tls/vlselect/tls.key"
+    mtls: "false,true"
+    mtlsCAFile: ",/etc/tls/vlselect/ca.crt"
+  serviceSpec:
+    useAsDefault: true
+    spec:
+      ports:
+        - name: mtls
+          port: 9409
+          targetPort: 9409
+```
+
+When `extraArgs.httpListenAddr` is set, the charts ignore the `http` list, and so does the converter: `spec.port` is taken from the first address of the flag.
+
+The conversion fails in the same cases as the chart does, such as no or several primary listeners. It also fails when:
+
+- a non-primary listener is named `http`, since the operator reserves that Service port name for the primary listener;
+- a listener value contains a comma, since it cannot be passed in a comma-separated flag.
+
+The certificate files are not mounted by the converter. Mount them with `extraVolumes` and `extraVolumeMounts`.
+
 ### License
 
 **Supported CRs.** The charts' `license` and `global.license` blocks become `spec.license` of every CR that supports it.

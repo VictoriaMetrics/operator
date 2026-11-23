@@ -174,8 +174,9 @@ spec:
         key: password-secret-key
     tlsConfig:
       cert:
-        name: k8s-tls-secret-name
-        key: tls-cert-key
+        secret:
+          name: k8s-tls-secret-name
+          key: tls-cert-key
       keySecret:
         name: k8s-tls-secret-name
         key: tls-key
@@ -208,6 +209,33 @@ spec:
           data_range: ['-inf', 'inf']
           tz: UTC
 ```
+
+### Serving the UI over HTTPS
+
+`spec.server.tlsConfig` serves the anomaly UI and API over HTTPS. The certificate and key are taken from `cert` and `keySecret` or from pre-mounted `certFile` and `keyFile`. Set `ca` or `caFile` to require client certificates signed by that CA (mTLS). `insecureSkipVerify` and `serverName` are not supported for the server. Requires [vmanomaly v1.32.0 or newer](https://docs.victoriametrics.com/anomaly-detection/components/server/#tls-and-mutual-tls).
+
+The following is a configuration fragment to merge into an existing `VMAnomaly` resource, keeping its license, reader, writer and model configuration. First create a Secret named `vmanomaly-tls` in the same namespace, containing `tls.crt` and `tls.key`; include `ca.crt` when enabling mTLS.
+
+```yaml
+spec:
+  server:
+    port: "8490"
+    tlsConfig:
+      cert:
+        secret:
+          name: vmanomaly-tls
+          key: tls.crt
+      keySecret:
+        name: vmanomaly-tls
+        key: tls.key
+      # optional: require client certificates (mTLS)
+      ca:
+        secret:
+          name: vmanomaly-tls
+          key: ca.crt
+```
+
+Only `spec.server.port` serves HTTPS. Probes and metrics scraping keep using plain HTTP on `spec.monitoring.pull.port`, so the two ports must differ. Clients of the server port, such as Ingress backends, must use HTTPS and, with mTLS, present a client certificate.
 
 ### Using secret
 
@@ -345,6 +373,29 @@ spec:
         class: 'zscore'
         z_threshold: 2.5
 ```
+
+## Temporal Envelope versions
+
+Set `spec.image.tag: v1.32.0` or a newer version. In the model configuration, set `model_version: v2` in a `temporal_envelope` or `temporal_envelope_multivariate` model to opt into the [experimental implementation](https://docs.victoriametrics.com/anomaly-detection/components/models/#experimental-temporal-envelope-implementations). Omission retains v1. Switching versions requires a fresh fit; learned state is not interchangeable.
+
+V2 supports `calendar_month` seasonality; `month_smooth` and `month_plateau` require v1. The `dependency_strength` output is available for multivariate v2 only. These options belong in model configuration supplied through `spec.configRawYaml`, `spec.configSecret`, or a selected `VMAnomalyConfig`.
+
+## Holiday calendars
+
+Starting from vmanomaly [v1.33.0](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1330), `prophet` models accept a top-level `holidays` mapping with `countries`, `special_events` and `group` keys, and `prophet`, `temporal_envelope` and `temporal_envelope_multivariate` models can emit the `is_holiday` series when it is listed in `provide_series`:
+
+```yaml
+models:
+  prophet_with_holidays:
+    class: prophet
+    provide_series: [anomaly_score, is_holiday]
+    holidays:
+      countries: [US, CA]
+      special_events: ["12-24"]
+      group: true
+```
+
+The legacy Prophet `args.country_holidays` and `args.holidays` settings remain supported. vmanomaly rejects a model that combines top-level `holidays` with either legacy setting.
 
 ## High Availability and Sharding
 

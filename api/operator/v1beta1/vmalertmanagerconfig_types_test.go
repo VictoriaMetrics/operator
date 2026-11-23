@@ -1028,6 +1028,8 @@ func TestHTTPConfig_ValidateArbitraryFSAccess(t *testing.T) {
 		}
 	}
 
+	f(nil, false)
+
 	// header backed by a value/secret only: no filesystem access
 	f(&HTTPConfig{
 		HTTPHeaders: map[string]HTTPHeaderConfig{
@@ -1041,4 +1043,20 @@ func TestHTTPConfig_ValidateArbitraryFSAccess(t *testing.T) {
 			"X-Custom-Header": {Files: []string{"/etc/passwd"}},
 		},
 	}, true)
+}
+
+func TestVMAlertmanagerConfig_ValidateArbitraryFSAccessWithoutHTTPConfig(t *testing.T) {
+	cr := &VMAlertmanagerConfig{
+		Spec: VMAlertmanagerConfigSpec{
+			Receivers: []Receiver{
+				{
+					Name:            "slack",
+					SlackConfigs:    []SlackConfig{{Channel: "#example"}},
+					WebhookConfigs:  []WebhookConfig{{}},
+					OpsGenieConfigs: []OpsGenieConfig{{}},
+				},
+			},
+		},
+	}
+	assert.NoError(t, cr.ValidateArbitraryFSAccess())
 }

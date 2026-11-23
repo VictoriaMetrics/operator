@@ -42,11 +42,11 @@ var (
 
 	defaultEnvs = map[string]string{
 		// renovate: datasource=github-releases depName=VictoriaMetrics/VictoriaMetrics
-		"VM_METRICS_VERSION": "v1.156.0",
+		"VM_METRICS_VERSION": "v1.157.0",
 		// renovate: datasource=github-releases depName=VictoriaMetrics/VictoriaLogs
 		"VM_LOGS_VERSION": "v1.54.0",
 		// renovate: datasource=docker depName=victoriametrics/vmanomaly
-		"VM_ANOMALY_VERSION": "v1.31.1",
+		"VM_ANOMALY_VERSION": "v1.33.0",
 		// renovate: datasource=github-releases depName=VictoriaMetrics/VictoriaTraces
 		"VM_TRACES_VERSION": "v0.13.0",
 		// renovate: datasource=github-releases depName=VictoriaMetrics/vmestimator

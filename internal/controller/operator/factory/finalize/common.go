@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -100,6 +103,54 @@ func removeFinalizers(ctx context.Context, rclient client.Client, objs []client.
 		}
 		if err := remove(o, deleteOwnerReferences[i]); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// disownObjects removes owner from the owner references of objs.
+// Objects that do not exist, or whose kind is not installed in the cluster, are skipped.
+func disownObjects(ctx context.Context, rclient client.Client, objs []client.Object, owner metav1.OwnerReference) error {
+	for _, objToDisown := range objs {
+		nsn := types.NamespacedName{
+			Name:      objToDisown.GetName(),
+			Namespace: objToDisown.GetNamespace(),
+		}
+		err := wait.PollUntilContextTimeout(ctx, time.Second, 5*time.Second, true, func(ctx context.Context) (done bool, err error) {
+			if err := rclient.Get(ctx, nsn, objToDisown); err != nil {
+				if k8serrors.IsNotFound(err) || meta.IsNoMatchError(err) {
+					return true, nil
+				}
+				return false, fmt.Errorf("error looking for object: %w", err)
+			}
+			ownerReferences := objToDisown.GetOwnerReferences()
+			refs := make([]metav1.OwnerReference, 0, len(ownerReferences))
+			for _, ref := range ownerReferences {
+				if ref.APIVersion == owner.APIVersion && ref.Name == owner.Name && ref.Kind == owner.Kind {
+					continue
+				}
+				refs = append(refs, ref)
+			}
+			if len(refs) == len(ownerReferences) {
+				// not owned by this CR, nothing to change
+				return true, nil
+			}
+			orig := objToDisown.DeepCopyObject().(client.Object)
+			objToDisown.SetOwnerReferences(refs)
+			patch := client.MergeFromWithOptions(orig, client.MergeFromWithOptimisticLock{})
+			if err := rclient.Patch(ctx, objToDisown, patch); err != nil {
+				if k8serrors.IsConflict(err) {
+					return false, nil
+				}
+				if k8serrors.IsNotFound(err) {
+					return true, nil
+				}
+				return false, fmt.Errorf("error on patch: %w", err)
+			}
+			return true, nil
+		})
+		if err != nil {
+			return fmt.Errorf("failed to disown object %T=%s: %w", objToDisown, nsn.String(), err)
 		}
 	}
 	return nil

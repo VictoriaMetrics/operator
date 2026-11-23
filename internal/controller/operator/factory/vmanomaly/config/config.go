@@ -145,6 +145,9 @@ type server struct {
 	MaxConcurrentTasks          int    `yaml:"max_concurrent_tasks,omitempty"`
 	UIDefaultState              string `yaml:"ui_default_state,omitempty"`
 	UseReaderConnectionSettings bool   `yaml:"use_reader_connection_settings,omitempty"`
+	TLSCertFile                 string `yaml:"tls_cert_file,omitempty"`
+	TLSKeyFile                  string `yaml:"tls_key_file,omitempty"`
+	MTLSCAFile                  string `yaml:"mtls_ca_file,omitempty"`
 }
 
 func (s *server) validate() error {
@@ -183,6 +186,15 @@ func (c *config) build(cr *vmv1.VMAnomaly, pos *ParsedObjects, ac *build.AssetsC
 		var s server
 		if err = yaml.UnmarshalStrict(data, &s); err != nil {
 			return fmt.Errorf("failed to unmarshal anomaly CR server config, name=%q: %w", crCanonicalName, err)
+		}
+		if srv.TLSConfig != nil {
+			creds, err := ac.BuildTLSCreds(cr.Namespace, srv.TLSConfig)
+			if err != nil {
+				return fmt.Errorf("failed to load anomaly CR server TLS config, name=%q: %w", crCanonicalName, err)
+			}
+			s.TLSCertFile = creds.CertFile
+			s.TLSKeyFile = creds.KeyFile
+			s.MTLSCAFile = creds.CAFile
 		}
 		c.Server = &s
 	}

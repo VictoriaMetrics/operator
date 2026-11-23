@@ -67,8 +67,8 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 						ReplicaCount: ptr.To[int32](1),
 					},
 					RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-						{URL: "http://localhost:9428/internal/insert"},
-						{URL: "http://localhost:9481/internal/insert", Headers: []string{"Authorization: Bearer Insecure", "Basic: Insecure Token"}},
+						{URL: "http://localhost:9428/insert/native"},
+						{URL: "http://localhost:9481/insert/native", Headers: []string{"Authorization: Bearer Insecure", "Basic: Insecure Token"}},
 					},
 					TmpDataPath: ptr.To("/tmp/custom-path"),
 					RemoteWriteSettings: &vmv1.VLAgentRemoteWriteSettings{
@@ -386,7 +386,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 								"httpListenAddr.useProxyProtocol": "true",
 							},
 						},
-						RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{{URL: "http://localhost:9428/internal/insert"}},
+						RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{{URL: "http://localhost:9428/insert/native"}},
 					},
 				},
 				nil,
@@ -539,7 +539,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 							ReplicaCount: ptr.To[int32](1),
 						},
 						RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-							{URL: "http://localhost:9428/internal/insert"},
+							{URL: "http://localhost:9428/insert/native"},
 						},
 					},
 				}
@@ -557,7 +557,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 					},
 					Spec: vmv1.VLAgentSpec{
 						RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-							{URL: "http://localhost:9428/internal/insert"},
+							{URL: "http://localhost:9428/insert/native"},
 						},
 						CommonAppsParams: vmv1beta1.CommonAppsParams{
 							ReplicaCount: ptr.To[int32](1),
@@ -592,7 +592,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 							ReplicaCount: ptr.To[int32](1),
 						},
 						RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-							{URL: "http://localhost:9428/internal/insert"},
+							{URL: "http://localhost:9428/insert/native"},
 						},
 					},
 				}
@@ -625,7 +625,7 @@ var _ = Describe("test vlagent Controller", Label("vl", "agent", "vlagent"), fun
 							Paused:       true,
 						},
 						RemoteWrite: []vmv1.VLAgentRemoteWriteSpec{
-							{URL: "http://localhost:9428/internal/insert"},
+							{URL: "http://localhost:9428/insert/native"},
 						},
 					},
 				}

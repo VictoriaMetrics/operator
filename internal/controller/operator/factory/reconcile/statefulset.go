@@ -258,7 +258,7 @@ func getLatestStsState(ctx context.Context, rclient client.Client, targetSTS typ
 		})
 
 	if err != nil {
-		return nil, fmt.Errorf("cannot wait for deployment Generation status transition to=%d, current generation=%d", sts.Generation, sts.Status.ObservedGeneration)
+		return nil, fmt.Errorf("cannot wait for StatefulSet=%s observedGeneration to reach generation=%d, current observedGeneration=%d: %w", targetSTS.String(), sts.Generation, sts.Status.ObservedGeneration, err)
 	}
 	return &sts, nil
 }
@@ -333,14 +333,14 @@ func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *
 	}
 	pods := podList.Items[:0]
 	for _, p := range podList.Items {
-		if _, ok := p.Labels[podRevisionLabel]; ok {
+		if isOwnedBySTS(&p) {
 			pods = append(pods, p)
 		}
 	}
 	if err := sortStsPodsByID(pods); err != nil {
 		return fmt.Errorf("cannot sort statefulset pods: %w", err)
 	}
-	readyPods, updatedPods, podsForUpdate := filterSTSPods(podList.Items, stsVersion, sts.Spec.MinReadySeconds, o.recreate)
+	readyPods, updatedPods, podsForUpdate := filterSTSPods(pods, stsVersion, sts.Spec.MinReadySeconds, o.recreate)
 	totalPodsCount := len(readyPods) + len(updatedPods) + len(podsForUpdate)
 
 	switch {
@@ -426,11 +426,14 @@ func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *
 						DeleteOptions: &metav1.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &pod.UID}},
 					}
 					if err := rclient.SubResource("eviction").Create(ctx, &pod, &podEviction); err != nil {
+						if k8serrors.IsNotFound(err) {
+							return true, nil
+						}
 						if k8serrors.IsConflict(err) {
 							var current corev1.Pod
 							if getErr := rclient.Get(ctx, types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}, &current); getErr != nil {
 								if k8serrors.IsNotFound(getErr) {
-									return false, nil
+									return true, nil
 								}
 								return false, fmt.Errorf("cannot get pod %s after eviction conflict: %w", pod.Name, getErr)
 							}
@@ -616,10 +619,8 @@ func isOwnedBySTS(pod *corev1.Pod) bool {
 func filterSTSPods(pods []corev1.Pod, revision string, minReadySeconds int32, recreate bool) ([]corev1.Pod, []corev1.Pod, []corev1.Pod) {
 	var readyPods, updatedPods, podsForUpdate []corev1.Pod
 	for _, pod := range pods {
-		// pod could be owned by Deployment due to Deployment -> StatefulSet transition
 		isSameRevision := pod.Labels[podRevisionLabel] == revision
 		switch {
-		case !isOwnedBySTS(&pod):
 		case !pod.DeletionTimestamp.IsZero() || recreate:
 			podsForUpdate = append(podsForUpdate, pod)
 		case PodIsReady(&pod, minReadySeconds) && isSameRevision:

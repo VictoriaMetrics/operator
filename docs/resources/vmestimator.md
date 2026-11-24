@@ -96,29 +96,6 @@ For a `VMEstimator` named `<name>` in namespace `<namespace>`, the Operator crea
 
 Remote write URL: `http://vmestimator-storage-<name>.<namespace>.svc:8490/cardinality/api/v1/write`.
 
-The storage service is headless, so its DNS name resolves to IP addresses of all storage pods and requests aren't load-balanced by Kubernetes.
-In order to spread remote write requests among several storage nodes, define an additional `ClusterIP` service at `spec.storage.serviceSpec`
-and use it at remote write URL:
-
-```yaml
-apiVersion: operator.victoriametrics.com/v1
-kind: VMEstimator
-metadata:
-  name: example
-spec:
-  streams:
-    - interval: 5m
-  storage:
-    replicaCount: 3
-    serviceSpec:
-      metadata:
-        name: vmestimator-insert-example
-      spec: {}
-  select: {}
-```
-
-Remote write URL for the example above: `http://vmestimator-insert-example.<namespace>.svc:8490/cardinality/api/v1/write`.
-
 Cardinality estimations are exposed at `/metrics` path:
 
 * without select - by storage nodes at `http://vmestimator-storage-<name>.<namespace>.svc:8490/metrics`,
@@ -177,7 +154,7 @@ spec:
 
 By default, the Operator creates `VMServiceScrape` for each component, so cardinality estimations
 are collected by [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent/) together with operational metrics.
-Use `disableSelfServiceScrape` and `serviceScrapeSpec` fields of the components to customize it.
+Use `disableSelfServiceScrape` and `serviceScrapeSpec` fields of the components to customize it if needed.
 
 See [alerting rules](https://docs.victoriametrics.com/victoriametrics/vmestimator/#alerting)
 and [dashboards](https://docs.victoriametrics.com/victoriametrics/vmestimator/#dashboards) for vmestimator.

@@ -14,6 +14,8 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
+// +kubebuilder:rbac:groups="",resources=nodes;pods;namespaces,verbs=get;list;watch
+
 // createK8sAPIAccess - creates RBAC access rules for vlagent
 func createK8sAPIAccess(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VLAgent) error {
 	if !config.IsClusterWideAccessAllowed() {

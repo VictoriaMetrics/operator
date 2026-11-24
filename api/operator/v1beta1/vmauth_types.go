@@ -289,6 +289,18 @@ type URLMapCommon struct {
 	// SrcHeaders is an optional list of headers, which must match request headers.
 	SrcHeaders []string `json:"src_headers,omitempty" yaml:"src_headers,omitempty"`
 
+	// SrcQueryArgsMatchAll requires the request to match all SrcQueryArgs entries instead of at least one of them.
+	// It's available since v1.157.0 version of vmauth.
+	// See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-query-arg) for more details.
+	// +optional
+	SrcQueryArgsMatchAll bool `json:"src_query_args_match_all,omitempty" yaml:"src_query_args_match_all,omitempty"`
+
+	// SrcHeadersMatchAll requires the request to match all SrcHeaders entries instead of at least one of them.
+	// It's available since v1.157.0 version of vmauth.
+	// See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-header) for more details.
+	// +optional
+	SrcHeadersMatchAll bool `json:"src_headers_match_all,omitempty" yaml:"src_headers_match_all,omitempty"`
+
 	// DiscoverBackendIPs instructs discovering URLPrefix backend IPs via DNS.
 	DiscoverBackendIPs *bool `json:"discover_backend_ips,omitempty" yaml:"discover_backend_ips,omitempty"`
 

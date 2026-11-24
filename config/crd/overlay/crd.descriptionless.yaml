@@ -4552,10 +4552,14 @@ spec:
                               items:
                                 type: string
                               type: array
+                            src_headers_match_all:
+                              type: boolean
                             src_query_args:
                               items:
                                 type: string
                               type: array
+                            src_query_args_match_all:
+                              type: boolean
                             static:
                               properties:
                                 url:
@@ -5812,10 +5816,14 @@ spec:
                                   items:
                                     type: string
                                   type: array
+                                src_headers_match_all:
+                                  type: boolean
                                 src_query_args:
                                   items:
                                     type: string
                                   type: array
+                                src_query_args_match_all:
+                                  type: boolean
                                 static:
                                   properties:
                                     url:
@@ -5973,6 +5981,8 @@ spec:
                                   items:
                                     type: string
                                   type: array
+                                src_headers_match_all:
+                                  type: boolean
                                 src_hosts:
                                   items:
                                     type: string
@@ -5985,6 +5995,8 @@ spec:
                                   items:
                                     type: string
                                   type: array
+                                src_query_args_match_all:
+                                  type: boolean
                                 url_prefix:
                                   x-kubernetes-preserve-unknown-fields: true
                               type: object
@@ -20931,10 +20943,14 @@ spec:
                       items:
                         type: string
                       type: array
+                    src_headers_match_all:
+                      type: boolean
                     src_query_args:
                       items:
                         type: string
                       type: array
+                    src_query_args_match_all:
+                      type: boolean
                     static:
                       properties:
                         url:
@@ -22191,10 +22207,14 @@ spec:
                           items:
                             type: string
                           type: array
+                        src_headers_match_all:
+                          type: boolean
                         src_query_args:
                           items:
                             type: string
                           type: array
+                        src_query_args_match_all:
+                          type: boolean
                         static:
                           properties:
                             url:
@@ -22352,6 +22372,8 @@ spec:
                           items:
                             type: string
                           type: array
+                        src_headers_match_all:
+                          type: boolean
                         src_hosts:
                           items:
                             type: string
@@ -22364,6 +22386,8 @@ spec:
                           items:
                             type: string
                           type: array
+                        src_query_args_match_all:
+                          type: boolean
                         url_prefix:
                           x-kubernetes-preserve-unknown-fields: true
                       type: object
@@ -26143,10 +26167,14 @@ spec:
                               items:
                                 type: string
                               type: array
+                            src_headers_match_all:
+                              type: boolean
                             src_query_args:
                               items:
                                 type: string
                               type: array
+                            src_query_args_match_all:
+                              type: boolean
                             static:
                               properties:
                                 url:
@@ -27403,10 +27431,14 @@ spec:
                                   items:
                                     type: string
                                   type: array
+                                src_headers_match_all:
+                                  type: boolean
                                 src_query_args:
                                   items:
                                     type: string
                                   type: array
+                                src_query_args_match_all:
+                                  type: boolean
                                 static:
                                   properties:
                                     url:
@@ -27564,6 +27596,8 @@ spec:
                                   items:
                                     type: string
                                   type: array
+                                src_headers_match_all:
+                                  type: boolean
                                 src_hosts:
                                   items:
                                     type: string
@@ -27576,6 +27610,8 @@ spec:
                                   items:
                                     type: string
                                   type: array
+                                src_query_args_match_all:
+                                  type: boolean
                                 url_prefix:
                                   x-kubernetes-preserve-unknown-fields: true
                               type: object
@@ -43518,10 +43554,14 @@ spec:
                       items:
                         type: string
                       type: array
+                    src_headers_match_all:
+                      type: boolean
                     src_query_args:
                       items:
                         type: string
                       type: array
+                    src_query_args_match_all:
+                      type: boolean
                     static:
                       properties:
                         url:

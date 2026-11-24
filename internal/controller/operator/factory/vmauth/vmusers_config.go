@@ -460,6 +460,16 @@ func appendIfNotEmpty(src []string, key string, origin yaml.MapSlice) yaml.MapSl
 	return origin
 }
 
+func appendMatchAll(opt vmv1beta1.URLMapCommon, dst yaml.MapSlice) yaml.MapSlice {
+	if opt.SrcQueryArgsMatchAll {
+		dst = append(dst, yaml.MapItem{Key: "src_query_args_match_all", Value: true})
+	}
+	if opt.SrcHeadersMatchAll {
+		dst = append(dst, yaml.MapItem{Key: "src_headers_match_all", Value: true})
+	}
+	return dst
+}
+
 func buildUnauthorizedConfig(cr *vmv1beta1.VMAuth, objURLs map[string]string, ac *build.AssetsCache) ([]yaml.MapItem, error) {
 	var result []yaml.MapItem
 
@@ -531,6 +541,7 @@ func addURLMapCommonToYaml(dst yaml.MapSlice, opt vmv1beta1.URLMapCommon, isDefa
 	if !isDefaultRoute {
 		dst = appendIfNotEmpty(opt.SrcQueryArgs, "src_query_args", dst)
 		dst = appendIfNotEmpty(opt.SrcHeaders, "src_headers", dst)
+		dst = appendMatchAll(opt, dst)
 	}
 	dst = appendIfNotEmpty(opt.RequestHeaders, "headers", dst)
 	dst = appendIfNotEmpty(opt.ResponseHeaders, "response_headers", dst)
@@ -817,6 +828,7 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 		}
 		urlMap = appendIfNotEmpty(ref.SrcHeaders, "src_headers", urlMap)
 		urlMap = appendIfNotEmpty(ref.SrcQueryArgs, "src_query_args", urlMap)
+		urlMap = appendMatchAll(ref.URLMapCommon, urlMap)
 		if len(ref.RequestHeaders) > 0 {
 			urlMap = append(urlMap, yaml.MapItem{
 				Key:   "headers",

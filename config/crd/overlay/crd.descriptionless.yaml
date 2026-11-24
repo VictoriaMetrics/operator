@@ -14183,6 +14183,8 @@ spec:
                             items:
                               type: string
                             type: array
+                          post_updates_to_thread:
+                            type: boolean
                           pretext:
                             type: string
                           send_resolved:

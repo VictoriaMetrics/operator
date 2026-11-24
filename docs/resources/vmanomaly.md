@@ -31,7 +31,9 @@ The generated configuration is stored in a Secret created by the operator, using
 
 This configuration file is mounted at `VMAnomaly` `Pod`.
 
-**VMAnomaly is enterprise only, license is required for this CRD**. [Trial license can be requested](https://victoriametrics.com/products/enterprise/trial/) for `VMAnomaly` CRD evaluation.
+**VMAnomaly is enterprise only, [`spec.license`](https://docs.victoriametrics.com/operator/enterprise/#license-and-esa) is required for this CRD**.
+Starting from vmanomaly v1.33.0, set [`spec.license.acceptEULA`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-accepteula) to accept the [ESA](https://victoriametrics.com/legal/esa/) without a license key.
+Older versions require `spec.license.key` or `spec.license.keyRef`. [Trial license can be requested](https://victoriametrics.com/products/enterprise/trial/) for `VMAnomaly` CRD evaluation.
 
 The `VMAnomaly` CRD exposes connection and concurrency settings through typed `spec.reader`, `spec.writer`, and `spec.monitoring` fields. Query definitions and query-level business policies remain in `spec.configRawYaml`, `spec.configSecret`, or selected [`VMAnomalyConfig`](https://docs.victoriametrics.com/operator/resources/vmanomalyconfig/) resources. Models, schedulers, and service settings are also defined in the raw configuration:
 

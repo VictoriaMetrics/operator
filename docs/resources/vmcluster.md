@@ -562,9 +562,8 @@ from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/victoriametri
 - [Automatic vmstorage discovery](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#automatic-vmstorage-discovery)
 
 For using Enterprise version of [vmcluster](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/) you need to:
- - specify license at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-key) or at [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-keyref).
-   Starting from VictoriaMetrics [v1.156.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.156.0) (LTS [v1.148.9](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.148.9) and [v1.136.23](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.136.23)), license keys are no longer verified,
-   and setting the license is treated as accepting the [ESA](https://victoriametrics.com/legal/esa/).
+ - accept the [ESA](https://victoriametrics.com/legal/esa/) with [`spec.license.acceptEULA: true`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-accepteula) for VictoriaMetrics [v1.156.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.156.0) (LTS [v1.148.9](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.148.9) and [v1.136.23](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.136.23)) or newer.
+   For older versions, specify a license key at [`spec.license.key`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-key) or [`spec.license.keyRef`](https://docs.victoriametrics.com/operator/api/#v1beta1-license-keyref) instead.
    See [License and ESA](https://docs.victoriametrics.com/operator/enterprise/#license-and-esa) for details.
  - change version of `vmcluster` to version with `-enterprise-cluster` suffix using [Version management](https://docs.victoriametrics.com/operator/resources/vmcluster/#version-management).
 
@@ -854,7 +853,7 @@ By default, the operator statically enumerates all `vmstorage` pod addresses in 
 With [automatic vmstorage discovery](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#automatic-vmstorage-discovery),
 `vminsert` and `vmselect` resolve storage node addresses dynamically via DNS SRV records, removing the need for a rolling restart when storage nodes scale up or down.
 
-This is an enterprise feature and requires a [valid license key](https://docs.victoriametrics.com/victoriametrics/enterprise/).
+This is an enterprise feature and requires [`spec.license`](https://docs.victoriametrics.com/operator/enterprise/#license-and-esa) to be set.
 
 The `discovery` field can be set at the cluster level (applies to both `vminsert` and `vmselect`) or overridden per component.
 

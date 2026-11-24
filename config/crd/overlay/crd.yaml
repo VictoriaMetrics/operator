@@ -8991,12 +8991,24 @@ spec:
                               items:
                                 type: string
                               type: array
+                            src_headers_match_all:
+                              description: |-
+                                SrcHeadersMatchAll requires the request to match all SrcHeaders entries instead of at least one of them.
+                                It's available since v1.157.0 version of vmauth.
+                                See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-header) for more details.
+                              type: boolean
                             src_query_args:
                               description: SrcQueryArgs is an optional list of query
                                 args, which must match request URL query args.
                               items:
                                 type: string
                               type: array
+                            src_query_args_match_all:
+                              description: |-
+                                SrcQueryArgsMatchAll requires the request to match all SrcQueryArgs entries instead of at least one of them.
+                                It's available since v1.157.0 version of vmauth.
+                                See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-query-arg) for more details.
+                              type: boolean
                             static:
                               description: |-
                                 Static - user defined url for traffic forward,
@@ -11585,6 +11597,12 @@ spec:
                                   items:
                                     type: string
                                   type: array
+                                src_headers_match_all:
+                                  description: |-
+                                    SrcHeadersMatchAll requires the request to match all SrcHeaders entries instead of at least one of them.
+                                    It's available since v1.157.0 version of vmauth.
+                                    See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-header) for more details.
+                                  type: boolean
                                 src_query_args:
                                   description: SrcQueryArgs is an optional list of
                                     query args, which must match request URL query
@@ -11592,6 +11610,12 @@ spec:
                                   items:
                                     type: string
                                   type: array
+                                src_query_args_match_all:
+                                  description: |-
+                                    SrcQueryArgsMatchAll requires the request to match all SrcQueryArgs entries instead of at least one of them.
+                                    It's available since v1.157.0 version of vmauth.
+                                    See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-query-arg) for more details.
+                                  type: boolean
                                 static:
                                   description: |-
                                     Static - user defined url for traffic forward,
@@ -11896,6 +11920,12 @@ spec:
                                   items:
                                     type: string
                                   type: array
+                                src_headers_match_all:
+                                  description: |-
+                                    SrcHeadersMatchAll requires the request to match all SrcHeaders entries instead of at least one of them.
+                                    It's available since v1.157.0 version of vmauth.
+                                    See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-header) for more details.
+                                  type: boolean
                                 src_hosts:
                                   description: SrcHosts is an optional list of regular
                                     expressions, which must match the request hostname.
@@ -11915,6 +11945,12 @@ spec:
                                   items:
                                     type: string
                                   type: array
+                                src_query_args_match_all:
+                                  description: |-
+                                    SrcQueryArgsMatchAll requires the request to match all SrcQueryArgs entries instead of at least one of them.
+                                    It's available since v1.157.0 version of vmauth.
+                                    See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-query-arg) for more details.
+                                  type: boolean
                                 url_prefix:
                                   description: |-
                                     UrlPrefix contains backend url prefixes for the proxied request url.
@@ -41498,12 +41534,24 @@ spec:
                       items:
                         type: string
                       type: array
+                    src_headers_match_all:
+                      description: |-
+                        SrcHeadersMatchAll requires the request to match all SrcHeaders entries instead of at least one of them.
+                        It's available since v1.157.0 version of vmauth.
+                        See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-header) for more details.
+                      type: boolean
                     src_query_args:
                       description: SrcQueryArgs is an optional list of query args,
                         which must match request URL query args.
                       items:
                         type: string
                       type: array
+                    src_query_args_match_all:
+                      description: |-
+                        SrcQueryArgsMatchAll requires the request to match all SrcQueryArgs entries instead of at least one of them.
+                        It's available since v1.157.0 version of vmauth.
+                        See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-query-arg) for more details.
+                      type: boolean
                     static:
                       description: |-
                         Static - user defined url for traffic forward,
@@ -44063,12 +44111,24 @@ spec:
                           items:
                             type: string
                           type: array
+                        src_headers_match_all:
+                          description: |-
+                            SrcHeadersMatchAll requires the request to match all SrcHeaders entries instead of at least one of them.
+                            It's available since v1.157.0 version of vmauth.
+                            See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-header) for more details.
+                          type: boolean
                         src_query_args:
                           description: SrcQueryArgs is an optional list of query args,
                             which must match request URL query args.
                           items:
                             type: string
                           type: array
+                        src_query_args_match_all:
+                          description: |-
+                            SrcQueryArgsMatchAll requires the request to match all SrcQueryArgs entries instead of at least one of them.
+                            It's available since v1.157.0 version of vmauth.
+                            See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-query-arg) for more details.
+                          type: boolean
                         static:
                           description: |-
                             Static - user defined url for traffic forward,
@@ -44371,6 +44431,12 @@ spec:
                           items:
                             type: string
                           type: array
+                        src_headers_match_all:
+                          description: |-
+                            SrcHeadersMatchAll requires the request to match all SrcHeaders entries instead of at least one of them.
+                            It's available since v1.157.0 version of vmauth.
+                            See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-header) for more details.
+                          type: boolean
                         src_hosts:
                           description: SrcHosts is an optional list of regular expressions,
                             which must match the request hostname.
@@ -44389,6 +44455,12 @@ spec:
                           items:
                             type: string
                           type: array
+                        src_query_args_match_all:
+                          description: |-
+                            SrcQueryArgsMatchAll requires the request to match all SrcQueryArgs entries instead of at least one of them.
+                            It's available since v1.157.0 version of vmauth.
+                            See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-query-arg) for more details.
+                          type: boolean
                         url_prefix:
                           description: |-
                             UrlPrefix contains backend url prefixes for the proxied request url.
@@ -51837,12 +51909,24 @@ spec:
                               items:
                                 type: string
                               type: array
+                            src_headers_match_all:
+                              description: |-
+                                SrcHeadersMatchAll requires the request to match all SrcHeaders entries instead of at least one of them.
+                                It's available since v1.157.0 version of vmauth.
+                                See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-header) for more details.
+                              type: boolean
                             src_query_args:
                               description: SrcQueryArgs is an optional list of query
                                 args, which must match request URL query args.
                               items:
                                 type: string
                               type: array
+                            src_query_args_match_all:
+                              description: |-
+                                SrcQueryArgsMatchAll requires the request to match all SrcQueryArgs entries instead of at least one of them.
+                                It's available since v1.157.0 version of vmauth.
+                                See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-query-arg) for more details.
+                              type: boolean
                             static:
                               description: |-
                                 Static - user defined url for traffic forward,
@@ -54431,6 +54515,12 @@ spec:
                                   items:
                                     type: string
                                   type: array
+                                src_headers_match_all:
+                                  description: |-
+                                    SrcHeadersMatchAll requires the request to match all SrcHeaders entries instead of at least one of them.
+                                    It's available since v1.157.0 version of vmauth.
+                                    See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-header) for more details.
+                                  type: boolean
                                 src_query_args:
                                   description: SrcQueryArgs is an optional list of
                                     query args, which must match request URL query
@@ -54438,6 +54528,12 @@ spec:
                                   items:
                                     type: string
                                   type: array
+                                src_query_args_match_all:
+                                  description: |-
+                                    SrcQueryArgsMatchAll requires the request to match all SrcQueryArgs entries instead of at least one of them.
+                                    It's available since v1.157.0 version of vmauth.
+                                    See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-query-arg) for more details.
+                                  type: boolean
                                 static:
                                   description: |-
                                     Static - user defined url for traffic forward,
@@ -54742,6 +54838,12 @@ spec:
                                   items:
                                     type: string
                                   type: array
+                                src_headers_match_all:
+                                  description: |-
+                                    SrcHeadersMatchAll requires the request to match all SrcHeaders entries instead of at least one of them.
+                                    It's available since v1.157.0 version of vmauth.
+                                    See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-header) for more details.
+                                  type: boolean
                                 src_hosts:
                                   description: SrcHosts is an optional list of regular
                                     expressions, which must match the request hostname.
@@ -54761,6 +54863,12 @@ spec:
                                   items:
                                     type: string
                                   type: array
+                                src_query_args_match_all:
+                                  description: |-
+                                    SrcQueryArgsMatchAll requires the request to match all SrcQueryArgs entries instead of at least one of them.
+                                    It's available since v1.157.0 version of vmauth.
+                                    See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-query-arg) for more details.
+                                  type: boolean
                                 url_prefix:
                                   description: |-
                                     UrlPrefix contains backend url prefixes for the proxied request url.
@@ -85038,12 +85146,24 @@ spec:
                       items:
                         type: string
                       type: array
+                    src_headers_match_all:
+                      description: |-
+                        SrcHeadersMatchAll requires the request to match all SrcHeaders entries instead of at least one of them.
+                        It's available since v1.157.0 version of vmauth.
+                        See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-header) for more details.
+                      type: boolean
                     src_query_args:
                       description: SrcQueryArgs is an optional list of query args,
                         which must match request URL query args.
                       items:
                         type: string
                       type: array
+                    src_query_args_match_all:
+                      description: |-
+                        SrcQueryArgsMatchAll requires the request to match all SrcQueryArgs entries instead of at least one of them.
+                        It's available since v1.157.0 version of vmauth.
+                        See [here](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-query-arg) for more details.
+                      type: boolean
                     static:
                       description: |-
                         Static - user defined url for traffic forward,

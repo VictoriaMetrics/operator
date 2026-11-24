@@ -601,8 +601,10 @@ password: pass
 							"/select/0/graphite",
 						},
 						URLMapCommon: vmv1beta1.URLMapCommon{
-							SrcQueryArgs:           []string{"foo=bar"},
-							SrcHeaders:             []string{"H1:V1"},
+							SrcQueryArgs:           []string{"AccountID=1", "ProjectID=2"},
+							SrcHeaders:             []string{"AccountID: 1", "ProjectID: 2"},
+							SrcQueryArgsMatchAll:   true,
+							SrcHeadersMatchAll:     true,
 							DiscoverBackendIPs:     ptr.To(true),
 							RequestHeaders:         []string{"X-Scope-OrgID: abc"},
 							ResponseHeaders:        []string{"RH1:V3"},
@@ -630,9 +632,13 @@ password: pass
   - /select/0/graphite
   discover_backend_ips: true
   src_headers:
-  - H1:V1
+  - 'AccountID: 1'
+  - 'ProjectID: 2'
   src_query_args:
-  - foo=bar
+  - AccountID=1
+  - ProjectID=2
+  src_query_args_match_all: true
+  src_headers_match_all: true
   headers:
   - 'X-Scope-OrgID: abc'
   response_headers:
@@ -2041,14 +2047,16 @@ unauthorized_user:
 							Paths: []string{"/"},
 							Hosts: []string{"host.com"},
 							URLMapCommon: vmv1beta1.URLMapCommon{
-								// SrcQueryArgs&SrcHeaders here will be skipped cause there is only one default route
-								SrcQueryArgs:        []string{"db=foo"},
-								SrcHeaders:          []string{"TenantID: 123:456"},
-								DiscoverBackendIPs:  ptr.To(true),
-								RequestHeaders:      []string{"X-Scope-OrgID: abc"},
-								ResponseHeaders:     []string{"X-Server-Hostname: a"},
-								RetryStatusCodes:    []int{500, 502},
-								LoadBalancingPolicy: ptr.To("first_available"),
+								// SrcQueryArgs&SrcHeaders and their match_all options here will be skipped cause there is only one default route
+								SrcQueryArgs:         []string{"AccountID=1", "ProjectID=2"},
+								SrcHeaders:           []string{"AccountID: 1", "ProjectID: 2"},
+								SrcQueryArgsMatchAll: true,
+								SrcHeadersMatchAll:   true,
+								DiscoverBackendIPs:   ptr.To(true),
+								RequestHeaders:       []string{"X-Scope-OrgID: abc"},
+								ResponseHeaders:      []string{"X-Server-Hostname: a"},
+								RetryStatusCodes:     []int{500, 502},
+								LoadBalancingPolicy:  ptr.To("first_available"),
 							},
 							TargetPathSuffix: "/prometheus?extra_label=key=value",
 						},
@@ -2796,13 +2804,15 @@ unauthorized_user:
 							SrcHosts:  []string{"app1.my-host.com"},
 							URLPrefix: []string{"http://vmselect1:8481/select/42/prometheus", "http://vmselect2:8481/select/42/prometheus"},
 							URLMapCommon: vmv1beta1.URLMapCommon{
-								SrcQueryArgs:        []string{"db=foo"},
-								SrcHeaders:          []string{"TenantID: 123:456"},
-								DiscoverBackendIPs:  ptr.To(true),
-								RequestHeaders:      []string{"X-Scope-OrgID: abc"},
-								ResponseHeaders:     []string{"X-Server-Hostname: a"},
-								RetryStatusCodes:    []int{500, 502},
-								LoadBalancingPolicy: ptr.To("first_available"),
+								SrcQueryArgs:         []string{"AccountID=1", "ProjectID=2"},
+								SrcHeaders:           []string{"AccountID: 1", "ProjectID: 2"},
+								SrcQueryArgsMatchAll: true,
+								SrcHeadersMatchAll:   true,
+								DiscoverBackendIPs:   ptr.To(true),
+								RequestHeaders:       []string{"X-Scope-OrgID: abc"},
+								ResponseHeaders:      []string{"X-Server-Hostname: a"},
+								RetryStatusCodes:     []int{500, 502},
+								LoadBalancingPolicy:  ptr.To("first_available"),
 							},
 						},
 						{
@@ -2911,9 +2921,13 @@ unauthorized_user:
     - http://vmselect1:8481/select/42/prometheus
     - http://vmselect2:8481/select/42/prometheus
     src_query_args:
-    - db=foo
+    - AccountID=1
+    - ProjectID=2
     src_headers:
-    - 'TenantID: 123:456'
+    - 'AccountID: 1'
+    - 'ProjectID: 2'
+    src_query_args_match_all: true
+    src_headers_match_all: true
     headers:
     - 'X-Scope-OrgID: abc'
     response_headers:

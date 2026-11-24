@@ -28,6 +28,7 @@ resources:
 - bases/operator.victoriametrics.com_vmdistributed.yaml
 - bases/operator.victoriametrics.com_vldistributed.yaml
 - bases/operator.victoriametrics.com_vmanomalyconfigs.yaml
+- bases/operator.victoriametrics.com_vmestimators.yaml
 patches:
 - path: patches/common-array-fields-with-claimtemplates.yaml
   target:
@@ -69,6 +70,10 @@ patches:
   target:
     kind: CustomResourceDefinition
     name: vldistributed.operator.victoriametrics.com
+- path: patches/operator.victoriametrics.com_vmestimators.yaml
+  target:
+    kind: CustomResourceDefinition
+    name: vmestimators.operator.victoriametrics.com
 # - path: patches/webhook_in_operator_vmagents.yaml
 # - path: patches/webhook_in_operator_vmsingles.yaml
 # - path: patches/webhook_in_operator_vmalertmanagers.yaml

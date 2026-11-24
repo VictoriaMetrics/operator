@@ -1,0 +1,83 @@
+package vmestimator
+
+import (
+	"context"
+	"fmt"
+
+	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
+)
+
+const configFileName = "streams.yaml"
+
+// streamsConfig defines vmestimator configuration file
+// See https://docs.victoriametrics.com/victoriametrics/vmestimator/#configuration
+type streamsConfig struct {
+	Streams []vmv1.VMEstimatorStream `yaml:"streams"`
+}
+
+func buildConfig(cr *vmv1.VMEstimator, ac *build.AssetsCache) ([]byte, error) {
+	// streams and streamsConfigMap are mutually exclusive.
+	if len(cr.Spec.Streams) > 0 {
+		if err := vmv1.ValidateEstimatorStreamConfigs(cr.Spec.Streams); err != nil {
+			return nil, fmt.Errorf("incorrect vmestimator stream configuration: %w", err)
+		}
+		return yaml.Marshal(streamsConfig{Streams: cr.Spec.Streams})
+	}
+	if cm := cr.Spec.StreamsConfigMap; cm != nil {
+		data, err := ac.LoadKeyFromConfigMap(cr.Namespace, cm)
+		if err != nil {
+			return nil, fmt.Errorf("cannot fetch streams configmap=%q: %w", cm.Name, err)
+		}
+		var c streamsConfig
+		if err := yaml.UnmarshalStrict([]byte(data), &c); err != nil {
+			return nil, fmt.Errorf("cannot parse streams from configmap=%q, key=%q: %w", cm.Name, cm.Key, err)
+		}
+		// missing streams list is likely a mistake, while explicit `streams: []` is allowed
+		if c.Streams == nil {
+			return nil, fmt.Errorf("streams list is missing at configmap=%q, key=%q", cm.Name, cm.Key)
+		}
+		if err := vmv1.ValidateEstimatorStreamConfigs(c.Streams); err != nil {
+			return nil, fmt.Errorf("incorrect estimator stream configuration at configmap=%q, key=%q: %w", cm.Name, cm.Key, err)
+		}
+		return yaml.Marshal(streamsConfig{Streams: c.Streams})
+	}
+
+	return yaml.Marshal(streamsConfig{Streams: nil})
+}
+
+func buildConfigMap(cr *vmv1.VMEstimator, data []byte) *corev1.ConfigMap {
+	b := build.NewChildBuilder(cr, vmv1beta1.ClusterComponentRoot)
+	return &corev1.ConfigMap{
+		ObjectMeta: build.ResourceMeta(build.SecretConfigResourceKind, b),
+		Data: map[string]string{
+			configFileName: string(data),
+		},
+	}
+}
+
+func createOrUpdateConfig(ctx context.Context, rclient client.Client, cr, prevCR *vmv1.VMEstimator) (bool, error) {
+	ac := build.NewAssetsCache(ctx, rclient, map[build.ResourceKind]*build.ResourceCfg{})
+	data, err := buildConfig(cr, ac)
+	if err != nil {
+		return false, err
+	}
+	var prevMeta *metav1.ObjectMeta
+	if prevCR != nil {
+		b := build.NewChildBuilder(prevCR, vmv1beta1.ClusterComponentRoot)
+		prevMeta = new(build.ResourceMeta(build.SecretConfigResourceKind, b))
+	}
+	owner := cr.AsOwner()
+	updateNeeded, err := reconcile.ConfigMap(ctx, rclient, buildConfigMap(cr, data), prevMeta, &owner)
+	if err != nil {
+		return false, fmt.Errorf("cannot reconcile configmap: %w", err)
+	}
+	return updateNeeded, nil
+}

@@ -1038,5 +1038,8 @@ var _ = Describe("operator upgrade", Label("upgrade"), func() {
 				{version: "v0.75.2", cr: with(vmdistributed)},
 			},
 		},
+		// TODO: add VMEstimator once it's available at a released operator version:
+		// create VMEstimator with and without select with the released operator version,
+		// upgrade the operator and check that vmestimator pods aren't restarted.
 	}))
 })

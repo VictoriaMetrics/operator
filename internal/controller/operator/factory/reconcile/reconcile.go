@@ -265,10 +265,16 @@ func addOwnerReferenceIfAbsent(obj client.Object, owner *metav1.OwnerReference) 
 		return false, nil
 	}
 	owners := obj.GetOwnerReferences()
-	for _, o := range owners {
+	for i, o := range owners {
 		if o.APIVersion == owner.APIVersion && o.Kind == owner.Kind {
 			if o.Name == owner.Name {
-				return false, nil
+				if o.UID == owner.UID {
+					return false, nil
+				}
+				// owner was recreated, stale UID would let GC delete the object
+				owners[i] = *owner
+				obj.SetOwnerReferences(owners)
+				return true, nil
 			} else {
 				msg := fmt.Sprintf("object %T=%s/%s has another owner reference of same kind", obj, obj.GetNamespace(), obj.GetName())
 				return false, fmt.Errorf("%s: %s/%s=%s", msg, o.APIVersion, o.Kind, o.Name)

@@ -208,6 +208,22 @@ func TestMergeMapsWithStrategy(t *testing.T) {
 	})
 }
 
+func TestAddOwnerReferenceIfAbsent(t *testing.T) {
+	owner := &metav1.OwnerReference{APIVersion: "v1", Kind: "VMAgent", Name: "a", UID: "new"}
+	f := func(refs []metav1.OwnerReference, wantChanged bool, wantUID string) {
+		t.Helper()
+		obj := &metav1.PartialObjectMetadata{ObjectMeta: metav1.ObjectMeta{OwnerReferences: refs}}
+		changed, err := addOwnerReferenceIfAbsent(obj, owner)
+		assert.NoError(t, err)
+		assert.Equal(t, wantChanged, changed)
+		assert.Equal(t, wantUID, string(obj.GetOwnerReferences()[0].UID))
+	}
+	f(nil, true, "new")
+	f([]metav1.OwnerReference{*owner}, false, "new")
+	// recreated owner, e.g. CR deleted with orphan propagation and created again
+	f([]metav1.OwnerReference{{APIVersion: "v1", Kind: "VMAgent", Name: "a", UID: "old"}}, true, "new")
+}
+
 func Test_IsDeclined(t *testing.T) {
 	declined := fmt.Errorf("cannot decrease PVC=a size from=20Gi to=10Gi: %w", ErrDeclined)
 	transient := errors.New("etcdserver: request timed out")

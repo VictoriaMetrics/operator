@@ -161,24 +161,34 @@ OLM bundles for published releases are produced by the release workflow.
 
 ## Custom resource definitions
 
-The operator checks at startup that the CRD of every enabled controller is installed in the cluster.
-If a CRD is missing, the operator exits with an error that names the missing CRD.
+The operator checks at startup that, for every enabled controller:
+
+- its CRD is installed in the cluster;
+- the operator has `list` and `watch` permissions on it. These are checked cluster-wide,
+  or in each namespace from `WATCH_NAMESPACE` if it is set.
+
+If any check fails, the operator exits with an error that names the controller and the missing CRD or permission.
 
 To fix it, either:
 
-- install the CRDs that ship with the same operator release. Upgrade CRDs together with the operator,
+- install the CRDs and RBAC rules that ship with the same operator release. Upgrade them together with the operator,
   since new releases may add new CRDs;
 - or disable the controllers you do not use with the `-controller.disableReconcileFor` flag.
   For example, `-controller.disableReconcileFor=VTAgent`.
   Child controllers still require the CRDs of their parent objects. For example, `VMServiceScrape` objects are
   selected by `VMAgent`, so the `VMAgent` CRD must stay installed.
 
-The operator also needs RBAC permissions for the CRD of every enabled controller: at least `get`, `list` and `watch`
-for its cache, plus write access to the objects and any `status` or `finalizers` subresources used by that controller.
+Besides `list` and `watch`, controllers need `get` and write access to their objects and to any `status`
+or `finalizers` subresources they use. These permissions are not checked at startup.
+If they are missing, reconciliation of the affected objects fails with a `Forbidden` error.
 The RBAC rules that ship with the operator release include the permissions required by each controller.
+See `config/rbac/role.yaml` at the tag of your operator release for the required rules,
+for example [v0.75.2](https://github.com/VictoriaMetrics/operator/blob/v0.75.2/config/rbac/role.yaml).
 
 Prometheus Operator CRDs, such as `ServiceMonitor` or `PrometheusRule`, are an exception.
 If they are missing, the operator disables the respective [converter controllers](https://docs.victoriametrics.com/operator/integrations/prometheus/) automatically.
+If they are installed and the converter controller is enabled, the operator requires `list` and `watch` permissions on them,
+like for its own CRDs.
 
 ## CPU architectures
 

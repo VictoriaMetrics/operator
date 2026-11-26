@@ -52,6 +52,11 @@ func initControllers(ctx context.Context, mgr ctrl.Manager, l logr.Logger, baseC
 			}
 		} else {
 			for _, r := range api.APIResources {
+				if strings.Contains(r.Name, "/") {
+					// skip subresources, e.g. servicemonitors/status. They have the same Kind as the main resource
+					// and would overwrite it, so the RBAC check would ask for list/watch on the subresource
+					continue
+				}
 				existGroupResourceByKind[r.Kind] = groupResource{group: groupVersion.Group, name: r.Name}
 				if _, ok := controllersByName[r.Kind]; ok && kinds.Has(r.Kind) {
 					kinds.Delete(r.Kind)

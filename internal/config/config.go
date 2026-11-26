@@ -46,7 +46,7 @@ var (
 		// renovate: datasource=github-releases depName=VictoriaMetrics/VictoriaLogs
 		"VM_LOGS_VERSION": "v1.54.0",
 		// renovate: datasource=docker depName=victoriametrics/vmanomaly
-		"VM_ANOMALY_VERSION": "v1.33.0",
+		"VM_ANOMALY_VERSION": "v1.33.1",
 		// renovate: datasource=github-releases depName=VictoriaMetrics/VictoriaTraces
 		"VM_TRACES_VERSION": "v0.13.0",
 		// renovate: datasource=github-releases depName=VictoriaMetrics/vmestimator

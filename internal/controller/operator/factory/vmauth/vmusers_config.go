@@ -22,7 +22,6 @@ import (
 
 	vmv1 "github.com/VictoriaMetrics/operator/api/operator/v1"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
@@ -138,13 +137,6 @@ func (pos *parsedObjects) buildConfig(ctx context.Context, rclient client.Client
 	}
 
 	// generate yaml config for vmauth.
-	if !accessLogHeadersSupported(cr) && wantsAccessLogHeaders(cr, pos.users.All()) {
-		reason := "vmauth image tag is older than v1.153.0"
-		if _, err := semver.NewVersion(stripPackagingSuffix(cr.Spec.Image.Tag)); err != nil {
-			reason = "vmauth image tag is not a version (digest-only or custom tag), so support for the field cannot be inferred"
-		}
-		logger.WithContext(ctx).Info("skipping access_log.headers: "+reason+"; set VM_VMAUTH_ACCESS_LOG_HEADERS_SUPPORT=true if the image supports it", "vmauth", cr.Name, "tag", cr.Spec.Image.Tag)
-	}
 	cfg, err := pos.generateConfig(cr, objURLs, ac)
 	if err != nil {
 		return nil, err
@@ -637,11 +629,8 @@ func addUserConfigOptionToYaml(dst yaml.MapSlice, opt vmv1beta1.VMUserConfigOpti
 				Value: yaml.MapSlice{{Key: "skip_status_codes", Value: opt.AccessLog.Filters.SkipStatusCodes}},
 			})
 		}
-		if len(opt.AccessLog.Headers) > 0 {
-			// unsupported tags are reported once per VMAuth in buildConfig
-			if accessLogHeadersSupported(cr) {
-				accessLog = append(accessLog, yaml.MapItem{Key: "headers", Value: opt.AccessLog.Headers})
-			}
+		if len(opt.AccessLog.Headers) > 0 && accessLogHeadersSupported(cr) {
+			accessLog = append(accessLog, yaml.MapItem{Key: "headers", Value: opt.AccessLog.Headers})
 		}
 		dst = append(dst, yaml.MapItem{Key: "access_log", Value: accessLog})
 	}
@@ -650,56 +639,16 @@ func addUserConfigOptionToYaml(dst yaml.MapSlice, opt vmv1beta1.VMUserConfigOpti
 
 var accessLogHeadersMinVersion = semver.MustParse("v1.153.0")
 
-// wantsAccessLogHeaders reports whether the VMAuth or any of its users asks for access_log.headers.
-func wantsAccessLogHeaders(cr *vmv1beta1.VMAuth, users []*vmv1beta1.VMUser) bool {
-	has := func(o *vmv1beta1.VMUserConfigOptions) bool {
-		return o.AccessLog != nil && len(o.AccessLog.Headers) > 0
-	}
-	// cr.Spec.VMUserConfigOptions is only rendered on the deprecated unauthorizedAccessConfig path
-	if len(cr.Spec.UnauthorizedAccessConfig) > 0 && has(&cr.Spec.VMUserConfigOptions) { //nolint:staticcheck
-		return true
-	}
-	if cr.Spec.UnauthorizedUserAccessSpec != nil && has(&cr.Spec.UnauthorizedUserAccessSpec.VMUserConfigOptions) {
-		return true
-	}
-	for _, u := range users {
-		if has(&u.Spec.VMUserConfigOptions) {
-			return true
-		}
-	}
-	return false
-}
-
 // accessLogHeadersSupported reports whether vmauth at cr.Spec.Image.Tag accepts access_log.headers.
-// Tags that are not a version (digest-only `sha256:...`, custom names) are treated as unsupported
-// unless VM_VMAUTH_ACCESS_LOG_HEADERS_SUPPORT is set.
+// Tags that cannot be parsed as a version, such as `latest`, are treated as newer than any release.
 func accessLogHeadersSupported(cr *vmv1beta1.VMAuth) bool {
-	if config.MustGetBaseConfig().VMAuthAccessLogHeadersSupport {
+	tag, _, _ := strings.Cut(cr.Spec.Image.Tag, "@")
+	v, err := semver.NewVersion(tag)
+	if err != nil {
 		return true
 	}
-	v, err := semver.NewVersion(stripPackagingSuffix(cr.Spec.Image.Tag))
-	if err != nil {
-		return false
-	}
-	return v.GreaterThanEqual(accessLogHeadersMinVersion)
-}
-
-// packagingSuffixes are the image flavours VictoriaMetrics publishes for one release.
-// They are not pre-releases, so they are removed before the semver comparison;
-// anything else after '-' (such as -rc0) keeps its pre-release ordering.
-var packagingSuffixes = []string{"-enterprise-cluster-scratch", "-enterprise-cluster", "-enterprise-scratch", "-cluster-scratch", "-enterprise", "-cluster", "-scratch"}
-
-func stripPackagingSuffix(tag string) string {
-	// digest-pinned tags: v1.154.0@sha256:...
-	if idx := strings.Index(tag, "@"); idx != -1 {
-		tag = tag[:idx]
-	}
-	for _, s := range packagingSuffixes {
-		if strings.HasSuffix(tag, s) {
-			return strings.TrimSuffix(tag, s)
-		}
-	}
-	return tag
+	release := semver.New(v.Major(), v.Minor(), v.Patch(), "", "")
+	return release.GreaterThanEqual(accessLogHeadersMinVersion)
 }
 
 // AddToYaml conditionally adds ip filters to dst yaml

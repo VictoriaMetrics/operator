@@ -23,7 +23,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -330,7 +329,7 @@ func RunManager(ctx context.Context) error {
 		return RunDryRunMode(ctx, mgr, baseConfig)
 	}
 
-	if err := initControllers(mgr, ctrl.Log, baseClient, baseConfig, disabledControllerNames); err != nil {
+	if err := initControllers(ctx, mgr, ctrl.Log, baseClient, baseConfig, disabledControllerNames); err != nil {
 		return err
 	}
 
@@ -575,69 +574,6 @@ var controllersByName = map[string]crdController{
 	"AlertmanagerConfig":   &vmcontroller.PromAlertmanagerConfigReconciler{},
 	"Probe":                &vmcontroller.PromProbeReconciler{},
 	"PrometheusRule":       &vmcontroller.PromRuleReconciler{},
-}
-
-var promCRDControllers = map[string]sets.Set[string]{
-	promv1.SchemeGroupVersion.String(): sets.New[string](
-		"PodMonitor",
-		"ServiceMonitor",
-		"Probe",
-		"PrometheusRule",
-	),
-	promv1alpha1.SchemeGroupVersion.String(): sets.New[string](
-		"ScrapeConfig",
-		"AlertmanagerConfig",
-	),
-}
-
-func initControllers(mgr ctrl.Manager, l logr.Logger, baseClient *kubernetes.Clientset, bs *config.BaseOperatorConf, disabledControllerNames sets.Set[string]) error {
-	existKinds := make(map[string]struct{})
-	for groupVersion, kinds := range promCRDControllers {
-		api, err := baseClient.ServerResourcesForGroupVersion(groupVersion)
-		if err != nil {
-			if !k8serrors.IsNotFound(err) {
-				return fmt.Errorf("cannot get server resource for API=%s: %w", groupVersion, err)
-			}
-		} else {
-			for _, r := range api.APIResources {
-				existKinds[r.Kind] = struct{}{}
-				if _, ok := controllersByName[r.Kind]; ok && kinds.Has(r.Kind) {
-					kinds.Delete(r.Kind)
-				}
-			}
-		}
-		disabledControllerNames.Insert(kinds.UnsortedList()...)
-	}
-	for _, gv := range []string{vmv1.SchemeGroupVersion.String(), vmv1beta1.SchemeGroupVersion.String(), vmv1alpha1.SchemeGroupVersion.String()} {
-		api, err := baseClient.ServerResourcesForGroupVersion(gv)
-		if err != nil {
-			if !k8serrors.IsNotFound(err) {
-				return fmt.Errorf("cannot get server resource for API=%s: %w", gv, err)
-			}
-			continue
-		}
-		for _, ar := range api.APIResources {
-			existKinds[ar.Kind] = struct{}{}
-		}
-	}
-	for name, ct := range controllersByName {
-		if ct.IsDisabled(bs, disabledControllerNames) {
-			disabledControllerNames.Insert(name)
-		}
-		if disabledControllerNames.Has(name) {
-			l.Info("controller disabled either by provided flag or respective CRD is not found", "name", name, "controller.disableReconcileFor", *disableControllerForCRD)
-			continue
-		}
-		if _, ok := existKinds[name]; !ok {
-			return fmt.Errorf("controller name: %s is missing at Kubernetes CRDs, make sure that it's installed or disable controller with -controller.disableReconcileFor= flag", name)
-		}
-		ct.Init(name, mgr.GetClient(), l, mgr.GetScheme(), bs)
-		if err := ct.SetupWithManager(mgr); err != nil {
-			return fmt.Errorf("cannot setup controller=%q: %w", name, err)
-		}
-	}
-	build.SetDisabledControllers(disabledControllerNames)
-	return nil
 }
 
 func mustGetLoggerEncodingOpts() []zap.EncoderConfigOption {

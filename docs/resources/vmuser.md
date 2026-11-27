@@ -178,5 +178,26 @@ spec:
       paths: ["/api/v1/groups","/api/v1/alerts"]
 ```
 
+Exclude tenant 0 with extra filters
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: example
+spec:
+  username: simple-user
+  password: simple-password
+  targetRefs:
+    - crd:
+        kind: VMCluster/vmselect
+        name: example
+        namespace: default
+      target_path_suffix: "/select/multitenant/prometheus"
+      paths: ["/api/v1/.*"]
+      query_args:
+        - name: "extra_filters[]"
+          values: ['{vm_account_id!="0"}']
+```
+
 More examples see on [Authorization and exposing components](https://docs.victoriametrics.com/operator/auth/) page
 and in [Quickstart guide](https://docs.victoriametrics.com/operator/quick-start/#vmuser).

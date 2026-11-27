@@ -412,6 +412,59 @@ In namespaced mode, the operator has the following limitations:
 
 At each watched namespace operator must have a set of required permissions, an example for a single namespace can be found at [this file](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/operator_rbac_for_single_namespace.yaml).
 
+## Dry-run mode
+
+The `-dry-run` flag, or the `DRY_RUN=true` environment variable, checks what the operator would change in the cluster without changing anything.
+For example, use it to check an operator upgrade or changes to custom resources before applying them.
+
+In dry-run mode the operator:
+
+- performs the same [startup checks](https://docs.victoriametrics.com/operator/setup/#custom-resource-definitions) as in normal mode,
+  so it exits with an error if the CRD of an enabled controller is missing or the operator has no `list` or `watch` permission on it;
+- reconciles every existing object of the enabled controllers once, in the namespaces from `WATCH_NAMESPACE`, or in all namespaces if it is not set;
+- sends every create, update, patch and delete request with [server-side dry-run](https://kubernetes.io/docs/reference/using-api/api-concepts/#dry-run).
+  The API server checks each request against RBAC, resource quotas, object validation and admission webhooks, but does not persist it.
+  Each request is logged with the `dry-run:` prefix, for example `dry-run: Update`. Updates of most objects are also logged with the changed fields, for example `spec_diff`;
+- exits after reconciling all objects. The exit code is `0` if all objects were reconciled,
+  and `1` if any reconcile or object list failed, or the run was interrupted.
+  Failures are logged with the `reconcile failed` and `failed to list objects` messages.
+
+Dry-run requests are authorized like normal requests, so the operator needs the same RBAC permissions as in normal mode.
+
+Run it as a Kubernetes `Job` with the same image, ServiceAccount, environment variables and flags as the operator `Deployment`,
+so it checks the same configuration. A `Deployment` restarts the operator after each run.
+The webhook and leader election are not needed in dry-run mode. For example:
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vm-operator-dry-run
+  namespace: vm
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      # the ServiceAccount of the operator Deployment
+      serviceAccountName: <operator-service-account>
+      restartPolicy: Never
+      containers:
+        - name: manager
+          image: victoriametrics/operator:<version>
+          # copy flags and environment variables, such as WATCH_NAMESPACE, from the operator Deployment
+          args:
+            - -dry-run
+```
+
+Dry-run mode has the following limitations:
+
+- it does not wait for workloads and child objects to become ready, and does not perform rolling updates, since the changes are not persisted;
+- objects created during the dry run do not exist for the next reconcile steps and for other objects.
+  For example, a `VMServiceScrape` created for a new `VMSingle` is not selected by `VMAgent` during the same dry run;
+- the reconcile of an object stops at the first rejected request, so later requests for this object are not checked;
+- pods are not created, so checks that apply to pods, such as [Pod Security admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/) in `enforce` mode,
+  `LimitRange` and quotas for CPU and memory, are not performed.
+
 ## IPv6 mode
 
 By default, VM services are accepting only IPv4 TCP and UDP traffic..

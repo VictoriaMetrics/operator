@@ -25,6 +25,7 @@ func Test_genUserCfg(t *testing.T) {
 		user              *vmv1beta1.VMUser
 		objURLs           map[string]string
 		predefinedObjects []runtime.Object
+		imageTag          string
 		want              string
 	}
 	f := func(o opts) {
@@ -35,6 +36,7 @@ func Test_genUserCfg(t *testing.T) {
 				Namespace: "default",
 			},
 		}
+		cr.Spec.Image.Tag = o.imageTag
 		ctx := context.TODO()
 		fclient := k8stools.GetTestClientWithObjects(o.predefinedObjects)
 		ac := getAssetsCache(ctx, fclient, cr)
@@ -821,6 +823,215 @@ access_log:
     skip_status_codes:
     - 200
     - 204
+username: basic
+password: pass
+`,
+	})
+
+	// access_log with headers
+	f(opts{
+		imageTag: "v1.153.0",
+		user: &vmv1beta1.VMUser{
+			Spec: vmv1beta1.VMUserSpec{
+				Username: ptr.To("basic"),
+				Password: ptr.To("pass"),
+				VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
+					AccessLog: &vmv1beta1.VMUserAccessLog{
+						Filters: &vmv1beta1.VMUserAccessLogFilters{
+							SkipStatusCodes: []int{200},
+						},
+						Headers: []string{"X-Forwarded-Email", "AccountID"},
+					},
+				},
+				TargetRefs: []vmv1beta1.TargetRef{
+					{
+						Static: &vmv1beta1.StaticRef{URL: "http://vmselect"},
+						Paths:  []string{"/.*"},
+					},
+				},
+			},
+		},
+		want: `url_prefix:
+- http://vmselect
+access_log:
+  filters:
+    skip_status_codes:
+    - 200
+  headers:
+  - X-Forwarded-Email
+  - AccountID
+username: basic
+password: pass
+`,
+	})
+
+	// access_log headers with enterprise tag suffix
+	f(opts{
+		imageTag: "v1.154.1-enterprise",
+		user: &vmv1beta1.VMUser{
+			Spec: vmv1beta1.VMUserSpec{
+				Username: ptr.To("basic"),
+				Password: ptr.To("pass"),
+				VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
+					AccessLog: &vmv1beta1.VMUserAccessLog{Headers: []string{"X-Forwarded-Email"}},
+				},
+				TargetRefs: []vmv1beta1.TargetRef{
+					{
+						Static: &vmv1beta1.StaticRef{URL: "http://vmselect"},
+						Paths:  []string{"/.*"},
+					},
+				},
+			},
+		},
+		want: `url_prefix:
+- http://vmselect
+access_log:
+  headers:
+  - X-Forwarded-Email
+username: basic
+password: pass
+`,
+	})
+
+	// access_log headers kept for a digest-pinned tag
+	f(opts{
+		imageTag: "v1.154.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+		user: &vmv1beta1.VMUser{
+			Spec: vmv1beta1.VMUserSpec{
+				Username: ptr.To("basic"),
+				Password: ptr.To("pass"),
+				VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
+					AccessLog: &vmv1beta1.VMUserAccessLog{Headers: []string{"X-Forwarded-Email"}},
+				},
+				TargetRefs: []vmv1beta1.TargetRef{
+					{
+						Static: &vmv1beta1.StaticRef{URL: "http://vmselect"},
+						Paths:  []string{"/.*"},
+					},
+				},
+			},
+		},
+		want: `url_prefix:
+- http://vmselect
+access_log:
+  headers:
+  - X-Forwarded-Email
+username: basic
+password: pass
+`,
+	})
+
+	// access_log headers kept for the FIPS build of the first supporting version
+	f(opts{
+		imageTag: "v1.153.0-enterprise-fips",
+		user: &vmv1beta1.VMUser{
+			Spec: vmv1beta1.VMUserSpec{
+				Username: ptr.To("basic"),
+				Password: ptr.To("pass"),
+				VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
+					AccessLog: &vmv1beta1.VMUserAccessLog{Headers: []string{"X-Forwarded-Email"}},
+				},
+				TargetRefs: []vmv1beta1.TargetRef{
+					{
+						Static: &vmv1beta1.StaticRef{URL: "http://vmselect"},
+						Paths:  []string{"/.*"},
+					},
+				},
+			},
+		},
+		want: `url_prefix:
+- http://vmselect
+access_log:
+  headers:
+  - X-Forwarded-Email
+username: basic
+password: pass
+`,
+	})
+
+	// access_log headers kept for a release candidate of the first supporting version
+	f(opts{
+		imageTag: "v1.153.0-rc0",
+		user: &vmv1beta1.VMUser{
+			Spec: vmv1beta1.VMUserSpec{
+				Username: ptr.To("basic"),
+				Password: ptr.To("pass"),
+				VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
+					AccessLog: &vmv1beta1.VMUserAccessLog{Headers: []string{"X-Forwarded-Email"}},
+				},
+				TargetRefs: []vmv1beta1.TargetRef{
+					{
+						Static: &vmv1beta1.StaticRef{URL: "http://vmselect"},
+						Paths:  []string{"/.*"},
+					},
+				},
+			},
+		},
+		want: `url_prefix:
+- http://vmselect
+access_log:
+  headers:
+  - X-Forwarded-Email
+username: basic
+password: pass
+`,
+	})
+
+	// access_log headers kept for a tag that is not a version
+	f(opts{
+		imageTag: "latest",
+		user: &vmv1beta1.VMUser{
+			Spec: vmv1beta1.VMUserSpec{
+				Username: ptr.To("basic"),
+				Password: ptr.To("pass"),
+				VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
+					AccessLog: &vmv1beta1.VMUserAccessLog{Headers: []string{"X-Forwarded-Email"}},
+				},
+				TargetRefs: []vmv1beta1.TargetRef{
+					{
+						Static: &vmv1beta1.StaticRef{URL: "http://vmselect"},
+						Paths:  []string{"/.*"},
+					},
+				},
+			},
+		},
+		want: `url_prefix:
+- http://vmselect
+access_log:
+  headers:
+  - X-Forwarded-Email
+username: basic
+password: pass
+`,
+	})
+
+	// access_log headers dropped for vmauth older than v1.153.0
+	f(opts{
+		imageTag: "v1.152.0",
+		user: &vmv1beta1.VMUser{
+			Spec: vmv1beta1.VMUserSpec{
+				Username: ptr.To("basic"),
+				Password: ptr.To("pass"),
+				VMUserConfigOptions: vmv1beta1.VMUserConfigOptions{
+					AccessLog: &vmv1beta1.VMUserAccessLog{
+						Filters: &vmv1beta1.VMUserAccessLogFilters{SkipStatusCodes: []int{200}},
+						Headers: []string{"X-Forwarded-Email"},
+					},
+				},
+				TargetRefs: []vmv1beta1.TargetRef{
+					{
+						Static: &vmv1beta1.StaticRef{URL: "http://vmselect"},
+						Paths:  []string{"/.*"},
+					},
+				},
+			},
+		},
+		want: `url_prefix:
+- http://vmselect
+access_log:
+  filters:
+    skip_status_codes:
+    - 200
 username: basic
 password: pass
 `,

@@ -11,6 +11,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -628,9 +629,26 @@ func addUserConfigOptionToYaml(dst yaml.MapSlice, opt vmv1beta1.VMUserConfigOpti
 				Value: yaml.MapSlice{{Key: "skip_status_codes", Value: opt.AccessLog.Filters.SkipStatusCodes}},
 			})
 		}
+		if len(opt.AccessLog.Headers) > 0 && accessLogHeadersSupported(cr) {
+			accessLog = append(accessLog, yaml.MapItem{Key: "headers", Value: opt.AccessLog.Headers})
+		}
 		dst = append(dst, yaml.MapItem{Key: "access_log", Value: accessLog})
 	}
 	return dst, nil
+}
+
+var accessLogHeadersMinVersion = semver.MustParse("v1.153.0")
+
+// accessLogHeadersSupported reports whether vmauth at cr.Spec.Image.Tag accepts access_log.headers.
+// Tags that cannot be parsed as a version, such as `latest`, are treated as newer than any release.
+func accessLogHeadersSupported(cr *vmv1beta1.VMAuth) bool {
+	tag, _, _ := strings.Cut(cr.Spec.Image.Tag, "@")
+	v, err := semver.NewVersion(tag)
+	if err != nil {
+		return true
+	}
+	release := semver.New(v.Major(), v.Minor(), v.Patch(), "", "")
+	return release.GreaterThanEqual(accessLogHeadersMinVersion)
 }
 
 // AddToYaml conditionally adds ip filters to dst yaml

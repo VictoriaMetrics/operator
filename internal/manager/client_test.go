@@ -132,6 +132,10 @@ func TestDryRunClientRecreate(t *testing.T) {
 
 	// recreate: create after a dry-run delete of the same object must succeed
 	require.NoError(t, dryClient.Delete(ctx, existing("svc", "default")))
+	// the deleted object is not found, while it still exists at the API server
+	assert.True(t, k8serrors.IsNotFound(dryClient.Get(ctx, client.ObjectKey{Namespace: "default", Name: "svc"}, &corev1.Service{})))
+	require.NoError(t, fakeClient.Get(ctx, client.ObjectKey{Namespace: "default", Name: "svc"}, &corev1.Service{}))
+	assert.NoError(t, dryClient.Get(ctx, client.ObjectKey{Namespace: "other", Name: "svc"}, &corev1.Service{}))
 	assert.NoError(t, dryClient.Create(ctx, existing("svc", "default")))
 
 	// the same name in another namespace was not deleted

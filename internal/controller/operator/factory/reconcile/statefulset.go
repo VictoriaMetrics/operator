@@ -42,6 +42,9 @@ type StatefulSetOpts struct {
 }
 
 func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newObj *appsv1.StatefulSet, ignoreNotReadyPodOrdinals sets.Set[int32]) error {
+	if dryRun {
+		return nil
+	}
 	err := wait.PollUntilContextTimeout(ctx, podWaitReadyInterval, appWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
 		var existingObj appsv1.StatefulSet
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: newObj.Namespace, Name: newObj.Name}, &existingObj); err != nil {
@@ -298,6 +301,9 @@ func patchSTSCurrentRevision(ctx context.Context, rclient client.Client, nsn typ
 // and compare pods revision label with sts revision
 // if it doesn't match - updated is needed
 func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, obj *appsv1.StatefulSet, o rollingUpdateOpts) error {
+	if dryRun {
+		return nil
+	}
 	time.Sleep(podWaitReadyInterval)
 	nsn := types.NamespacedName{
 		Name:      obj.Name,

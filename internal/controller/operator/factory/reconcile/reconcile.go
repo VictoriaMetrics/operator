@@ -36,7 +36,20 @@ var (
 	appWaitReadyTimeout = 5 * time.Second
 	vmWaitReadyInterval = 5 * time.Second
 	vmWaitLogInterval   = 60 * time.Second
+
+	// dryRun skips waits for changes, which are not persisted in dry-run mode, so they never happen
+	dryRun bool
 )
+
+// SetDryRun enables dry-run mode
+func SetDryRun(v bool) {
+	dryRun = v
+}
+
+// IsDryRun returns true if dry-run mode is enabled
+func IsDryRun() bool {
+	return dryRun
+}
 
 // Init sets package defaults
 func Init(cfg *config.BaseOperatorConf, statusUpdate time.Duration) {
@@ -224,6 +237,9 @@ func waitForStatus[T client.Object, ST StatusWithMetadata[STC], STC any](
 	status vmv1beta1.UpdateStatus,
 	minGeneration int64,
 ) error {
+	if dryRun {
+		return nil
+	}
 	lastStatus := obj.GetStatusMetadata()
 	nsn := types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}
 	limiter := limiter.NewRateLimiter(1, vmWaitLogInterval)

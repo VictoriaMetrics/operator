@@ -375,6 +375,9 @@ var vmAgentQueueMetricQueries = []podutil.MetricQuery{
 }
 
 func (zs *zones) waitForEmptyPQ(ctx context.Context, rclient client.Client, interval time.Duration, clusterIdx int) {
+	if reconcile.IsDryRun() {
+		return
+	}
 	backendURL := zs.backends[clusterIdx].obj.GetRemoteWriteURL()
 
 	backendName := zs.backends[clusterIdx].obj.GetName()

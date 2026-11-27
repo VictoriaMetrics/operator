@@ -127,7 +127,7 @@ var (
 	loggerJSONFields = managerFlags.String("loggerJSONFields", "", "Allows renaming fields in JSON formatted logs"+
 		`Example: "ts:timestamp,msg:message" renames "ts" to "timestamp" and "msg" to "message".`+
 		"Supported fields: ts, level, caller, msg")
-	dryRun          = managerFlags.Bool("dry-run", os.Getenv("DRY_RUN") == "true", "dry run mode for the operator. If enabled, each k8s client mutating call is logged and sent with server-side dry-run, so it is validated by the API server but not persisted.")
+	dryRun          = managerFlags.Bool("dry-run", os.Getenv("DRY_RUN") == "true", "dry run mode for the operator. If enabled, the operator reconciles every existing object once, sends each mutating request with server-side dry-run, so it is validated by the API server but not persisted, and exits. It exits with code 1 if any reconcile fails. See https://docs.victoriametrics.com/operator/configuration/#dry-run-mode")
 	statusUpdateTTL = managerFlags.Duration("controller.statusLastUpdateTimeTTL", time.Hour, "Configures TTL for LastUpdateTime status.conditions fields. "+
 		"It's used to detect stale parent objects on child objects. Like VMAlert->VMRule .status.Conditions.Type")
 )
@@ -328,11 +328,17 @@ func RunManager(ctx context.Context) error {
 		return fmt.Errorf("cannot create k8s-go-client instance: %w", err)
 	}
 
-	if *dryRun {
-		return RunDryRunMode(ctx, mgr, baseConfig)
+	controllers, err := resolveControllers(ctx, ctrl.Log, baseClient, baseConfig, disabledControllerNames)
+	if err != nil {
+		return err
 	}
 
-	if err := initControllers(ctx, mgr, ctrl.Log, baseClient, baseConfig, disabledControllerNames); err != nil {
+	if *dryRun {
+		reconcile.SetDryRun(true)
+		return RunDryRunMode(ctx, mgr, baseConfig, controllers)
+	}
+
+	if err := initControllers(mgr, ctrl.Log, baseConfig, controllers); err != nil {
 		return err
 	}
 

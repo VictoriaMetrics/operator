@@ -36,7 +36,8 @@ var promCRDControllers = map[schema.GroupVersion]sets.Set[string]{
 	),
 }
 
-func initControllers(ctx context.Context, mgr ctrl.Manager, l logr.Logger, baseClient *kubernetes.Clientset, bs *config.BaseOperatorConf, disabledControllerNames sets.Set[string]) error {
+// resolveControllers returns an error if an enabled controller CRD is missing or the operator has no list and watch access to it.
+func resolveControllers(ctx context.Context, l logr.Logger, baseClient *kubernetes.Clientset, bs *config.BaseOperatorConf, disabledControllerNames sets.Set[string]) (map[string]crdController, error) {
 	type groupResource struct {
 		// group holds Kubernetes resource group name without version.
 		group string
@@ -48,7 +49,7 @@ func initControllers(ctx context.Context, mgr ctrl.Manager, l logr.Logger, baseC
 		api, err := baseClient.ServerResourcesForGroupVersion(groupVersion.String())
 		if err != nil {
 			if !k8serrors.IsNotFound(err) {
-				return fmt.Errorf("cannot get server resource for API=%s: %w", groupVersion, err)
+				return nil, fmt.Errorf("cannot get server resource for API=%s: %w", groupVersion, err)
 			}
 		} else {
 			for _, r := range api.APIResources {
@@ -70,7 +71,7 @@ func initControllers(ctx context.Context, mgr ctrl.Manager, l logr.Logger, baseC
 		api, err := baseClient.ServerResourcesForGroupVersion(gv.String())
 		if err != nil {
 			if !k8serrors.IsNotFound(err) {
-				return fmt.Errorf("cannot get server resource for API=%s: %w", gv, err)
+				return nil, fmt.Errorf("cannot get server resource for API=%s: %w", gv, err)
 			}
 			continue
 		}
@@ -93,15 +94,18 @@ func initControllers(ctx context.Context, mgr ctrl.Manager, l logr.Logger, baseC
 		}
 		gr, ok := existGroupResourceByKind[name]
 		if !ok {
-			return fmt.Errorf("controller: %s is missing at Kubernetes CRDs, make sure that it's installed or disable controller with -controller.disableReconcileFor= flag", name)
+			return nil, fmt.Errorf("controller: %s is missing at Kubernetes CRDs, make sure that it's installed or disable controller with -controller.disableReconcileFor= flag", name)
 		}
 		if err := checkWatchListRBACAccess(ctx, baseClient, bs.WatchNamespaces, gr.group, gr.name); err != nil {
-			return fmt.Errorf("operator doesn't have access RBAC access to controller: %s, make sure that operator has correct permissions or disable controller with -controller.disableReconcileFor= flag: %w", name, err)
+			return nil, fmt.Errorf("operator doesn't have access RBAC access to controller: %s, make sure that operator has correct permissions or disable controller with -controller.disableReconcileFor= flag: %w", name, err)
 		}
 		controllersToInit[name] = ct
 	}
 	build.SetDisabledControllers(disabledControllerNames)
+	return controllersToInit, nil
+}
 
+func initControllers(mgr ctrl.Manager, l logr.Logger, bs *config.BaseOperatorConf, controllersToInit map[string]crdController) error {
 	for name, ct := range controllersToInit {
 		ct.Init(name, mgr.GetClient(), l, mgr.GetScheme(), bs)
 		if err := ct.SetupWithManager(mgr); err != nil {

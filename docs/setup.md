@@ -190,6 +190,8 @@ If they are missing, the operator disables the respective [converter controllers
 If they are installed and the converter controller is enabled, the operator requires `list` and `watch` permissions on them,
 like for its own CRDs.
 
+To check write permissions and changes to existing objects before an upgrade, run the operator in [dry-run mode](https://docs.victoriametrics.com/operator/configuration/#dry-run-mode).
+
 ## CPU architectures
 
 Both operator and VictoriaMetrics have full support for the following architectures:

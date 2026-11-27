@@ -11,6 +11,7 @@ import (
 	vmv1alpha1 "github.com/VictoriaMetrics/operator/api/operator/v1alpha1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 )
 
 const (
@@ -54,7 +55,7 @@ func CreateOrUpdate(ctx context.Context, cr *vmv1alpha1.VMDistributed, rclient c
 		}
 
 		// Sleep for zoneUpdatePause time between VMClusters updates (unless its the last one)
-		if i != lastZoneIdx && zs.hasChanges[i] {
+		if i != lastZoneIdx && zs.hasChanges[i] && !reconcile.IsDryRun() {
 			item := fmt.Sprintf("%d/%d", i+1, len(cr.Spec.Zones))
 			logger.WithContext(ctx).Info("pausing between zone updates", "name", nsn.String(), "zone", item, "updatePause", cr.Spec.ZoneCommon.UpdatePause.Duration)
 			select {

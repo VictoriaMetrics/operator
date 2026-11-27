@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -105,4 +106,38 @@ func TestDryRunClient(t *testing.T) {
 	for verb, dry := range calls {
 		assert.True(t, dry, "%s must be sent with server-side dry-run", verb)
 	}
+}
+
+func TestDryRunClientRecreate(t *testing.T) {
+	scheme := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(scheme))
+
+	existing := func(name, ns string) *corev1.Service {
+		return &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns}}
+	}
+	// the fake client skips dry-run calls entirely, so emulate the API server rejecting a dry-run create of an existing object.
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme).
+		WithObjects(existing("svc", "default"), existing("svc", "other"), existing("untouched", "default"),
+			&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "svc", Namespace: "default"}}).
+		WithInterceptorFuncs(interceptor.Funcs{
+			Create: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+				if err := c.Get(ctx, client.ObjectKeyFromObject(obj), obj.DeepCopyObject().(client.Object)); err == nil {
+					return k8serrors.NewAlreadyExists(corev1.Resource(kindOf(obj)), obj.GetName())
+				}
+				return c.Create(ctx, obj, opts...)
+			},
+		}).Build()
+	dryClient := NewDryRunClient(fakeClient, logr.Discard())
+	ctx := context.TODO()
+
+	// recreate: create after a dry-run delete of the same object must succeed
+	require.NoError(t, dryClient.Delete(ctx, existing("svc", "default")))
+	assert.NoError(t, dryClient.Create(ctx, existing("svc", "default")))
+
+	// the same name in another namespace was not deleted
+	assert.True(t, k8serrors.IsAlreadyExists(dryClient.Create(ctx, existing("svc", "other"))))
+	// another kind with the same name was not deleted
+	assert.True(t, k8serrors.IsAlreadyExists(dryClient.Create(ctx, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "svc", Namespace: "default"}})))
+	// an object that was never deleted
+	assert.True(t, k8serrors.IsAlreadyExists(dryClient.Create(ctx, existing("untouched", "default"))))
 }

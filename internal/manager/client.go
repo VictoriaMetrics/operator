@@ -3,11 +3,14 @@ package manager
 import (
 	"context"
 	"reflect"
+	"sync"
 
 	"github.com/go-logr/logr"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -15,6 +18,15 @@ import (
 type DryRunClient struct {
 	client client.Client
 	log    logr.Logger
+
+	mu sync.Mutex
+	// deleted holds objects deleted with dry-run, they still exist at the API server.
+	deleted map[deletedKey]struct{}
+}
+
+type deletedKey struct {
+	gvk schema.GroupVersionKind
+	nsn types.NamespacedName
 }
 
 // This ensures DryRunClient implements all methods of client.Client otherwise it would not compile.
@@ -35,9 +47,40 @@ func kindOf(obj client.Object) string {
 // NewDryRunClient returns a DryRunClient.
 func NewDryRunClient(c client.Client, log logr.Logger) client.Client {
 	return &DryRunClient{
-		client: c,
-		log:    log,
+		client:  c,
+		log:     log,
+		deleted: make(map[deletedKey]struct{}),
 	}
+}
+
+// keyOf returns obj key for tracking dry-run deletions.
+func (d *DryRunClient) keyOf(obj client.Object) (deletedKey, bool) {
+	gvk, err := d.client.GroupVersionKindFor(obj)
+	if err != nil {
+		return deletedKey{}, false
+	}
+	return deletedKey{gvk: gvk, nsn: client.ObjectKeyFromObject(obj)}, true
+}
+
+func (d *DryRunClient) wasDeleted(obj client.Object) bool {
+	key, ok := d.keyOf(obj)
+	if !ok {
+		return false
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	_, ok = d.deleted[key]
+	return ok
+}
+
+func (d *DryRunClient) markDeleted(obj client.Object) {
+	key, ok := d.keyOf(obj)
+	if !ok {
+		return
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.deleted[key] = struct{}{}
 }
 
 func (d *DryRunClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
@@ -66,12 +109,24 @@ func (d *DryRunClient) IsObjectNamespaced(obj runtime.Object) (bool, error) {
 
 func (d *DryRunClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
 	d.log.Info("dry-run: Create", "kind", kindOf(obj), "name", obj.GetName(), "namespace", obj.GetNamespace())
-	return d.client.Create(ctx, obj, append(opts, client.DryRunAll)...)
+	err := d.client.Create(ctx, obj, append(opts, client.DryRunAll)...)
+	// a recreated object, e.g. a Service with changed type, still exists after its dry-run deletion,
+	// so the API server cannot validate its creation. Report it as created instead of a false error.
+	if k8serrors.IsAlreadyExists(err) && d.wasDeleted(obj) {
+		d.log.Info("dry-run: Create skipped, object was deleted earlier in this dry-run, its spec is not validated by the API server",
+			"kind", kindOf(obj), "name", obj.GetName(), "namespace", obj.GetNamespace())
+		return nil
+	}
+	return err
 }
 
 func (d *DryRunClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
 	d.log.Info("dry-run: Delete", "kind", kindOf(obj), "name", obj.GetName(), "namespace", obj.GetNamespace())
-	return d.client.Delete(ctx, obj, append(opts, client.DryRunAll)...)
+	if err := d.client.Delete(ctx, obj, append(opts, client.DryRunAll)...); err != nil {
+		return err
+	}
+	d.markDeleted(obj)
+	return nil
 }
 
 func (d *DryRunClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {

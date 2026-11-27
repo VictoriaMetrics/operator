@@ -119,6 +119,7 @@ var _ = Describe("operator in dry-run mode", Ordered, func() {
 	ctx := context.Background()
 	create, update, remove := newVMSingle("dry-create"), newVMSingle("dry-update"), newVMSingle("dry-remove")
 	noNetPol, webhook := newVMSingle("dry-rbac"), newVMSingle("dry-webhook")
+	recreate := newVMSingle("dry-recreate")
 	noNetPol.Spec.NetworkPolicy = &vmv1beta1.EmbeddedNetworkPolicy{}
 	var operatorUser string
 	childKey := func(cr *vmv1beta1.VMSingle) client.ObjectKey {
@@ -134,6 +135,19 @@ var _ = Describe("operator in dry-run mode", Ordered, func() {
 		Spec: corev1.ServiceSpec{
 			Selector: update.SelectorLabels(),
 			Ports:    []corev1.ServicePort{{Name: "http", Port: 1234, TargetPort: intstr.FromInt32(1234)}},
+		},
+	}
+	// nodePortSvc is an existing Service of another type, so that the operator would recreate it.
+	nodePortSvc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      recreate.PrefixedName(),
+			Labels:    recreate.SelectorLabels(),
+		},
+		Spec: corev1.ServiceSpec{
+			Type:     corev1.ServiceTypeNodePort,
+			Selector: recreate.SelectorLabels(),
+			Ports:    []corev1.ServicePort{{Name: "http", Port: 8429, TargetPort: intstr.FromInt32(8429)}},
 		},
 	}
 	// role is a cluster-wide object the operator deletes with the VMSingle.
@@ -181,7 +195,7 @@ var _ = Describe("operator in dry-run mode", Ordered, func() {
 
 		operatorUser = useRestrictedOperatorIdentity(ctx)
 
-		for _, obj := range []client.Object{create, update, noNetPol, webhook, svc, role} {
+		for _, obj := range []client.Object{create, update, noNetPol, webhook, recreate, svc, nodePortSvc, role} {
 			Expect(k8sClient.Create(ctx, obj)).To(Succeed())
 			DeferCleanup(func() { Expect(client.IgnoreNotFound(k8sClient.Delete(ctx, obj))).To(Succeed()) })
 		}
@@ -290,6 +304,27 @@ var _ = Describe("operator in dry-run mode", Ordered, func() {
 		It("should not create the other children", func() {
 			absent(&corev1.ServiceAccount{}, childKey(update))
 			absent(&appsv1.Deployment{}, childKey(update))
+		})
+	})
+
+	Context("recreate", func() {
+		It("should skip the creation of the Service deleted in the same dry-run", func() {
+			Expect(lineOf(logs, `"msg":"dry-run: Delete"`, `"kind":"Service"`, `"name":"`+recreate.PrefixedName()+`"`)).ToNot(BeEmpty())
+			Expect(lineOf(logs, `"msg":"dry-run: Create skipped`, `"kind":"Service"`, `"name":"`+recreate.PrefixedName()+`"`)).ToNot(BeEmpty())
+		})
+
+		It("should continue past the Service to the Deployment", func() {
+			errLine := lineOf(logs, `"msg":"reconcile failed"`, `"name":"`+recreate.Name+`"`)
+			Expect(errLine).ToNot(ContainSubstring("at recreate"))
+			Expect(errLine).To(ContainSubstring("cannot create new Deployment=" + namespace + "/" + recreate.PrefixedName()))
+		})
+
+		It("should not change the existing Service", func() {
+			var got corev1.Service
+			Expect(k8sClient.Get(ctx, childKey(recreate), &got)).To(Succeed())
+			Expect(got.UID).To(Equal(nodePortSvc.UID))
+			Expect(got.Spec.Type).To(Equal(corev1.ServiceTypeNodePort))
+			Expect(got.DeletionTimestamp).To(BeNil())
 		})
 	})
 

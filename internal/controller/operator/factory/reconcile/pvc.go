@@ -56,6 +56,9 @@ func PersistentVolumeClaim(ctx context.Context, rclient client.Client, newObj, p
 }
 
 func waitForPVCReady(ctx context.Context, rclient client.Client, nsn types.NamespacedName, size resource.Quantity) error {
+	if dryRun {
+		return nil
+	}
 	var pvc corev1.PersistentVolumeClaim
 	return wait.PollUntilContextTimeout(ctx, pvcWaitReadyInterval, pvcWaitReadyTimeout, true, func(ctx context.Context) (done bool, err error) {
 		if err := rclient.Get(ctx, nsn, &pvc); err != nil {

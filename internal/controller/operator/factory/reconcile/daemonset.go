@@ -72,6 +72,9 @@ func DaemonSet(ctx context.Context, rclient client.Client, newObj, prevObj *apps
 
 // waitDeploymentReady waits until deployment's replicaSet rollouts and all new pods is ready
 func waitDaemonSetReady(ctx context.Context, rclient client.Client, ds *appsv1.DaemonSet, deadline time.Duration) error {
+	if dryRun {
+		return nil
+	}
 	var isErrDealine bool
 	nsn := types.NamespacedName{Namespace: ds.Namespace, Name: ds.Name}
 	err := wait.PollUntilContextTimeout(ctx, time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {

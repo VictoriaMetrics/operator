@@ -56,6 +56,9 @@ const (
 // confirmed applying content matching hash, an exact CRC32 match rather than a wall-clock
 // heuristic. Skipped rather than blocking if a pod's sidecar predates this metric.
 func WaitForConfigReloadHash(ctx context.Context, rclient client.Client, cr configReloadWaitable, hash uint32) error {
+	if dryRun {
+		return nil
+	}
 	httpClient := &http.Client{Timeout: configReloadHTTPTimeout}
 	selector := labels.SelectorFromSet(cr.SelectorLabels())
 	listOpts := &client.ListOptions{

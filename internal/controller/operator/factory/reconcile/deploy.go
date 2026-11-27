@@ -94,6 +94,9 @@ func Deployment(ctx context.Context, rclient client.Client, newObj, prevObj *app
 
 // waitForDeploymentReady waits until deployment's replicaSet rollouts and all new pods is ready
 func waitForDeploymentReady(ctx context.Context, rclient client.Client, newObj *appsv1.Deployment, deadline time.Duration) error {
+	if dryRun {
+		return nil
+	}
 	var isErrDeadline bool
 	nsn := types.NamespacedName{Namespace: newObj.Namespace, Name: newObj.Name}
 	err := wait.PollUntilContextTimeout(ctx, time.Second, deadline, true, func(ctx context.Context) (done bool, err error) {

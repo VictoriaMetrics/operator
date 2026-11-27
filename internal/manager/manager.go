@@ -334,6 +334,7 @@ func RunManager(ctx context.Context) error {
 	}
 
 	if *dryRun {
+		reconcile.SetDryRun(true)
 		return RunDryRunMode(ctx, mgr, baseConfig, controllers)
 	}
 

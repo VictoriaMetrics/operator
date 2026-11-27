@@ -87,7 +87,8 @@ func runDryRunOperator(ctx context.Context) string {
 	runErr := manager.RunManager(ctx)
 	// detach under the writer lock, so late log lines don't race with reading the buffer
 	GinkgoWriter.ClearTeeWriters()
-	Expect(runErr).ToNot(HaveOccurred())
+	// the suite has objects rejected by the API server, so the dry run must fail
+	Expect(runErr).To(MatchError(ContainSubstring("dry run failed")))
 
 	return logs.String()
 }

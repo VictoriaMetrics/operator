@@ -35,6 +35,7 @@ func RunDryRunMode(ctx context.Context, mgr ctrl.Manager, baseConfig *config.Bas
 	if len(namespaces) == 0 {
 		namespaces = []string{""}
 	}
+	var failedLists, failedReconciles int
 
 	for name, crdCtrl := range controllers {
 		crdCtrl.Init(name, c, setupLog, mgr.GetScheme(), baseConfig)
@@ -74,6 +75,7 @@ func RunDryRunMode(ctx context.Context, mgr ctrl.Manager, baseConfig *config.Bas
 		for _, ns := range namespaces {
 			if err := c.List(ctx, list, client.InNamespace(ns)); err != nil {
 				setupLog.Error(err, "failed to list objects", "kind", name, "namespace", ns)
+				failedLists++
 				continue
 			}
 			items = append(items, list.Items...)
@@ -90,10 +92,17 @@ func RunDryRunMode(ctx context.Context, mgr ctrl.Manager, baseConfig *config.Bas
 			_, err := r.Reconcile(ctx, req)
 			if err != nil {
 				setupLog.Error(err, "reconcile failed", "kind", name, "name", item.GetName(), "namespace", item.GetNamespace())
+				failedReconciles++
 			}
 		}
 	}
 
+	if ctx.Err() != nil {
+		return fmt.Errorf("dry run was interrupted: %w", context.Cause(ctx))
+	}
+	if failedLists > 0 || failedReconciles > 0 {
+		return fmt.Errorf("dry run failed: %d failed reconciles, %d failed object lists, see errors above", failedReconciles, failedLists)
+	}
 	setupLog.Info("dry run completed successfully")
 	return nil
 }

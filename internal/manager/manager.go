@@ -328,11 +328,16 @@ func RunManager(ctx context.Context) error {
 		return fmt.Errorf("cannot create k8s-go-client instance: %w", err)
 	}
 
-	if *dryRun {
-		return RunDryRunMode(ctx, mgr, baseConfig)
+	controllers, err := resolveControllers(ctx, ctrl.Log, baseClient, baseConfig, disabledControllerNames)
+	if err != nil {
+		return err
 	}
 
-	if err := initControllers(ctx, mgr, ctrl.Log, baseClient, baseConfig, disabledControllerNames); err != nil {
+	if *dryRun {
+		return RunDryRunMode(ctx, mgr, baseConfig, controllers)
+	}
+
+	if err := initControllers(mgr, ctrl.Log, baseConfig, controllers); err != nil {
 		return err
 	}
 

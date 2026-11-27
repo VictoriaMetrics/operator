@@ -13,7 +13,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 )
 
-func RunDryRunMode(ctx context.Context, mgr ctrl.Manager, baseConfig *config.BaseOperatorConf) error {
+func RunDryRunMode(ctx context.Context, mgr ctrl.Manager, baseConfig *config.BaseOperatorConf, controllers map[string]crdController) error {
 	setupLog.Info("starting dry run mode on existing objects")
 
 	// Start manager in background to handle caches
@@ -31,8 +31,12 @@ func RunDryRunMode(ctx context.Context, mgr ctrl.Manager, baseConfig *config.Bas
 	}
 
 	c := mgr.GetClient()
+	namespaces := baseConfig.WatchNamespaces
+	if len(namespaces) == 0 {
+		namespaces = []string{""}
+	}
 
-	for name, crdCtrl := range controllersByName {
+	for name, crdCtrl := range controllers {
 		crdCtrl.Init(name, c, setupLog, mgr.GetScheme(), baseConfig)
 		r, ok := crdCtrl.(reconcile.Reconciler)
 		if !ok {
@@ -65,13 +69,17 @@ func RunDryRunMode(ctx context.Context, mgr ctrl.Manager, baseConfig *config.Bas
 			Kind:    name + "List",
 		})
 
-		err := c.List(ctx, list)
-		if err != nil {
-			setupLog.Error(err, "failed to list objects", "kind", name)
-			continue
+		// list objects only at watched namespaces, empty namespace means all namespaces
+		var items []unstructured.Unstructured
+		for _, ns := range namespaces {
+			if err := c.List(ctx, list, client.InNamespace(ns)); err != nil {
+				setupLog.Error(err, "failed to list objects", "kind", name, "namespace", ns)
+				continue
+			}
+			items = append(items, list.Items...)
 		}
 
-		for _, item := range list.Items {
+		for _, item := range items {
 			req := ctrl.Request{
 				NamespacedName: client.ObjectKey{
 					Namespace: item.GetNamespace(),

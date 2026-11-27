@@ -21,7 +21,7 @@ aliases:
 * SECURITY: upgrade Go builder from Go1.27.3 to Go1.27.4. See [the list of issues addressed in Go1.27.4](https://github.com/golang/go/issues?q=milestone%3AGo1.27.4+label%3ACherryPickApproved).
 
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VM apps to [v1.157.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.157.0).
-* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.54.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.54.0).
+* Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VL apps to [v1.55.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.55.0).
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default versions for VT apps to [v0.13.0](https://github.com/VictoriaMetrics/VictoriaTraces/releases/tag/v0.13.0).
 * Dependency: [vmoperator](https://docs.victoriametrics.com/operator/): Updated default version for VMAnomaly to [v1.33.1](https://docs.victoriametrics.com/anomaly-detection/changelog/#v1331).
 

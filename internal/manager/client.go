@@ -54,16 +54,16 @@ func NewDryRunClient(c client.Client, log logr.Logger) client.Client {
 }
 
 // keyOf returns obj key for tracking dry-run deletions.
-func (d *DryRunClient) keyOf(obj client.Object) (deletedKey, bool) {
+func (d *DryRunClient) keyOf(obj client.Object, nsn types.NamespacedName) (deletedKey, bool) {
 	gvk, err := d.client.GroupVersionKindFor(obj)
 	if err != nil {
 		return deletedKey{}, false
 	}
-	return deletedKey{gvk: gvk, nsn: client.ObjectKeyFromObject(obj)}, true
+	return deletedKey{gvk: gvk, nsn: nsn}, true
 }
 
-func (d *DryRunClient) wasDeleted(obj client.Object) bool {
-	key, ok := d.keyOf(obj)
+func (d *DryRunClient) wasDeleted(obj client.Object, nsn types.NamespacedName) bool {
+	key, ok := d.keyOf(obj, nsn)
 	if !ok {
 		return false
 	}
@@ -74,7 +74,7 @@ func (d *DryRunClient) wasDeleted(obj client.Object) bool {
 }
 
 func (d *DryRunClient) markDeleted(obj client.Object) {
-	key, ok := d.keyOf(obj)
+	key, ok := d.keyOf(obj, client.ObjectKeyFromObject(obj))
 	if !ok {
 		return
 	}
@@ -84,6 +84,11 @@ func (d *DryRunClient) markDeleted(obj client.Object) {
 }
 
 func (d *DryRunClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+	// an object deleted earlier in this dry run still exists at the API server,
+	// report it as not found, e.g. StatefulSet recreation waits for the object removal before creating it again.
+	if d.wasDeleted(obj, key) {
+		return k8serrors.NewNotFound(schema.GroupResource{Resource: kindOf(obj)}, key.Name)
+	}
 	return d.client.Get(ctx, key, obj, opts...)
 }
 
@@ -110,10 +115,11 @@ func (d *DryRunClient) IsObjectNamespaced(obj runtime.Object) (bool, error) {
 func (d *DryRunClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
 	d.log.Info("dry-run: Create", "kind", kindOf(obj), "name", obj.GetName(), "namespace", obj.GetNamespace())
 	err := d.client.Create(ctx, obj, append(opts, client.DryRunAll)...)
-	// a recreated object, e.g. a Service with changed type, still exists after its dry-run deletion,
-	// so the API server cannot validate its creation. Report it as created instead of a false error.
-	if k8serrors.IsAlreadyExists(err) && d.wasDeleted(obj) {
-		d.log.Info("dry-run: Create skipped, object was deleted earlier in this dry-run, its spec is not validated by the API server",
+	// a recreated object, e.g. a Service with changed type, still exists after its dry-run deletion.
+	// The API server checks the existence after RBAC, validation and admission,
+	// so AlreadyExists means the object passed all other checks. Report it as created instead of a false error.
+	if k8serrors.IsAlreadyExists(err) && d.wasDeleted(obj, client.ObjectKeyFromObject(obj)) {
+		d.log.Info("dry-run: Create of an object deleted earlier in this dry-run passed all checks except the name conflict",
 			"kind", kindOf(obj), "name", obj.GetName(), "namespace", obj.GetNamespace())
 		return nil
 	}

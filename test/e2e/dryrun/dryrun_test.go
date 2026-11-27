@@ -309,9 +309,9 @@ var _ = Describe("operator in dry-run mode", Ordered, func() {
 	})
 
 	Context("recreate", func() {
-		It("should skip the creation of the Service deleted in the same dry-run", func() {
+		It("should accept the creation of the Service deleted in the same dry-run", func() {
 			Expect(lineOf(logs, `"msg":"dry-run: Delete"`, `"kind":"Service"`, `"name":"`+recreate.PrefixedName()+`"`)).ToNot(BeEmpty())
-			Expect(lineOf(logs, `"msg":"dry-run: Create skipped`, `"kind":"Service"`, `"name":"`+recreate.PrefixedName()+`"`)).ToNot(BeEmpty())
+			Expect(lineOf(logs, `"msg":"dry-run: Create of an object deleted earlier in this dry-run`, `"kind":"Service"`, `"name":"`+recreate.PrefixedName()+`"`)).ToNot(BeEmpty())
 		})
 
 		It("should continue past the Service to the Deployment", func() {
